@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Hitboxes VR Corrigidas)</title>
+    <title>RPG VR e PC - Versão Definitiva (NPCs e Missões)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -38,7 +38,25 @@
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0,
             forca: 10, velocidade: 5, defesa: 5,
             hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
-            armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5
+            armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5,
+            chaves: {} // NOVO: Mochila invisível que guarda o progresso das missões
+        };
+
+        // ==========================================
+        // CAIXA DE DIÁLOGO GLOBAL (VR e PC)
+        // ==========================================
+        window.dialogoTimeout = null;
+        window.mostrarDialogo = function(nome, texto) {
+            let cx = document.querySelector('#caixa-dialogo');
+            let tNome = document.querySelector('#npc-nome-ui');
+            let tTexto = document.querySelector('#npc-texto-ui');
+            if(cx && tNome && tTexto) {
+                tNome.setAttribute('value', nome);
+                tTexto.setAttribute('value', texto);
+                cx.setAttribute('visible', 'true');
+                if(window.dialogoTimeout) clearTimeout(window.dialogoTimeout);
+                window.dialogoTimeout = setTimeout(() => { cx.setAttribute('visible', 'false'); }, 8000);
+            }
         };
 
         // ==========================================
@@ -178,7 +196,7 @@
         function atualizarArmaVisual() { let containerDir = document.querySelector('#arma-visual-dir'); let containerEsq = document.querySelector('#arma-visual-esq'); let containerPC = document.querySelector('#arma-visual-pc'); let escudoPC = document.querySelector('#escudo-visual-pc'); if(!containerDir || !containerEsq) return; containerDir.innerHTML = ''; containerEsq.innerHTML = ''; if(containerPC) containerPC.innerHTML = ''; if(escudoPC) escudoPC.innerHTML = ''; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats) return; if (armaStats.modeloGlb && armaStats.modeloGlb !== '') containerDir.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else if (armaStats.visualDir) containerDir.innerHTML = armaStats.visualDir; if (armaStats.visualEsq && armaStats.visualEsq !== 'ARCO_ESPECIAL') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else containerEsq.innerHTML = armaStats.visualEsq; } if (armaStats.categoria === 'Arco') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else { let rot = window.CONFIG_ARCO; containerEsq.innerHTML = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`; } } if (window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') { if(window.CONFIG_ESCUDO.modeloGlb && window.CONFIG_ESCUDO.modeloGlb !== '') containerEsq.innerHTML += `<a-entity gltf-model="${window.CONFIG_ESCUDO.modeloGlb}" scale="${window.CONFIG_ESCUDO.escalaMao}" rotation="${window.CONFIG_ESCUDO.rotMao}" position="${window.CONFIG_ESCUDO.posMao}"></a-entity>`; else containerEsq.innerHTML += `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; } if(containerPC) containerPC.innerHTML = containerDir.innerHTML; if(escudoPC) escudoPC.innerHTML = containerEsq.innerHTML; }
 
         // ==========================================
-        // 4. FÍSICA E CONTROLES PC
+        // 4. FÍSICA E CONTROLES PC E VR
         // ==========================================
         AFRAME.registerComponent('pc-controles', {
             init: function() {
@@ -238,9 +256,6 @@
             }
         });
 
-        // ==========================================
-        // 4.1 FÍSICA PURA VR
-        // ==========================================
         AFRAME.registerComponent('controles-vr-fisica', {
             schema: { isLeft: { default: false } },
             init: function() {
@@ -283,7 +298,6 @@
                         inimigoEl.object3D.getWorldPosition(posInimigo);
                         posInimigo.y += 1.0; 
                         
-                        // Hitbox VR aumentada para não falhar nos socos
                         if (posAtual.distanceTo(posInimigo) < 1.5) { 
                             if (!this.bateuNoInimigo[idInimigo]) {
                                 this.bateuNoInimigo[idInimigo] = true;
@@ -396,8 +410,6 @@
         AFRAME.registerComponent('projetil-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.inimigos = document.querySelectorAll('[sistema-inimigo-sync]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0) return; this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2); if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); setTimeout(() => { if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 2000); } let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]'); for (let i = 0; i < inimigosAtuais.length; i++) { let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue; this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true); let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo'); if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); } if (boxProj.intersectsBox(boxInimigo)) { syncComp.receberDano(this.data.dano, 'Arco'); this.el.parentNode.removeChild(this.el); break;} } } });
         
         AFRAME.registerComponent('projetil-inimigo-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; } let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj); 
-        
-        // Raio da magia aumentado de 1.0 para 2.0 para acertar jogadores em pé no VR
         if (posProj.distanceTo(posPlayer) < 2.0) { 
             if (this.el.dataset.defletido === "true") return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0}; let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? 5 : 0); let danoFinal = Math.max(1, this.data.dano - defesaTotal); window.playerState.hpAtual -= danoFinal; let danoTela = document.querySelector('#dano-tela'); if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => danoTela.setAttribute('visible', 'false'), 200); } atualizarUI(); if (window.playerState.hpAtual <= 0) { window.playerState.vivo = false; window.playerState.hpAtual = 0; atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'VOCE MORREU!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); } setTimeout(() => { location.reload(); }, 3000); } this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); } } });
         
@@ -496,7 +508,6 @@
                             let posInimigo = new THREE.Vector3(); 
                             this.el.object3D.getWorldPosition(posInimigo);
                             
-                            // Hitbox INIMIGO aumentada para 4.0 para compensar altura da câmera VR
                             if (posPlayer.distanceTo(posInimigo) < 4.0) {
                                 let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0};
                                 let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? 5 : 0);
@@ -623,6 +634,146 @@
                 });
             }
         });
+
+        // ==========================================
+        // 7. GERENCIADOR DINÂMICO DE NPCs (MUNDO VIVO)
+        // ==========================================
+        AFRAME.registerComponent('gerenciador-npcs', {
+            init: function() {
+                this.db = realtimeDB;
+                
+                this.db.ref('cenario_npcs').on('child_added', (snapshot) => {
+                    let id = snapshot.key;
+                    let data = snapshot.val();
+                    if (!data) return;
+                    if (document.querySelector(`[data-npc-id="${id}"]`)) return;
+
+                    let el = document.createElement('a-entity');
+                    el.dataset.npcId = id;
+                    el.classList.add('interativo'); // Faz o NPC ser clicável
+
+                    let modelSrc = data.modeloGlb || '';
+                    if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
+                    el.setAttribute('shadow', '');
+
+                    let visual = document.createElement('a-entity');
+                    visual.classList.add('modelo-visual');
+                    if (modelSrc) {
+                        visual.setAttribute('gltf-model', modelSrc);
+                    } else {
+                        visual.innerHTML = `<a-cylinder color="#f1c40f" radius="0.3" height="1.6" position="0 0.8 0"></a-cylinder>`;
+                    }
+                    el.appendChild(visual);
+
+                    // Nome flutuando do NPC
+                    let nomeTag = document.createElement('a-text');
+                    nomeTag.setAttribute('value', data.nome || 'NPC');
+                    nomeTag.setAttribute('align', 'center');
+                    nomeTag.setAttribute('position', '0 2.2 0');
+                    nomeTag.setAttribute('color', '#f1c40f');
+                    nomeTag.setAttribute('scale', '0.6 0.6 0.6');
+                    nomeTag.setAttribute('side', 'double');
+                    el.appendChild(nomeTag);
+
+                    // Acopla a lógica de interação (Missões e Conversas)
+                    el.npcData = data; 
+                    el.setAttribute('sistema-npc-interacao', '');
+
+                    this.el.appendChild(el);
+                });
+
+                this.db.ref('cenario_npcs').on('child_changed', (snapshot) => {
+                    let id = snapshot.key;
+                    let data = snapshot.val();
+                    let el = document.querySelector(`[data-npc-id="${id}"]`);
+                    if (el) {
+                        el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
+                        el.npcData = data; 
+                        let nomeTag = el.querySelector('a-text');
+                        if (nomeTag) nomeTag.setAttribute('value', data.nome || 'NPC');
+                    }
+                });
+
+                this.db.ref('cenario_npcs').on('child_removed', (snapshot) => {
+                    let id = snapshot.key;
+                    let el = document.querySelector(`[data-npc-id="${id}"]`);
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+            }
+        });
+
+        // Inteligência das Missões de cada NPC
+        AFRAME.registerComponent('sistema-npc-interacao', {
+            init: function() {
+                this.tocarAnimacao = (nomeAnimacao) => {
+                    if(!nomeAnimacao) return;
+                    let visual = this.el.querySelector('.modelo-visual');
+                    if (visual && visual.hasAttribute('gltf-model')) {
+                        visual.removeAttribute('animation-mixer');
+                        setTimeout(() => {
+                            visual.setAttribute('animation-mixer', `clip: ${nomeAnimacao}; loop: repeat; crossFadeDuration: 0.2`);
+                        }, 20);
+                    }
+                };
+
+                // Toca a animação de "Respirar/Parado" assim que nascer
+                setTimeout(() => { 
+                    if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado); 
+                }, 500);
+
+                // O que acontece quando você atira o laser nele (ou clica no PC)
+                this.el.addEventListener('click', () => {
+                    if (!window.GAME_STARTED || !window.playerState.vivo) return;
+
+                    let posPlayer = new THREE.Vector3();
+                    document.querySelector('[camera]').object3D.getWorldPosition(posPlayer);
+                    let posNPC = new THREE.Vector3();
+                    this.el.object3D.getWorldPosition(posNPC);
+
+                    if (posPlayer.distanceTo(posNPC) > 4.0) return; // Longe demais para falar
+
+                    let data = this.el.npcData;
+                    if (!data) return;
+
+                    // Faz ele gesticular enquanto fala
+                    if (data.animFalando) {
+                        this.tocarAnimacao(data.animFalando);
+                        setTimeout(() => { if(data.animParado) this.tocarAnimacao(data.animParado); }, 8000);
+                    }
+
+                    // A mágica das Rotas de Missão!
+                    let textoFinal = data.dialogoPadrao || "...";
+
+                    if (data.tipo === 'secundaria') {
+                        if (data.chaveConclusao && !window.playerState.chaves[data.chaveConclusao]) {
+                            textoFinal = data.dialogoMissao || textoFinal;
+                            window.playerState.chaves[data.chaveConclusao] = true;
+                            window.salvarJogoNuvem(); 
+                        }
+                    } 
+                    else if (data.tipo === 'primaria') {
+                        if (data.requisito && !window.playerState.chaves[data.requisito]) {
+                            // Deu ruim: você não completou o requisito para falar com ele
+                            textoFinal = data.dialogoPadrao || "Você ainda não está pronto para a minha missão. Vá se aventurar mais!";
+                        } 
+                        else if (data.chaveConclusao && !window.playerState.chaves[data.chaveConclusao]) {
+                            // Requisito OK! Ele te dá a missão secreta e a chave!
+                            textoFinal = data.dialogoMissao || "Aqui está a sua nova missão!";
+                            window.playerState.chaves[data.chaveConclusao] = true;
+                            window.salvarJogoNuvem();
+                        } 
+                        else {
+                            // Missão já foi feita. Fala o texto padrão de novo.
+                            textoFinal = data.dialogoPadrao || "Obrigado pela sua ajuda nobre aventureiro.";
+                        }
+                    }
+
+                    window.mostrarDialogo(data.nome, textoFinal);
+                });
+            }
+        });
     </script>
     <style>
         #ui-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 20, 0.95); z-index: 999999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; pointer-events: auto; } .menu-box { background: #2c3e50; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; } .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; } .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; } .btn-green { background: #27ae60; } .btn-blue { background: #2980b9; } .btn-orange { background: #d35400; } #start-menu { display: none; }
@@ -635,7 +786,7 @@
         <div id="start-menu" class="menu-box"><h2 style="color: #2ecc71;">Logado!</h2><button id="btn-pc" class="btn btn-orange">Jogar no PC (Mouse)</button><button id="btn-vr" class="btn btn-blue">Jogar em VR</button></div>
     </div>
 
-    <a-scene pc-controles sistema-jogo gerenciador-inimigos renderer="colorManagement: true; localClippingEnabled: true">
+    <a-scene pc-controles sistema-jogo gerenciador-inimigos gerenciador-npcs renderer="colorManagement: true; localClippingEnabled: true">
         
        <a-assets timeout="3000">
             <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
@@ -668,6 +819,12 @@
 
                 <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
                 <a-text id="texto-central" value="" position="-0.5 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5"></a-text>
+                
+                <a-entity id="caixa-dialogo" position="0 -0.3 -1.2" visible="false" rotation="-15 0 0">
+                    <a-plane color="#2c3e50" width="1.6" height="0.6" opacity="0.95"></a-plane>
+                    <a-text id="npc-nome-ui" value="Nome do NPC" position="-0.75 0.22 0.01" color="#f1c40f" scale="0.35 0.35 0.35"></a-text>
+                    <a-text id="npc-texto-ui" value="Texto..." position="-0.75 0.05 0.01" color="#FFF" scale="0.3 0.3 0.3" wrap-count="45" baseline="top"></a-text>
+                </a-entity>
                 
                 <a-text id="contador-online" value="Conectando Servidor..." position="0.6 0.8 -1.2" color="#00FF00" scale="0.4 0.4 0.4" align="right"></a-text>
             </a-entity> 
