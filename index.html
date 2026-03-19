@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Motor de MMO Automático)</title>
+    <title>RPG VR e PC - Versão Definitiva (Física Realista + Anti-Crash)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -107,7 +107,6 @@
         window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
 
         document.addEventListener('DOMContentLoaded', () => { 
-            // Registra cliques de botões e toques para o sistema AFK
             ['mousedown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, () => window.lastActionTime = Date.now()));
 
             document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
@@ -115,15 +114,7 @@
             document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); 
             document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
             window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); 
-// Adicione isso no seu index.html para o jogador obedecer ao KICK
-    db.ref('server_commands/kick_all').on('value', snap => {
-        if(snap.val() && window.GAME_STARTED) {
-            window.GAME_STARTED = false;
-            let aviso = document.querySelector('#texto-central');
-            if(aviso) { aviso.setAttribute('value', 'KICKADO PELO ADMIN!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
-            setTimeout(() => location.reload(), 3000);
-        }
-    });
+
             // Sistema de Kick por Inatividade (15 minutos)
             setInterval(() => {
                 if (window.GAME_STARTED && window.playerState.vivo) {
@@ -143,6 +134,16 @@
                     }
                 }
             }, 5000);
+
+            // Escuta a ordem do Admin para KICKAR TODOS
+            db.ref('server_commands/kick_all').on('value', snap => {
+                if(snap.val() && window.GAME_STARTED) {
+                    window.GAME_STARTED = false;
+                    let aviso = document.querySelector('#texto-central');
+                    if(aviso) { aviso.setAttribute('value', 'KICKADO PELO ADMIN!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                    setTimeout(() => location.reload(), 3000);
+                }
+            });
         });
         
         function iniciarTelaSelecaoModo() { document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; }
@@ -178,7 +179,7 @@
         function atualizarArmaVisual() { let containerDir = document.querySelector('#arma-visual-dir'); let containerEsq = document.querySelector('#arma-visual-esq'); let containerPC = document.querySelector('#arma-visual-pc'); let escudoPC = document.querySelector('#escudo-visual-pc'); if(!containerDir || !containerEsq) return; containerDir.innerHTML = ''; containerEsq.innerHTML = ''; if(containerPC) containerPC.innerHTML = ''; if(escudoPC) escudoPC.innerHTML = ''; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats) return; if (armaStats.modeloGlb && armaStats.modeloGlb !== '') containerDir.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else if (armaStats.visualDir) containerDir.innerHTML = armaStats.visualDir; if (armaStats.visualEsq && armaStats.visualEsq !== 'ARCO_ESPECIAL') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else containerEsq.innerHTML = armaStats.visualEsq; } if (armaStats.categoria === 'Arco') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else { let rot = window.CONFIG_ARCO; containerEsq.innerHTML = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`; } } if (window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') { if(window.CONFIG_ESCUDO.modeloGlb && window.CONFIG_ESCUDO.modeloGlb !== '') containerEsq.innerHTML += `<a-entity gltf-model="${window.CONFIG_ESCUDO.modeloGlb}" scale="${window.CONFIG_ESCUDO.escalaMao}" rotation="${window.CONFIG_ESCUDO.rotMao}" position="${window.CONFIG_ESCUDO.posMao}"></a-entity>`; else containerEsq.innerHTML += `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; } if(containerPC) containerPC.innerHTML = containerDir.innerHTML; if(escudoPC) escudoPC.innerHTML = containerEsq.innerHTML; }
 
         // ==========================================
-        // 4. FÍSICA E CONTROLES PC
+        // 4. FÍSICA E CONTROLES PC (100% Blindado contra Crash)
         // ==========================================
         AFRAME.registerComponent('pc-controles', {
             init: function() {
@@ -204,10 +205,12 @@
                             let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); let cameraObj = document.querySelector('[camera]').object3D; cameraObj.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.quaternion);
                             let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
                             inimigosEls.forEach(inimigoEl => { 
+                                if(!inimigoEl.object3D) return; // Blindagem
                                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); posInimigo.y += 1.0;
                                 if (posCamera.distanceTo(posInimigo) < 3.5 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { 
                                     let dano = window.playerState.forca + armaStats.danoBonus; 
-                                    inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria); 
+                                    let syncComp = inimigoEl.components['sistema-inimigo-sync'];
+                                    if(syncComp) syncComp.receberDano(Math.floor(dano * 1.5), armaStats.categoria); 
                                 } 
                             });
                         }
@@ -237,7 +240,7 @@
         });
 
         // ==========================================
-        // 4.1 FÍSICA PURA VR (Mãos Unificadas)
+        // 4.1 FÍSICA PURA VR (Blindada contra Crash)
         // ==========================================
         AFRAME.registerComponent('controles-vr-fisica', {
             schema: { isLeft: { default: false } },
@@ -267,12 +270,15 @@
                 let podeDarDanoFisico = isLuva || isEspadaDir;
                 let podeRefletir = isLuva || isEscudoEsq || (isEspadaDir && this.velocidadeMao > 1.2); 
 
-                // 1. DANO POR CONTATO (Física Pura)
+                // 1. DANO POR CONTATO 
                 if (podeDarDanoFisico) {
                     let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
                     for (let i = 0; i < inimigosEls.length; i++) {
                         let inimigoEl = inimigosEls[i];
-                        let syncData = inimigoEl.components['sistema-inimigo-sync'].data;
+                        let syncComp = inimigoEl.components['sistema-inimigo-sync'];
+                        if (!syncComp) continue; // BLINDAGEM ANTI CRASH
+
+                        let syncData = syncComp.data;
                         let idInimigo = syncData ? syncData.idBd : "inimigo_" + i;
 
                         let posInimigo = new THREE.Vector3();
@@ -284,9 +290,7 @@
                                 this.bateuNoInimigo[idInimigo] = true;
                                 if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
                                 let dano = window.playerState.forca + armaStats.danoBonus;
-                                if (inimigoEl.components['sistema-inimigo-sync']) {
-                                    inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * (this.data.isLeft ? 1 : 1.5)), armaStats.categoria);
-                                }
+                                syncComp.receberDano(Math.floor(dano * (this.data.isLeft ? 1 : 1.5)), armaStats.categoria);
                             }
                         } else {
                             this.bateuNoInimigo[idInimigo] = false; 
@@ -294,7 +298,7 @@
                     }
                 }
 
-                // 2. RICOCHETE 360º BASEADO EM ÂNGULO E VELOCIDADE
+                // 2. RICOCHETE
                 if (podeRefletir) {
                     let magias = document.querySelectorAll('.projetil-inimigo'); 
                     magias.forEach(magia => { 
@@ -392,37 +396,39 @@
         AFRAME.registerComponent('btn-escudo', { init: function() { this.el.addEventListener('click', () => { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Mao Esq/Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 1500); }); } });
         AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; atualizarUI(); let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); } }); } });
         
-        AFRAME.registerComponent('projetil-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.inimigos = document.querySelectorAll('[sistema-inimigo-sync]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0) return; this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2); if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); setTimeout(() => { if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 2000); } let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]'); for (let i = 0; i < inimigosAtuais.length; i++) { let inimigo = inimigosAtuais[i]; this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true); let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo'); if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); } if (boxProj.intersectsBox(boxInimigo)) { if (inimigo.components['sistema-inimigo-sync']) inimigo.components['sistema-inimigo-sync'].receberDano(this.data.dano, 'Arco'); this.el.parentNode.removeChild(this.el); break;} } } });
+        AFRAME.registerComponent('projetil-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.inimigos = document.querySelectorAll('[sistema-inimigo-sync]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0) return; this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2); if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); setTimeout(() => { if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 2000); } let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]'); for (let i = 0; i < inimigosAtuais.length; i++) { let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue; this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true); let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo'); if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); } if (boxProj.intersectsBox(boxInimigo)) { syncComp.receberDano(this.data.dano, 'Arco'); this.el.parentNode.removeChild(this.el); break;} } } });
         AFRAME.registerComponent('projetil-inimigo-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; } let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj); if (posProj.distanceTo(posPlayer) < 1.0) { if (this.el.dataset.defletido === "true") return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0}; let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? 5 : 0); let danoFinal = Math.max(1, this.data.dano - defesaTotal); window.playerState.hpAtual -= danoFinal; let danoTela = document.querySelector('#dano-tela'); if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => danoTela.setAttribute('visible', 'false'), 200); } atualizarUI(); if (window.playerState.hpAtual <= 0) { window.playerState.vivo = false; window.playerState.hpAtual = 0; atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'VOCE MORREU!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); } setTimeout(() => { location.reload(); }, 3000); } this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); } } });
         
         AFRAME.registerComponent('sistema-arco', { init: function() { this.puxando = false; this.flechaVisual = null; this.maoEsq = document.querySelector('#mao-esquerda'); this.el.addEventListener('triggerdown', () => { if (window.GAME_MODE === 'PC') return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats || armaStats.categoria !== 'Arco' || window.playerState.flechas <= 0) return; let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); if (posDir.distanceTo(posEsq) < 0.6) { this.puxando = true; this.flechaVisual = document.createElement('a-cylinder'); this.flechaVisual.setAttribute('color', '#fff'); this.flechaVisual.setAttribute('radius', '0.008'); document.querySelector('a-scene').appendChild(this.flechaVisual); } }); this.el.addEventListener('triggerup', () => { if (window.GAME_MODE === 'PC' || !this.puxando) return; this.puxando = false; if (this.flechaVisual) { this.flechaVisual.parentNode.removeChild(this.flechaVisual); this.flechaVisual = null; } let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); let dist = posEsq.distanceTo(posDir); let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (dist > 0.15) { window.playerState.flechas--; atualizarUI(); let cena = document.querySelector('a-scene'); let flecha = document.createElement('a-cylinder'); flecha.setAttribute('color', '#FFF'); flecha.setAttribute('radius', '0.01'); flecha.setAttribute('height', '0.6'); let direcao = new THREE.Vector3().subVectors(posEsq, posDir).normalize(); flecha.setAttribute('position', `${posEsq.x} ${posEsq.y} ${posEsq.z}`); let forcaBase = Math.min(dist * 35, 45); flecha.setAttribute('projetil-fisico', { velocidade: direcao.multiplyScalar(forcaBase), dano: Math.floor((window.playerState.forca + armaStats.danoBonus) * (dist * 3)) }); flecha.object3D.position.copy(posEsq); flecha.object3D.lookAt(posEsq.clone().add(direcao)); flecha.object3D.rotateX(Math.PI / 2); cena.appendChild(flecha); } }); }, tick: function() { if (this.puxando && this.flechaVisual) { let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); let dist = posEsq.distanceTo(posDir); let meio = new THREE.Vector3().addVectors(posEsq, posDir).multiplyScalar(0.5); this.flechaVisual.object3D.position.copy(meio); this.flechaVisual.setAttribute('height', Math.max(0.1, dist)); this.flechaVisual.object3D.lookAt(posEsq); this.flechaVisual.object3D.rotateX(Math.PI / 2); } } });
 
         // ==========================================
-        // 5. COMBATE E ESCUTA DO SERVIDOR (Cliente Leve)
+        // 5. COMBATE E ESCUTA DO SERVIDOR (Cliente Leve e Blindado)
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
-            // Substitua a função tocarAnimacao inteira dentro de 'sistema-inimigo-sync' por esta:
-    
-    tocarAnimacao: function(nomePadrao, loopState, clamp = false) { 
-        let visual = this.el.querySelector('.modelo-visual');
-        if (visual && visual.hasAttribute('gltf-model')) { 
-            
-            // Verifica se o monstro tem nomes customizados no banco, senão usa o padrão
-            let nomeAnimacaoFinal = nomePadrao;
-            if (this.dadosBD) {
-                if (nomePadrao === window.ANIM_PARADO && this.dadosBD.animParado) nomeAnimacaoFinal = this.dadosBD.animParado;
-                if (nomePadrao === window.ANIM_ATIRANDO && this.dadosBD.animAtaque) nomeAnimacaoFinal = this.dadosBD.animAtaque;
-                if (nomePadrao === window.ANIM_MORTE && this.dadosBD.animMorte) nomeAnimacaoFinal = this.dadosBD.animMorte;
-            }
+            tocarAnimacao: function(nomePadrao, loopState, clamp = false) { 
+                let visual = this.el.querySelector('.modelo-visual');
+                if (visual && visual.hasAttribute('gltf-model')) { 
+                    let nomeAnimacaoFinal = nomePadrao;
+                    if (this.dadosBD) {
+                        if (nomePadrao === window.ANIM_PARADO && this.dadosBD.animParado) nomeAnimacaoFinal = this.dadosBD.animParado;
+                        if (nomePadrao === window.ANIM_ATIRANDO && this.dadosBD.animAtaque) nomeAnimacaoFinal = this.dadosBD.animAtaque;
+                        if (nomePadrao === window.ANIM_MORTE && this.dadosBD.animMorte) nomeAnimacaoFinal = this.dadosBD.animMorte;
+                    }
+                    visual.removeAttribute('animation-mixer'); 
+                    setTimeout(() => { 
+                        visual.setAttribute('animation-mixer', `clip: ${nomeAnimacaoFinal}; loop: ${loopState}; crossFadeDuration: 0.1; clampWhenFinished: ${clamp}`); 
+                    }, 20); 
+                }
+            },
 
-            visual.removeAttribute('animation-mixer'); 
-            setTimeout(() => { 
-                visual.setAttribute('animation-mixer', `clip: ${nomeAnimacaoFinal}; loop: ${loopState}; crossFadeDuration: 0.1; clampWhenFinished: ${clamp}`); 
-            }, 20); 
-        }
-    },
+            // BLINDAGEM ANTI CRASH NA REMOÇÃO
+            remove: function() {
+                if (this.dbRef) {
+                    this.dbRef.off(); // Desliga os ouvidos do monstro com o Firebase antes dele ser apagado
+                }
+            },
 
             init: function () { 
                 this.hpAtual = this.data.hpMax; this.el.classList.add('interativo');
@@ -434,6 +440,8 @@
                 this.dadosBD = null;
 
                 this.dbRef.on('value', snap => {
+                    if (!this.el || !this.el.parentNode) return; // Corta a função se o monstro estiver sendo deletado
+                    
                     let data = snap.val(); if (!data) return;
                     this.dadosBD = data; 
                     let textoHp = this.el.querySelector('.hp-texto');
@@ -568,24 +576,23 @@
         });
 
         // ==========================================
-        // 6. GERENCIADOR DINÂMICO DE INIMIGOS (SPAWNER)
+        // 6. GERENCIADOR DINÂMICO DE INIMIGOS (SPAWNER BLINDADO)
         // ==========================================
         AFRAME.registerComponent('gerenciador-inimigos', {
             init: function() {
                 this.db = firebase.database();
                 
-                // Escuta por novos inimigos criados no servidor ou painel admin
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key;
                     let data = snapshot.val();
+                    if (!data) return;
                     
-                    // Se o inimigo já existe na tela, não cria de novo
                     if (document.querySelector(`[data-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity');
                     el.dataset.id = id;
                     
-                    let modelSrc = data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2';
+                    let modelSrc = data.modeloGlb ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
                     let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad';
                     let xpDrop = data.tipo === 'atirador' ? 50 : 20;
 
@@ -596,27 +603,23 @@
                     }
                     el.setAttribute('shadow', '');
 
-                    // Dentro de: AFRAME.registerComponent('gerenciador-inimigos' ...
-    // Troque a lógica antiga do modelSrc por esta:
-    
-    let modelSrc = data.modeloGlb ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
-    
-    el.innerHTML = `
-        <a-entity class="modelo-visual" gltf-model="${modelSrc}"></a-entity>
-        <a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
-        <a-box class="inimigo-fallback" color="#e74c3c" visible="false" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>
-        <a-box class="colisao-inimigo" visible="false" scale="1 2 1" position="0 1 0"></a-box>
-    `;
+                    el.innerHTML = `
+                        <a-entity class="modelo-visual" gltf-model="${modelSrc}"></a-entity>
+                        <a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+                        <a-box class="inimigo-fallback" color="${fallbackColor}" visible="false" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>
+                        <a-box class="colisao-inimigo" visible="false" scale="1 2 1" position="0 1 0"></a-box>
+                    `;
 
                     this.el.appendChild(el);
                 });
 
-                // Apaga o corpo 3D se ele for deletado do servidor
+                // BLINDAGEM ANTI CRASH: Remove as propriedades do A-Frame antes de deletar do DOM
                 this.db.ref('cenario_inimigos').on('child_removed', (snapshot) => {
                     let id = snapshot.key;
                     let el = document.querySelector(`[data-id="${id}"]`);
                     if (el && el.parentNode) {
-                        el.parentNode.removeChild(el);
+                        el.removeAttribute('sistema-inimigo-sync'); // Desliga a IA
+                        el.parentNode.removeChild(el); // Exclui o corpo
                     }
                 });
             }
