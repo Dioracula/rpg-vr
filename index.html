@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>RPG VR e PC - Versão Definitiva (Servidor Dedicado)</title>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. CONFIGURAÇÃO FIREBASE E ESTADO GLOBAL
+        // ==========================================
+        const firebaseConfig = {
+             apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
+             authDomain: "rpg-vr-online.firebaseapp.com",
+             databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
+             projectId: "rpg-vr-online",
+             storageBucket: "rpg-vr-online.firebasestorage.app",
+             messagingSenderId: "676174796336",
+             appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+        };
+        
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const auth = firebase.auth(); const db = firebase.firestore();
+
+        window.GAME_MODE = 'NONE'; window.GAME_STARTED = false; window.currentUser = null; 
+        
+        window.playerState = {
+            nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0,
+            forca: 10, velocidade: 5, defesa: 5,
+            hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
+            armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5
+        };
+
+        // ==========================================
+        // 2. SISTEMA MULTIPLAYER (Apenas Sincronização, Sem Host)
+        // ==========================================
+        AFRAME.registerComponent('firebase-multiplayer', {
+            init: function() {
+                this.db = firebase.database(); this.playersRef = this.db.ref('players'); 
+                this.myId = 'player_' + Math.random().toString(36).substr(2, 9); 
+                this.myRef = this.db.ref('players/' + this.myId); 
+                this.myRef.onDisconnect().remove();
+                
+                this.otherPlayers = {}; this.cena = document.querySelector('a-scene');
+
+                this.playersRef.on('child_added', (snapshot) => {
+                    let id = snapshot.key; if (id === this.myId) return; 
+                    let data = snapshot.val(); let avatar = document.createElement('a-entity');
+                    avatar.setAttribute('position', data.position || {x:0, y:0, z:0}); avatar.setAttribute('rotation', data.rotation || {x:0, y:0, z:0});
+                    
+                    avatar.dataset.vivo = data.vivo !== false ? "true" : "false";
+                    avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
+
+                    avatar.innerHTML = `<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>`;
+                    this.cena.appendChild(avatar); this.otherPlayers[id] = avatar;
+                    let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'NOVO JOGADOR ENTROU!'); aviso.setAttribute('color', '#00FFFF'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
+                });
+
+                this.playersRef.on('child_changed', (snapshot) => {
+                    let id = snapshot.key; if (id === this.myId) return;
+                    let avatar = this.otherPlayers[id]; let data = snapshot.val();
+                    if (avatar && data) { 
+                        avatar.dataset.vivo = data.vivo !== false ? "true" : "false";
+                        avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
+                        avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x} ${data.position.y} ${data.position.z}; dur: 100; easing: linear`); 
+                        avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x} ${data.rotation.y} ${data.rotation.z}; dur: 100; easing: linear`); 
+                    }
+                });
+
+                this.playersRef.on('child_removed', (snapshot) => { let id = snapshot.key; let avatar = this.otherPlayers[id]; if (avatar) { avatar.parentNode.removeChild(avatar); delete this.otherPlayers[id]; } });
+                this.playersRef.on('value', (snapshot) => { let total = snapshot.numChildren(); let contadorHUD = document.querySelector('#contador-online'); if(contadorHUD) contadorHUD.setAttribute('value', 'Online: ' + total); });
+                
+                this.lastSyncTime = 0; this.cameraObj = document.querySelector('[camera]');
+            },
+            tick: function(time) {
+                if (!window.GAME_STARTED) return;
+                
+                if (time - this.lastSyncTime > 100) { 
+                    this.lastSyncTime = time;
+                    let pos = this.el.object3D.position; 
+                    let euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                    euler.setFromQuaternion(this.cameraObj.object3D.quaternion);
+                    let rotY = euler.y * 180 / Math.PI;
+
+                    this.myRef.set({ 
+                        position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, 
+                        rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 },
+                        vivo: window.playerState.vivo
+                    }); 
+                }
+            }
+        });
+
+        window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
+
+        document.addEventListener('DOMContentLoaded', () => { document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); document.getElementById('btn-login').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); });
+        
+        function iniciarTelaSelecaoModo() { document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; }
+        
+        function iniciarJogo(modo) { window.GAME_MODE = modo; window.GAME_STARTED = true; document.getElementById('ui-layer').style.display = 'none'; if (modo === 'PC') { document.querySelector('#mao-esquerda').setAttribute('visible', 'false'); document.querySelector('#mao-esquerda').setAttribute('raycaster', 'far', 0); document.querySelector('#mao-direita').setAttribute('visible', 'false'); document.querySelector('#mao-direita').setAttribute('raycaster', 'far', 0); setTimeout(() => { let canvas = document.querySelector('.a-canvas'); if(canvas) canvas.requestPointerLock(); }, 100); } else { document.querySelector('[cursor]').setAttribute('visible', 'false'); document.querySelector('[cursor]').setAttribute('raycaster', 'far', 0); document.querySelector('#arma-visual-pc').setAttribute('visible', 'false'); document.querySelector('#escudo-visual-pc').setAttribute('visible', 'false'); document.querySelector('a-scene').enterVR(); } atualizarUI(); }
+        
+        window.salvarJogoNuvem = function() { if (!window.currentUser || window.currentUser.uid === 'test_user_local') return; db.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).then(() => console.log("Salvo na nuvem!")).catch(e => console.error(e)); };
+
+        // ==========================================
+        // 3. BANCO DE ARMAS E NOMES DE ANIMAÇÃO
+        // ==========================================
+        window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; 
+        window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
+        window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
+        window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
+        
+        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
+
+        window.bancoDeArmas = {
+            'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, durabilidadeMax: Infinity, modeloGlb: '', visualDir: '', visualEsq: '' },
+            'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, durabilidadeMax: 100, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: `<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>`, visualEsq: '' },
+            'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, durabilidadeMax: 80, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>`, visualEsq: '' },
+            'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, durabilidadeMax: 150, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: `<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>`, visualEsq: '' },
+            'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, durabilidadeMax: 200, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>`, visualEsq: `<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>` },
+            'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, durabilidadeMax: 50, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>`, visualEsq: `<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>` },
+            'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, durabilidadeMax: 60, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>`, visualEsq: `<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>` },
+            'Varinha': { categoria: 'Varinha', danoBonus: 10, defesaBonus: 0, durabilidadeMax: 40, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-cylinder color="#5C4033" radius="0.015" height="0.4" position="0 0.2 0"></a-cylinder><a-sphere color="#00FFFF" radius="0.04" position="0 0.4 0" material="emissive: #00FFFF; emissiveIntensity: 0.8"></a-sphere>`, visualEsq: '' },
+            'Arco': { categoria: 'Arco', danoBonus: 12, defesaBonus: 0, durabilidadeMax: 60, modeloGlb: '#modelo-arco', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '', visualEsq: 'ARCO_ESPECIAL' },
+            'Shuriken': { categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, durabilidadeMax: 100, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: `<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>`, visualEsq: '' }
+        };
+
+        function atualizarUI() { let elsHtml = ['#txt-nivel-hud', '#txt-status-hud', '#hp-wrapper', '#mp-wrapper', '#txt-arma-hud', '#rig', '#attr-nivel-classe', '#attr-hp-txt', '#attr-mp-txt', '#attr-hpmax', '#attr-mpmax', '#attr-atk', '#attr-def', '#attr-agi', '#attr-exp', '#attr-nextexp', '#attr-pts', '#inv-total-forca', '#inv-total-defesa', '#inv-total-ouro', '#tt-flechas', '#tt-shurikens', '#attr-slot-1', '#attr-slot-2']; for(let i=0; i<elsHtml.length; i++) { if(!document.querySelector(elsHtml[i])) return; } document.querySelector('#txt-nivel-hud').setAttribute('value', 'Nivel: ' + window.playerState.nivel + ' | XP: ' + window.playerState.xp + '/' + window.playerState.xpProxNivel); document.querySelector('#txt-status-hud').setAttribute('value', 'HP: ' + window.playerState.hpAtual + '/' + window.playerState.hpMax + '   |   MP: ' + window.playerState.mpAtual + '/' + window.playerState.mpMax); let hpScale = Math.max(0, window.playerState.hpAtual / window.playerState.hpMax); document.querySelector('#hp-wrapper').setAttribute('scale', hpScale + ' 1 1'); let mpScale = Math.max(0, window.playerState.mpAtual / window.playerState.mpMax); document.querySelector('#mp-wrapper').setAttribute('scale', mpScale + ' 1 1'); document.querySelector('#txt-arma-hud').setAttribute('value', 'Equipado: ' + window.playerState.armaEquipada + (window.playerState.escudoEquipado ? ' + Escudo' : '')); document.querySelector('#rig').setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; let forcaTotal = window.playerState.forca + (armaStats ? armaStats.danoBonus : 0); let defesaTotal = window.playerState.defesa + (armaStats ? armaStats.defesaBonus : 0) + (window.playerState.escudoEquipado ? 5 : 0); let els = { '#attr-nivel-classe': 'Lv ' + window.playerState.nivel + ' Aventureiro', '#attr-hp-txt': 'HP: ' + window.playerState.hpAtual + '/' + window.playerState.hpMax, '#attr-mp-txt': 'MP: ' + window.playerState.mpAtual + '/' + window.playerState.mpMax, '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, '#attr-slot-1': window.playerState.armaEquipada }; for(let id in els) { let e = document.querySelector(id); if(e) e.setAttribute('value', els[id]); } let elSlot2 = document.querySelector('#attr-slot-2'); if(elSlot2) { if(window.playerState.escudoEquipado) elSlot2.setAttribute('value', 'Escudo'); else if(armaStats && armaStats.categoria === 'Arco') elSlot2.setAttribute('value', '2 Maos (Arco)'); else if(armaStats && armaStats.visualEsq !== '') elSlot2.setAttribute('value', window.playerState.armaEquipada); else elSlot2.setAttribute('value', 'Vazio'); } atualizarArmaVisual(); window.salvarJogoNuvem(); }
+        function atualizarArmaVisual() { let containerDir = document.querySelector('#arma-visual-dir'); let containerEsq = document.querySelector('#arma-visual-esq'); let containerPC = document.querySelector('#arma-visual-pc'); let escudoPC = document.querySelector('#escudo-visual-pc'); if(!containerDir || !containerEsq) return; containerDir.innerHTML = ''; containerEsq.innerHTML = ''; if(containerPC) containerPC.innerHTML = ''; if(escudoPC) escudoPC.innerHTML = ''; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats) return; if (armaStats.modeloGlb && armaStats.modeloGlb !== '') containerDir.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else if (armaStats.visualDir) containerDir.innerHTML = armaStats.visualDir; if (armaStats.visualEsq && armaStats.visualEsq !== 'ARCO_ESPECIAL') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else containerEsq.innerHTML = armaStats.visualEsq; } if (armaStats.categoria === 'Arco') { if(armaStats.modeloGlb && armaStats.modeloGlb !== '') containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}"></a-entity>`; else { let rot = window.CONFIG_ARCO; containerEsq.innerHTML = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`; } } if (window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') { if(window.CONFIG_ESCUDO.modeloGlb && window.CONFIG_ESCUDO.modeloGlb !== '') containerEsq.innerHTML += `<a-entity gltf-model="${window.CONFIG_ESCUDO.modeloGlb}" scale="${window.CONFIG_ESCUDO.escalaMao}" rotation="${window.CONFIG_ESCUDO.rotMao}" position="${window.CONFIG_ESCUDO.posMao}"></a-entity>`; else containerEsq.innerHTML += `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; } if(containerPC) containerPC.innerHTML = containerDir.innerHTML; if(escudoPC) escudoPC.innerHTML = containerEsq.innerHTML; }
+
+        // ==========================================
+        // 4. FÍSICA E CONTROLES (PC E VR)
+        // ==========================================
+        AFRAME.registerComponent('pc-controles', {
+            init: function() {
+                let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
+                window.addEventListener('contextmenu', e => e.preventDefault());
+                window.addEventListener('keydown', (e) => { if (!window.GAME_STARTED) return; if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); } if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); } if (e.key.toLowerCase() === 'q' && window.GAME_MODE === 'PC') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 1500); } });
+
+                let puxandoArco = false; let tempoInicioPuxada = 0;
+                window.addEventListener('mousedown', (e) => {
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo) return;
+                    let cursor = document.querySelector('[cursor]'); if(cursor && cursor.components && cursor.components.raycaster && cursor.components.raycaster.intersectedEls.some(el => el.classList.contains('interativo'))) return;
+                    let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
+
+                    if(e.button === 0) {
+                        if(armaStats.categoria === 'Arco' && window.playerState.flechas > 0) { puxandoArco = true; tempoInicioPuxada = Date.now(); }
+                        else if(armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
+                            if (!podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800);
+                            if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
+
+                            let pcWeapon = document.querySelector('#arma-visual-pc');
+                            if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => pcWeapon.setAttribute('rotation', '-90 0 0'), 300); }
+
+                            let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); let cameraObj = document.querySelector('[camera]').object3D; cameraObj.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.quaternion);
+                            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+                            inimigosEls.forEach(inimigoEl => { let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); if (posCamera.distanceTo(posInimigo) < 3.5 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { let dano = window.playerState.forca + armaStats.danoBonus; inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria, direcao.clone(), posInimigo.clone().add(new THREE.Vector3(0,1,0))); } });
+                        }
+                    } else if (e.button === 2 && window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') {
+                        if (!podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800); 
+                        let pcEscudo = document.querySelector('#escudo-visual-pc');
+                        if(pcEscudo) { pcEscudo.removeAttribute('animation'); pcEscudo.setAttribute('animation', 'property: position; to: 0 -0.1 -0.5; dur: 150; dir: alternate; loop: 1'); setTimeout(() => pcEscudo.setAttribute('position', '-0.4 -0.2 -0.5'), 300); }
+
+                        let magias = document.querySelectorAll('.projetil-inimigo'); let posCamera = new THREE.Vector3(); document.querySelector('[camera]').object3D.getWorldPosition(posCamera);
+                        magias.forEach(magia => { let posMagia = new THREE.Vector3(); magia.object3D.getWorldPosition(posMagia); if(posMagia.distanceTo(posCamera) < 4) { magia.dataset.defletido = "true"; magia.removeAttribute('projetil-inimigo-fisico'); magia.setAttribute('color', '#00FF00'); let direcao = new THREE.Vector3(0, 0, -1).applyQuaternion(document.querySelector('[camera]').object3D.quaternion); magia.setAttribute('projetil-fisico', { velocidade: direcao.multiplyScalar(20), dano: window.playerState.forca * 2 }); let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', 'PARRY PC!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 500); } });
+                    }
+                });
+
+                window.addEventListener('mouseup', (e) => {
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo) return;
+                    if(e.button === 0 && puxandoArco) { puxandoArco = false; let forca = Math.min((Date.now() - tempoInicioPuxada) / 20, 45); if(forca > 15) { window.playerState.flechas--; atualizarUI(); let cena = document.querySelector('a-scene'); let flecha = document.createElement('a-cylinder'); flecha.setAttribute('color', '#FFF'); flecha.setAttribute('radius', '0.01'); flecha.setAttribute('height', '0.6'); let camera = document.querySelector('[camera]').object3D; let direcao = new THREE.Vector3(0, 0, -1); direcao.applyQuaternion(camera.quaternion); let posCamera = new THREE.Vector3(); camera.getWorldPosition(posCamera); flecha.setAttribute('position', `${posCamera.x} ${posCamera.y - 0.2} ${posCamera.z}`); let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; flecha.setAttribute('projetil-fisico', { velocidade: direcao.clone().multiplyScalar(forca), dano: Math.floor((window.playerState.forca + armaStats.danoBonus) * (forca / 15)) }); flecha.object3D.lookAt(posCamera.clone().add(direcao)); flecha.object3D.rotateX(Math.PI / 2); cena.appendChild(flecha); } }
+                });
+            }
+        });
+
+        AFRAME.registerComponent('gerador-inventario', { init: function () { let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); let gridContainer = document.querySelector('#inv-grid-container'); let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; for (let i = 0; i < 18; i++) { let col = i % cols; let row = Math.floor(i / cols); let slot = document.createElement('a-box'); slot.setAttribute('position', `${startX + (col * gap)} ${startY - (row * gap)} 0.02`); slot.setAttribute('width', '0.25'); slot.setAttribute('height', '0.25'); slot.setAttribute('depth', '0.02'); slot.setAttribute('color', '#2b1b12'); let borda = document.createElement('a-plane'); borda.setAttribute('width', '0.23'); borda.setAttribute('height', '0.23'); borda.setAttribute('color', '#f19e20'); borda.setAttribute('position', `0 0 0.011`); let fundoCentro = document.createElement('a-plane'); fundoCentro.setAttribute('width', '0.21'); fundoCentro.setAttribute('height', '0.21'); fundoCentro.setAttribute('color', '#1e110b'); fundoCentro.setAttribute('position', `0 0 0.012`); slot.appendChild(borda); slot.appendChild(fundoCentro); if (i < listaArmas.length) { let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; slot.classList.add('interativo'); slot.setAttribute('slot-interativo', `item: ${nomeArma}`); if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { let miniatura = document.createElement('a-entity'); miniatura.setAttribute('gltf-model', armaStats.modeloGlb); miniatura.setAttribute('scale', armaStats.escalaInv); miniatura.setAttribute('rotation', armaStats.rotInv); miniatura.setAttribute('position', armaStats.posInv); slot.appendChild(miniatura); } else { let txtNome = document.createElement('a-text'); txtNome.setAttribute('value', nomeArma); txtNome.setAttribute('align', 'center'); txtNome.setAttribute('width', '1'); txtNome.setAttribute('position', '0 0 0.02'); txtNome.setAttribute('color', '#FFF'); slot.appendChild(txtNome); } } gridContainer.appendChild(slot); } } });
+        AFRAME.registerComponent('slot-interativo', { schema: { item: {type: 'string'} }, init: function() { let painelTooltip = document.querySelector('#inv-tooltip'); let txtNome = document.querySelector('#tt-nome'); let txtForca = document.querySelector('#tt-forca'); let txtDefesa = document.querySelector('#tt-defesa'); let boxEquipar = document.querySelector('#tt-acao'); this.el.addEventListener('mouseenter', () => { this.el.children[0].setAttribute('color', '#FFD700'); let itemAlvo = window.bancoDeArmas[this.data.item]; let itemEquipado = window.bancoDeArmas[window.playerState.armaEquipada]; if(!itemAlvo) return; let diffForca = itemAlvo.danoBonus - itemEquipado.danoBonus; let diffDefesa = itemAlvo.defesaBonus - itemEquipado.defesaBonus; painelTooltip.setAttribute('visible', 'true'); txtNome.setAttribute('value', this.data.item); txtForca.setAttribute('value', `Dano Item: ${itemAlvo.danoBonus}${diffForca !== 0 ? (diffForca>0?` (+${diffForca})`:` (${diffForca})`) : ''}`); txtForca.setAttribute('color', diffForca>0?'#00FF00':(diffForca<0?'#FF4444':'#FFF')); txtDefesa.setAttribute('value', `Defesa Item: ${itemAlvo.defesaBonus}${diffDefesa !== 0 ? (diffDefesa>0?` (+${diffDefesa})`:` (${diffDefesa})`) : ''}`); txtDefesa.setAttribute('color', diffDefesa>0?'#00FF00':(diffDefesa<0?'#FF4444':'#FFF')); boxEquipar.setAttribute('value', window.playerState.armaEquipada === this.data.item ? 'EQUIPADO' : '[Gatilho/PC] Equipar'); boxEquipar.setAttribute('color', window.playerState.armaEquipada === this.data.item ? '#FFD700' : '#FFF'); }); this.el.addEventListener('mouseleave', () => { this.el.children[0].setAttribute('color', '#f19e20'); painelTooltip.setAttribute('visible', 'false'); }); this.el.addEventListener('click', () => { window.playerState.armaEquipada = this.data.item; atualizarUI(); let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', this.data.item + ' Equipado!'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 1000); }); } });
+        AFRAME.registerComponent('sistema-jogo', { init: function () { setInterval(() => { if (!window.GAME_STARTED) return; if (window.playerState.vivo && window.playerState.mpAtual < window.playerState.mpMax) { window.playerState.mpAtual = Math.min(window.playerState.mpMax, window.playerState.mpAtual + 5); atualizarUI(); } }, 1000); } });
+        AFRAME.registerComponent('controles-hud', { init: function () { let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; this.el.addEventListener('ybuttondown', function () { atribAberto = !atribAberto; menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); }); this.el.addEventListener('xbuttondown', function () { invAberto = !invAberto; menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); }); } });
+        AFRAME.registerComponent('btn-atributo', { schema: { tipo: { type: 'string' } }, init: function () { this.el.addEventListener('click', () => { if (window.playerState.pontos > 0 && window.playerState.vivo) { window.playerState.pontos--; window.playerState[this.data.tipo]++; this.el.setAttribute('color', '#fff'); setTimeout(() => this.el.setAttribute('color', '#4CC3D9'), 150); if (this.data.tipo === 'defesa') { window.playerState.hpMax += 10; window.playerState.hpAtual = window.playerState.hpMax; } if (this.data.tipo === 'forca') { window.playerState.mpMax += 10; window.playerState.mpAtual = window.playerState.mpMax; } atualizarUI(); } }); } });
+        AFRAME.registerComponent('btn-escudo', { init: function() { this.el.addEventListener('click', () => { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Mao Esq/Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 1500); }); } });
+        AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; atualizarUI(); let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); } }); } });
+        
+        AFRAME.registerComponent('projetil-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.inimigos = document.querySelectorAll('[sistema-inimigo-sync]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0) return; this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2); if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); setTimeout(() => { if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 2000); } let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]'); for (let i = 0; i < inimigosAtuais.length; i++) { let inimigo = inimigosAtuais[i]; this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true); let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo'); if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); } if (boxProj.intersectsBox(boxInimigo)) { if (inimigo.components['sistema-inimigo-sync']) inimigo.components['sistema-inimigo-sync'].receberDano(this.data.dano, 'Arco'); this.el.parentNode.removeChild(this.el); break;} } } });
+        AFRAME.registerComponent('projetil-inimigo-fisico', { schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); }, tick: function (time, timeDelta) { let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; } let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj); if (posProj.distanceTo(posPlayer) < 1.0) { if (this.el.dataset.defletido === "true") return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0}; let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? 5 : 0); let danoFinal = Math.max(1, this.data.dano - defesaTotal); window.playerState.hpAtual -= danoFinal; let danoTela = document.querySelector('#dano-tela'); if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => danoTela.setAttribute('visible', 'false'), 200); } atualizarUI(); if (window.playerState.hpAtual <= 0) { window.playerState.vivo = false; window.playerState.hpAtual = 0; atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'VOCE MORREU!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); } setTimeout(() => { location.reload(); }, 3000); } this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); } } });
+        
+        AFRAME.registerComponent('sistema-arco', { init: function() { this.puxando = false; this.flechaVisual = null; this.maoEsq = document.querySelector('#mao-esquerda'); this.el.addEventListener('triggerdown', () => { if (window.GAME_MODE === 'PC') return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats || armaStats.categoria !== 'Arco' || window.playerState.flechas <= 0) return; let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); if (posDir.distanceTo(posEsq) < 0.6) { this.puxando = true; this.flechaVisual = document.createElement('a-cylinder'); this.flechaVisual.setAttribute('color', '#fff'); this.flechaVisual.setAttribute('radius', '0.008'); document.querySelector('a-scene').appendChild(this.flechaVisual); } }); this.el.addEventListener('triggerup', () => { if (window.GAME_MODE === 'PC' || !this.puxando) return; this.puxando = false; if (this.flechaVisual) { this.flechaVisual.parentNode.removeChild(this.flechaVisual); this.flechaVisual = null; } let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); let dist = posEsq.distanceTo(posDir); let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (dist > 0.15) { window.playerState.flechas--; atualizarUI(); let cena = document.querySelector('a-scene'); let flecha = document.createElement('a-cylinder'); flecha.setAttribute('color', '#FFF'); flecha.setAttribute('radius', '0.01'); flecha.setAttribute('height', '0.6'); let direcao = new THREE.Vector3().subVectors(posEsq, posDir).normalize(); flecha.setAttribute('position', `${posEsq.x} ${posEsq.y} ${posEsq.z}`); let forcaBase = Math.min(dist * 35, 45); flecha.setAttribute('projetil-fisico', { velocidade: direcao.multiplyScalar(forcaBase), dano: Math.floor((window.playerState.forca + armaStats.danoBonus) * (dist * 3)) }); flecha.object3D.position.copy(posEsq); flecha.object3D.lookAt(posEsq.clone().add(direcao)); flecha.object3D.rotateX(Math.PI / 2); cena.appendChild(flecha); } }); }, tick: function() { if (this.puxando && this.flechaVisual) { let posEsq = new THREE.Vector3(); this.maoEsq.object3D.getWorldPosition(posEsq); let posDir = new THREE.Vector3(); this.el.object3D.getWorldPosition(posDir); let dist = posEsq.distanceTo(posDir); let meio = new THREE.Vector3().addVectors(posEsq, posDir).multiplyScalar(0.5); this.flechaVisual.object3D.position.copy(meio); this.flechaVisual.setAttribute('height', Math.max(0.1, dist)); this.flechaVisual.object3D.lookAt(posEsq); this.flechaVisual.object3D.rotateX(Math.PI / 2); } } });
+
+        // ==========================================
+        // 5. COMBATE E ESCUTA DO SERVIDOR (Cliente Leve)
+        // ==========================================
+        AFRAME.registerComponent('sistema-inimigo-sync', { 
+            schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
+            
+            dispararProjetilMagico: function(forma, cor, origem, destino, extras = '', girar = false) { 
+                let cena = document.querySelector('a-scene'); let proj = document.createElement(`a-${forma}`); proj.setAttribute('color', cor); if (extras) extras.split(';').forEach(p => { let [k, v] = p.split(':'); if(k && v) proj.setAttribute(k.trim(), v.trim()); }); else proj.setAttribute('radius', '0.1'); proj.setAttribute('position', `${origem.x} ${origem.y} ${origem.z}`); proj.setAttribute('animation', `property: position; to: ${destino.x} ${destino.y + 0.5} ${destino.z}; dur: 300; easing: linear`); if (girar) proj.setAttribute('animation__rot', `property: rotation; to: 0 720 0; dur: 300; loop: true`); cena.appendChild(proj); setTimeout(() => { if(proj.parentNode) proj.parentNode.removeChild(proj); }, 300); 
+            }, 
+
+            tocarAnimacao: function(nomeAnimacao, loopState, clamp = false) { 
+                let visual = this.el.querySelector('.modelo-visual');
+                if (visual && visual.hasAttribute('gltf-model')) { 
+                    visual.removeAttribute('animation-mixer'); 
+                    setTimeout(() => { 
+                        visual.setAttribute('animation-mixer', `clip: ${nomeAnimacao}; loop: ${loopState}; crossFadeDuration: 0.1; clampWhenFinished: ${clamp}`); 
+                    }, 20); 
+                }
+            },
+
+            init: function () { 
+                this.hpAtual = this.data.hpMax; this.el.classList.add('interativo');
+                setTimeout(() => { this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 500);
+
+                this.dbRef = firebase.database().ref('cenario_inimigos/' + this.data.idBd);
+                this.ultimoTempoTiro = 0;
+                this.ultimoTempoMelee = 0; 
+                this.dadosBD = null;
+
+                // ESCUTA O SERVIDOR NODE.JS
+                this.dbRef.on('value', snap => {
+                    let data = snap.val(); if (!data) return;
+                    this.dadosBD = data; 
+                    let textoHp = this.el.querySelector('.hp-texto');
+                    
+                    if (data.pos) { 
+                        this.el.setAttribute('animation__syncpos', `property: position; to: ${data.pos.x} ${data.pos.y} ${data.pos.z}; dur: 200; easing: linear`);
+                        this.el.object3D.rotation.y = data.rotY;
+                    }
+
+                    if (data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
+                        this.ultimoTempoTiro = data.shoot.time;
+                        this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+                        
+                        this.el.object3D.updateMatrixWorld(true);
+                        let posInimigo = new THREE.Vector3(); 
+                        this.el.object3D.getWorldPosition(posInimigo);
+
+                        let posAlvo = new THREE.Vector3(Number(data.shoot.tx), Number(data.shoot.ty), Number(data.shoot.tz));
+                        let projetil = document.createElement('a-cylinder'); 
+                        projetil.setAttribute('radius', '0.04'); projetil.setAttribute('height', '0.6'); projetil.setAttribute('color', '#e74c3c'); 
+                        projetil.classList.add('projetil-inimigo'); 
+                        
+                        let origemTiro = new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z); 
+                        let direcao = new THREE.Vector3().subVectors(posAlvo, origemTiro).normalize();
+                        
+                        projetil.setAttribute('position', `${origemTiro.x} ${origemTiro.y} ${origemTiro.z}`); 
+                        projetil.object3D.position.copy(origemTiro); 
+                        projetil.object3D.lookAt(origemTiro.clone().add(direcao)); 
+                        projetil.object3D.rotateX(Math.PI / 2);
+                        
+                        let speed = 7;
+                        let danoMatematico = 15 + (window.playerState.nivel * 2);
+                        projetil.setAttribute('projetil-inimigo-fisico', `velocidade: ${direcao.x * speed} ${direcao.y * speed} ${direcao.z * speed}; dano: ${danoMatematico}`);
+                        
+                        document.querySelector('a-scene').appendChild(projetil); 
+                        
+                        setTimeout(() => { if(projetil.parentNode && !projetil.dataset.defletido) projetil.parentNode.removeChild(projetil); }, 5000);
+                        setTimeout(() => { if (this.hpAtual > 0) this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 1000);
+                    }
+
+                    if (data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
+                        this.ultimoTempoMelee = data.meleeAttack.time;
+                        this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+                        setTimeout(() => { if (this.hpAtual > 0) this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 1000);
+
+                        if (window.playerState.vivo) {
+                            let camEl = document.querySelector('[camera]');
+                            camEl.object3D.updateMatrixWorld(true);
+                            let posPlayer = new THREE.Vector3(); 
+                            camEl.object3D.getWorldPosition(posPlayer);
+                            
+                            this.el.object3D.updateMatrixWorld(true);
+                            let posInimigo = new THREE.Vector3(); 
+                            this.el.object3D.getWorldPosition(posInimigo);
+                            
+                            if (posPlayer.distanceTo(posInimigo) < 2.5) {
+                                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0};
+                                let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? 5 : 0);
+                                let danoFinal = Math.max(1, (10 + window.playerState.nivel) - defesaTotal);
+                                window.playerState.hpAtual -= danoFinal;
+
+                                let danoTela = document.querySelector('#dano-tela');
+                                if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => danoTela.setAttribute('visible', 'false'), 200); }
+                                atualizarUI();
+
+                                if (window.playerState.hpAtual <= 0) {
+                                    window.playerState.vivo = false; window.playerState.hpAtual = 0; atualizarUI();
+                                    let aviso = document.querySelector('#texto-central');
+                                    if(aviso) { aviso.setAttribute('value', 'VOCE MORREU!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                                    setTimeout(() => { location.reload(); }, 3000);
+                                }
+                            }
+                        }
+                    }
+
+                    // Lógica de Dano e Ressurreição
+                    let estavaMorto = (this.hpAtual <= 0);
+                    let morreuAgora = (this.hpAtual > 0 && data.hp <= 0);
+                    let tomouDano = (this.hpAtual > 0 && data.hp > 0 && data.hp < this.hpAtual);
+                    let reviveu = (estavaMorto && data.hp > 0);
+
+                    this.hpAtual = data.hp;
+
+                    if (morreuAgora) {
+                        if(textoHp) textoHp.setAttribute('value', 'MORTO'); 
+                        this.el.classList.remove('interativo');
+                        this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
+                        setTimeout(() => { if(this.hpAtual <= 0) this.el.setAttribute('visible', 'false'); }, 3000);
+                    } else if (reviveu) {
+                        if(textoHp) { textoHp.setAttribute('value', 'HP: ' + this.hpAtual); textoHp.setAttribute('color', '#FFF'); }
+                        this.el.classList.add('interativo'); 
+                        this.el.setAttribute('visible', 'true');
+                        this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                    } else if (tomouDano) {
+                        if(textoHp) textoHp.setAttribute('value', 'HP: ' + this.hpAtual); 
+                        let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback');
+                        let obj3D = v ? v.getObject3D('mesh') : null;
+                        
+                        if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
+                        
+                        this.tocarAnimacao(window.ANIM_DANO, 'once');
+                        setTimeout(() => { if (this.hpAtual > 0) this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 600);
+                    } else if (!estavaMorto && data.hp > 0) {
+                        if(textoHp) textoHp.setAttribute('value', 'HP: ' + this.hpAtual); 
+                    }
+                });
+
+                // ENVIA DANO PARA O SERVIDOR
+                this.receberDano = (dano, tipoCategoria = '', vetorGolpe = null, pontoImpacto = null) => { 
+                    if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
+                    this.dbRef.child('hp').transaction(currentHp => { 
+                        if (currentHp === null) return this.data.hpMax - dano; 
+                        if (currentHp <= 0) return; 
+                        return Math.max(0, currentHp - dano); 
+                    }, (error, committed, snapshot) => {
+                        if (committed && snapshot.val() === 0) {
+                            this.hpAtual = 0; 
+                            window.playerState.xp += this.data.xpDrop; 
+                            let textoHp = this.el.querySelector('.hp-texto');
+                            if(textoHp) { textoHp.setAttribute('value', '+ ' + this.data.xpDrop + ' XP!'); textoHp.setAttribute('color', '#00ff00'); }
+                            this.el.classList.remove('interativo');
+                            
+                            if (window.playerState.xp >= window.playerState.xpProxNivel) { 
+                                window.playerState.nivel++; window.playerState.pontos++; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
+                                let aviso = document.querySelector('#texto-central'); aviso.setAttribute('value', 'LEVEL UP! (Aperte C/Y)'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 4000); 
+                            } 
+                            atualizarUI(); 
+                            
+                            // Avisa ao servidor que morreu para ele calcular o tempo de respawn
+                            this.dbRef.update({ mortoEm: Date.now() }); 
+                        }
+                    });
+                }; 
+
+                let podeAtacarMagia = true;
+                this.el.addEventListener('click', () => { 
+                    if (this.hpAtual <= 0 || !window.playerState.vivo || !window.GAME_STARTED) return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!podeAtacarMagia) return; 
+                    let posJogador = new THREE.Vector3(); document.querySelector('[camera]').object3D.getWorldPosition(posJogador); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo);
+                    if (armaStats.categoria === 'Varinha' && window.playerState.mpAtual >= 15) { podeAtacarMagia = false; setTimeout(() => podeAtacarMagia = true, 500); window.playerState.mpAtual -= 15; atualizarUI(); window.tocarSom('snd-magic'); this.dispararProjetilMagico('sphere', '#FF4500', posJogador, posInimigo); setTimeout(() => this.receberDano(window.playerState.forca + armaStats.danoBonus + 10, 'Magia'), 300); } else if (armaStats.categoria === 'Shuriken' && window.playerState.shurikens > 0) { podeAtacarMagia = false; setTimeout(() => podeAtacarMagia = true, 400); window.playerState.shurikens--; atualizarUI(); window.tocarSom('snd-magic'); this.dispararProjetilMagico('box', '#888', posJogador, posInimigo, 'width: 0.15; height: 0.01; depth: 0.15', true); setTimeout(() => this.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 0.8), 'Shuriken'), 300); }
+                }); 
+            }
+        });
+    </script>
+    <style>
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 20, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; } .menu-box { background: #2c3e50; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; } .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; } .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; } .btn-green { background: #27ae60; } .btn-blue { background: #2980b9; } .btn-orange { background: #d35400; } #start-menu { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="login-menu" class="menu-box"><h2 style="color: #f1c40f;">MMO Login</h2><input type="email" id="login-email" placeholder="Email"><input type="password" id="login-senha" placeholder="Senha"><button id="btn-login" class="btn btn-blue">Entrar</button><button id="btn-registrar" class="btn btn-green">Criar Conta</button></div>
+        <div id="start-menu" class="menu-box"><h2 style="color: #2ecc71;">Logado!</h2><button id="btn-pc" class="btn btn-orange">Jogar no PC (Mouse)</button><button id="btn-vr" class="btn btn-blue">Jogar em VR</button></div>
+    </div>
+
+    <a-scene pc-controles sistema-jogo renderer="colorManagement: true; localClippingEnabled: true">
+        
+       <a-assets timeout="3000">
+            <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
+            <a-asset-item id="modelo-espada-grande" src="Armas/Espadas/espada_grande.glb"></a-asset-item>
+            <a-asset-item id="modelo-arco" src="Armas/Arcos/arco.glb"></a-asset-item>
+            <a-asset-item id="modelo-escudo" src="Armas/Escudos/escudo.glb"></a-asset-item>
+            <a-asset-item id="modelo-inimigo" src="Inimigos/atiradora.glb"></a-asset-item>
+            <a-asset-item id="modelo-inimigo2" src="Inimigos/atiradora.glb"></a-asset-item>
+
+            <audio id="snd-sword" src="Sons/espada.mp3" preload="auto"></audio>
+            <audio id="snd-magic" src="Sons/magia.mp3" preload="auto"></audio>
+            <audio id="snd-hit" src="Sons/dano.mp3" preload="auto"></audio>
+        </a-assets>
+
+        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.5" position="-1 2 1"></a-light>
+
+        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
+
+        <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow>
+            <a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+        </a-box>
+
+        <a-entity sistema-inimigo-sync="idBd: chefe_zona_1; hpMax: 80; tipo: atirador" position="0 0 -12" shadow>
+            <a-entity class="modelo-visual" gltf-model="#modelo-inimigo"></a-entity>
+            <a-text class="hp-texto" value="HP: 80" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+            <a-box class="inimigo-fallback" color="#e74c3c" visible="false" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>
+            <a-box class="colisao-inimigo" visible="false" scale="1 2 1" position="0 1 0"></a-box>
+        </a-entity>
+
+        <a-entity sistema-inimigo-sync="idBd: goblin_zona_1; hpMax: 40; xpDrop: 20; tipo: meelee" position="5 0 -8" shadow>
+            <a-entity class="modelo-visual" gltf-model="#modelo-inimigo2"></a-entity>
+            <a-text class="hp-texto" value="HP: 40" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+            <a-box class="inimigo-fallback" color="#8e44ad" visible="false" scale="0.5 1.2 0.5" position="0 0.6 0"></a-box>
+            <a-box class="colisao-inimigo" visible="false" scale="1 1.5 1" position="0 0.75 0"></a-box>
+        </a-entity>
+
+        <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" position="0 0 0">
+            <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
+                <a-entity cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
+                
+                <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
+                <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
+
+                <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
+                <a-text id="texto-central" value="" position="-0.5 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5"></a-text>
+                
+                <a-text id="contador-online" value="Conectando Servidor..." position="0.6 0.8 -1.2" color="#00FF00" scale="0.4 0.4 0.4" align="right"></a-text>
+            </a-entity> 
+
+            <a-entity id="hud-status" position="-0.4 2.4 -1.4" rotation="25 0 0">
+                <a-plane position="0.05 0 -0.01" width="1.1" height="0.25" color="#1a1a1a" opacity="0.85"></a-plane>
+                <a-text id="txt-nivel-hud" value="Nivel: 1 | XP: 0/50" position="-0.45 -0.05 0" color="#AAAAAA" scale="0.25 0.25 0.25" align="left"></a-text>
+                <a-entity position="-0.05 0 0">
+                    <a-plane position="0.3 0.05 0" width="0.6" height="0.04" color="#333"></a-plane>
+                    <a-entity id="hp-wrapper" position="0 0.05 0.01"><a-plane position="0.3 0 0" width="0.6" height="0.04" color="#c0392b"></a-plane></a-entity>
+                    <a-plane position="0.3 -0.01 0" width="0.6" height="0.04" color="#333"></a-plane>
+                    <a-entity id="mp-wrapper" position="0 -0.01 0.01"><a-plane position="0.3 0 0" width="0.6" height="0.04" color="#2980b9"></a-plane></a-entity>
+                    <a-text id="txt-status-hud" value="HP: 100/100   |   MP: 100/100" position="0.3 -0.07 0" color="#FFF" scale="0.2 0.2 0.2" align="center"></a-text>
+                    <a-text id="txt-arma-hud" value="Equipado: Nenhuma" position="-0.45 -0.15 0" color="#FFD700" scale="0.25 0.25 0.25" align="left"></a-text>
+                </a-entity>
+            </a-entity>
+
+            <a-entity id="menu-inventario-novo" scale="0 0 0" position="-0.5 1.5 -1.6" rotation="0 15 0">
+                <a-plane width="3.2" height="1.9" color="#e67e22" opacity="1.0" position="0 0 0"></a-plane>
+                <a-plane width="3.1" height="1.8" color="#362319" opacity="1.0" position="0 0 0.01"></a-plane>
+                <a-entity position="-1.2 0.2 0.02">
+                    <a-cylinder radius="0.2" height="0.02" rotation="90 0 0" position="0 0.45 0" color="#d35400" segments-radial="6"><a-text value="L / I" position="-0.12 0 0.02" color="#FFF" scale="0.8 0.8 0.8" rotation="-90 0 0"></a-text></a-cylinder>
+                    <a-box class="interativo" width="0.8" height="0.2" depth="0.02" position="0 0.1 0" color="#f39c12"><a-text value="WEAPON" position="-0.3 -0.03 0.02" color="#5a2e0a" scale="0.6 0.6 0.6"></a-text></a-box>
+                    <a-box class="interativo" btn-escudo width="0.8" height="0.2" depth="0.02" position="0 -0.15 0" color="#a05e10"><a-text value="TOGGLE SHIELD (Q)" position="-0.42 -0.03 0.02" color="#dbbc9c" scale="0.45 0.45 0.45"></a-text></a-box>
+                    <a-box width="0.8" height="0.2" depth="0.02" position="0 -0.4 0" color="#a05e10"><a-text value="ARROWS:" position="-0.35 -0.03 0.02" color="#dbbc9c" scale="0.5 0.5 0.5"></a-text><a-text id="tt-flechas" value="10" position="0.15 -0.03 0.02" color="#FFF" scale="0.5 0.5 0.5"></a-text></a-box>
+                    <a-box width="0.8" height="0.2" depth="0.02" position="0 -0.65 0" color="#a05e10"><a-text value="SHURIKEN:" position="-0.35 -0.03 0.02" color="#dbbc9c" scale="0.5 0.5 0.5"></a-text><a-text id="tt-shurikens" value="5" position="0.15 -0.03 0.02" color="#FFF" scale="0.5 0.5 0.5"></a-text></a-box>
+                </a-entity>
+                <a-plane width="2.0" height="1.2" color="#f1c40f" position="0.35 0.15 0.02"></a-plane>
+                <a-plane width="1.95" height="1.15" color="#5a371c" position="0.35 0.15 0.021"></a-plane>
+                <a-entity id="inv-grid-container" gerador-inventario position="0.35 0.15 0.022"></a-entity>
+                <a-entity id="inv-tooltip" position="0.35 -0.6 0.03" visible="false">
+                    <a-plane width="1.8" height="0.25" color="#111" opacity="0.9"></a-plane>
+                    <a-text id="tt-nome" value="Nome do Item" position="-0.85 0.06 0.01" color="#FFD700" scale="0.4 0.4 0.4"></a-text>
+                    <a-text id="tt-forca" value="Forca: 0 (+0)" position="-0.85 -0.05 0.01" color="#FFF" scale="0.35 0.35 0.35"></a-text>
+                    <a-text id="tt-defesa" value="Defesa: 0 (+0)" position="-0.2 -0.05 0.01" color="#FFF" scale="0.35 0.35 0.35"></a-text>
+                    <a-text id="tt-acao" value="[Gatilho/PC] Equipar" position="0.35 -0.05 0.01" color="#00FF00" scale="0.3 0.3 0.3"></a-text>
+                </a-entity>
+                <a-entity position="0 -0.75 0.02">
+                    <a-text value="< 1/4 >" position="-1.3 -0.02 0" color="#FFF" scale="0.7 0.7 0.7"></a-text>
+                    <a-text value="ATK:" position="-0.5 -0.02 0" color="#e74c3c" scale="0.6 0.6 0.6"></a-text>
+                    <a-text id="inv-total-forca" value="10" position="-0.2 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+                    <a-text value="DEF:" position="0.1 -0.02 0" color="#3498db" scale="0.6 0.6 0.6"></a-text>
+                    <a-text id="inv-total-defesa" value="5" position="0.4 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+                    <a-circle radius="0.06" position="1.1 0 0" color="#f1c40f"></a-circle>
+                    <a-text id="inv-total-ouro" value="0" position="1.2 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+                </a-entity>
+            </a-entity>
+
+            <a-entity id="menu-atributos" scale="0 0 0" position="1.3 1.5 -1.2" rotation="0 -30 0">
+                <a-plane width="2.6" height="1.8" color="#7f8c8d" opacity="1"></a-plane>
+                <a-plane width="2.55" height="1.75" color="#2c3e50" position="0 0 0.01"></a-plane>
+                <a-entity position="-0.85 0.1 0.02">
+                    <a-plane width="0.7" height="0.9" color="#34495e" position="0 0.3 0"></a-plane>
+                    <a-text value="Protagonista" position="-0.35 -0.2 0" scale="0.6 0.6 0.6"></a-text>
+                    <a-text id="attr-nivel-classe" value="Lv 1 Espadachim" position="-0.35 -0.35 0" scale="0.5 0.5 0.5" color="#bdc3c7"></a-text>
+                    <a-text id="attr-hp-txt" value="HP: 100/100" position="-0.35 -0.55 0" scale="0.4 0.4 0.4"></a-text>
+                    <a-plane width="0.7" height="0.04" color="#c0392b" position="0 -0.65 0" align="left"></a-plane>
+                    <a-text id="attr-mp-txt" value="MP: 100/100" position="-0.35 -0.75 0" scale="0.4 0.4 0.4"></a-text>
+                    <a-plane width="0.7" height="0.04" color="#2980b9" position="0 -0.85 0" align="left"></a-plane>
+                </a-entity>
+                <a-plane width="0.01" height="1.6" color="#7f8c8d" position="-0.4 0 0.02"></a-plane>
+                <a-entity position="0.6 0.6 0.02">
+                    <a-text value="Arma Primaria" position="-0.6 0.25 0" align="center" scale="0.4 0.4 0.4" color="#e74c3c"></a-text>
+                    <a-box width="0.5" height="0.25" depth="0.01" position="-0.6 0 0" color="#34495e"><a-text id="attr-slot-1" value="Desarmado" position="0 0 0.02" align="center" scale="0.4 0.4 0.4"></a-text></a-box>
+                    <a-text value="Escudo / Sec." position="0.2 0.25 0" align="center" scale="0.4 0.4 0.4" color="#f1c40f"></a-text>
+                    <a-box width="0.5" height="0.25" depth="0.01" position="0.2 0 0" color="#34495e"><a-text id="attr-slot-2" value="Vazio" position="0 0 0.02" align="center" scale="0.4 0.4 0.4"></a-text></a-box>
+                </a-entity>
+                <a-plane width="1.8" height="0.01" color="#7f8c8d" position="0.6 0.35 0.02"></a-plane>
+                <a-entity position="0.6 -0.2 0.02">
+                    <a-text value="HP Max" position="-0.8 0.4 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-hpmax" value="100" position="-0.1 0.4 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-text value="MP Max" position="-0.8 0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-mpmax" value="100" position="-0.1 0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-text value="Ataque (+)" position="-0.8 0.1 0" scale="0.4 0.4 0.4" color="#e74c3c"></a-text><a-text id="attr-atk" value="10" position="-0.1 0.1 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-box class="interativo" btn-atributo="tipo: forca" position="-0.02 0.1 0" width="0.08" height="0.08" depth="0.01" color="#e74c3c"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
+                    <a-text value="Agilidade (+)" position="-0.8 -0.05 0" scale="0.4 0.4 0.4" color="#f1c40f"></a-text><a-text id="attr-agi" value="5" position="-0.1 -0.05 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-box class="interativo" btn-atributo="tipo: velocidade" position="-0.02 -0.05 0" width="0.08" height="0.08" depth="0.01" color="#f1c40f"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
+                    <a-text value="Pts. Livres" position="-0.8 -0.25 0" scale="0.4 0.4 0.4" color="#2ecc71"></a-text><a-text id="attr-pts" value="0" position="-0.1 -0.25 0" scale="0.4 0.4 0.4" color="#2ecc71" align="right"></a-text>
+                    
+                    <a-text value="EXP Atual" position="0.1 0.4 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-exp" value="0" position="0.8 0.4 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-text value="Prox. Nivel" position="0.1 0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-nextexp" value="50" position="0.8 0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-text value="Defesa (+)" position="0.1 0.1 0" scale="0.4 0.4 0.4" color="#3498db"></a-text><a-text id="attr-def" value="5" position="0.8 0.1 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-box class="interativo" btn-atributo="tipo: defesa" position="0.88 0.1 0" width="0.08" height="0.08" depth="0.01" color="#3498db"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
+                    <a-text value="Sorte" position="0.1 -0.05 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text value="10" position="0.8 -0.05 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                    <a-text value="Esquiva" position="0.1 -0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text value="5%" position="0.8 -0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                </a-entity>
+                <a-entity position="0 -0.8 0.02">
+                    <a-plane width="0.6" height="0.15" color="#7f8c8d" position="-0.9 0 0"><a-text value="Geral" align="center" scale="0.4 0.4 0.4" color="#fff" position="0 0 0.01"></a-text></a-plane>
+                    <a-plane width="0.6" height="0.15" color="#34495e" position="-0.25 0 0"><a-text value="Adicional" align="center" scale="0.4 0.4 0.4" color="#bdc3c7" position="0 0 0.01"></a-text></a-plane>
+                    <a-plane width="0.6" height="0.15" color="#34495e" position="0.4 0 0"><a-text value="Elementos" align="center" scale="0.4 0.4 0.4" color="#bdc3c7" position="0 0 0.01"></a-text></a-plane>
+                </a-entity>
+            </a-entity>
+            
+            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" controles-hud><a-entity id="arma-visual-esq" position="0 0 0" rotation="180 0 0"></a-entity></a-entity>
+            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" sistema-arco><a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity></a-entity>
+        </a-entity>
+    </a-scene>
+</body>
+</html>
