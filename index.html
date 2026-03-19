@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Física Realista + AFK Kick)</title>
+    <title>RPG VR e PC - Versão Definitiva (Motor de MMO Automático)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -116,14 +116,14 @@
             document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
             window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); 
 
-            // Sistema de Kick por Inatividade (15 minutos = 900.000 ms)
+            // Sistema de Kick por Inatividade (15 minutos)
             setInterval(() => {
                 if (window.GAME_STARTED && window.playerState.vivo) {
                     if (Date.now() - window.lastActionTime > 900000) { 
                         window.GAME_STARTED = false;
                         let mpComp = document.querySelector('[firebase-multiplayer]');
                         if(mpComp && mpComp.components['firebase-multiplayer'] && mpComp.components['firebase-multiplayer'].myRef) {
-                            mpComp.components['firebase-multiplayer'].myRef.remove(); // Desconecta do Firebase para sumir da sala
+                            mpComp.components['firebase-multiplayer'].myRef.remove();
                         }
                         let aviso = document.querySelector('#texto-central');
                         if(aviso) { 
@@ -134,7 +134,7 @@
                         setTimeout(() => location.reload(), 4000);
                     }
                 }
-            }, 5000); // Checa a cada 5 segundos
+            }, 5000);
         });
         
         function iniciarTelaSelecaoModo() { document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; }
@@ -236,7 +236,7 @@
             init: function() {
                 this.posicaoAnterior = new THREE.Vector3();
                 this.velocidadeMao = 0;
-                this.bateuNoInimigo = {}; // Armazena se a arma já bateu neste inimigo durante este movimento
+                this.bateuNoInimigo = {}; 
             },
             tick: function(time, timeDelta) {
                 if (window.GAME_MODE === 'PC' || !window.playerState.vivo || !window.GAME_STARTED) return;
@@ -252,13 +252,12 @@
                 }
                 this.posicaoAnterior.copy(posAtual);
 
-                // Determina o que esta mão está segurando fisicamente
                 let isLuva = armaStats.categoria === 'Luva';
                 let isEspadaDir = armaStats.categoria === 'Espada' && !this.data.isLeft;
                 let isEscudoEsq = window.playerState.escudoEquipado && this.data.isLeft && armaStats.categoria !== 'Arco';
                 
                 let podeDarDanoFisico = isLuva || isEspadaDir;
-                let podeRefletir = isLuva || isEscudoEsq || (isEspadaDir && this.velocidadeMao > 1.2); // Espada só rebate se estiver rápida (corte)
+                let podeRefletir = isLuva || isEscudoEsq || (isEspadaDir && this.velocidadeMao > 1.2); 
 
                 // 1. DANO POR CONTATO (Física Pura)
                 if (podeDarDanoFisico) {
@@ -272,22 +271,16 @@
                         inimigoEl.object3D.getWorldPosition(posInimigo);
                         posInimigo.y += 1.0; 
                         
-                        // Se a arma está encostando no inimigo...
                         if (posAtual.distanceTo(posInimigo) < 1.0) { 
-                            // AQUI É A MUDANÇA: Exige que a arma saia do inimigo antes de bater de novo
                             if (!this.bateuNoInimigo[idInimigo]) {
                                 this.bateuNoInimigo[idInimigo] = true;
-                                
                                 if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
-                                
                                 let dano = window.playerState.forca + armaStats.danoBonus;
                                 if (inimigoEl.components['sistema-inimigo-sync']) {
                                     inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * (this.data.isLeft ? 1 : 1.5)), armaStats.categoria);
                                 }
                             }
                         } else {
-                            // Perdeu o contato físico com o inimigo! 
-                            // Reseta a flag para permitir um novo golpe no próximo movimento.
                             this.bateuNoInimigo[idInimigo] = false; 
                         }
                     }
@@ -300,11 +293,9 @@
                         let posMagia = new THREE.Vector3(); 
                         magia.object3D.getWorldPosition(posMagia); 
                         
-                        // Se a magia tocou na sua mão/escudo...
                         if (posMagia.distanceTo(posAtual) < 0.5) { 
                             
                             if (isEspadaDir && this.velocidadeMao > 1.2 && !isLuva) { 
-                                // CORTE NO AR (Espada)
                                 magia.removeAttribute('projetil-inimigo-fisico');
                                 if(magia.parentNode) magia.parentNode.removeChild(magia);
                                 
@@ -316,21 +307,16 @@
                                 window.tocarSom('snd-sword');
                             }
                             else if ((isLuva || isEscudoEsq) && magia.dataset.defletido !== "true") {
-                                // RICOCHETE (Luvas ou Escudo)
                                 magia.dataset.defletido = "true"; 
                                 magia.removeAttribute('projetil-inimigo-fisico'); 
                                 magia.setAttribute('color', '#00FF00'); 
                                 
-                                // O Pulo do Gato: O vetor de ricochete sai do centro da sua mão para o ponto onde a magia bateu.
-                                // Ex: Se bater de baixo para cima, a magia voa para cima!
                                 let direcaoRicochete = posMagia.clone().sub(posAtual).normalize();
                                 if (direcaoRicochete.length() < 0.1) {
                                     direcaoRicochete = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.quaternion);
                                 }
                                 
-                                // Soma a velocidade do seu soco real à magia
                                 let forcaRebatida = 15 + (this.velocidadeMao * 5); 
-                                
                                 magia.setAttribute('projetil-fisico', `velocidade: ${direcaoRicochete.x * forcaRebatida} ${direcaoRicochete.y * forcaRebatida} ${direcaoRicochete.z * forcaRebatida}; dano: ${window.playerState.forca * 2}`); 
                                 
                                 let aviso = document.querySelector('#texto-central'); 
@@ -428,7 +414,6 @@
                 this.ultimoTempoMelee = 0; 
                 this.dadosBD = null;
 
-                // ESCUTA O SERVIDOR NODE.JS
                 this.dbRef.on('value', snap => {
                     let data = snap.val(); if (!data) return;
                     this.dadosBD = data; 
@@ -505,7 +490,6 @@
                         }
                     }
 
-                    // Lógica de Dano e Ressurreição
                     let estavaMorto = (this.hpAtual <= 0);
                     let morreuAgora = (this.hpAtual > 0 && data.hp <= 0);
                     let tomouDano = (this.hpAtual > 0 && data.hp > 0 && data.hp < this.hpAtual);
@@ -537,7 +521,6 @@
                     }
                 });
 
-                // ENVIA DANO PARA O SERVIDOR
                 this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
@@ -564,6 +547,56 @@
                 }; 
             }
         });
+
+        // ==========================================
+        // 6. GERENCIADOR DINÂMICO DE INIMIGOS (SPAWNER)
+        // ==========================================
+        AFRAME.registerComponent('gerenciador-inimigos', {
+            init: function() {
+                this.db = firebase.database();
+                
+                // Escuta por novos inimigos criados no servidor ou painel admin
+                this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
+                    let id = snapshot.key;
+                    let data = snapshot.val();
+                    
+                    // Se o inimigo já existe na tela, não cria de novo
+                    if (document.querySelector(`[data-id="${id}"]`)) return;
+
+                    let el = document.createElement('a-entity');
+                    el.dataset.id = id;
+                    
+                    let modelSrc = data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2';
+                    let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad';
+                    let xpDrop = data.tipo === 'atirador' ? 50 : 20;
+
+                    el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hp || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`);
+                    
+                    if (data.pos) {
+                        el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
+                    }
+                    el.setAttribute('shadow', '');
+
+                    el.innerHTML = `
+                        <a-entity class="modelo-visual" gltf-model="${modelSrc}"></a-entity>
+                        <a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+                        <a-box class="inimigo-fallback" color="${fallbackColor}" visible="false" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>
+                        <a-box class="colisao-inimigo" visible="false" scale="1 2 1" position="0 1 0"></a-box>
+                    `;
+
+                    this.el.appendChild(el);
+                });
+
+                // Apaga o corpo 3D se ele for deletado do servidor
+                this.db.ref('cenario_inimigos').on('child_removed', (snapshot) => {
+                    let id = snapshot.key;
+                    let el = document.querySelector(`[data-id="${id}"]`);
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+            }
+        });
     </script>
     <style>
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 15, 20, 0.95); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; } .menu-box { background: #2c3e50; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; } .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; } .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; } .btn-green { background: #27ae60; } .btn-blue { background: #2980b9; } .btn-orange { background: #d35400; } #start-menu { display: none; }
@@ -576,7 +609,7 @@
         <div id="start-menu" class="menu-box"><h2 style="color: #2ecc71;">Logado!</h2><button id="btn-pc" class="btn btn-orange">Jogar no PC (Mouse)</button><button id="btn-vr" class="btn btn-blue">Jogar em VR</button></div>
     </div>
 
-    <a-scene pc-controles sistema-jogo renderer="colorManagement: true; localClippingEnabled: true">
+    <a-scene pc-controles sistema-jogo gerenciador-inimigos renderer="colorManagement: true; localClippingEnabled: true">
         
        <a-assets timeout="3000">
             <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
@@ -599,20 +632,6 @@
         <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow>
             <a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
         </a-box>
-
-        <a-entity sistema-inimigo-sync="idBd: chefe_zona_1; hpMax: 80; tipo: atirador" position="0 0 -12" shadow>
-            <a-entity class="modelo-visual" gltf-model="#modelo-inimigo"></a-entity>
-            <a-text class="hp-texto" value="HP: 80" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
-            <a-box class="inimigo-fallback" color="#e74c3c" visible="false" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>
-            <a-box class="colisao-inimigo" visible="false" scale="1 2 1" position="0 1 0"></a-box>
-        </a-entity>
-
-        <a-entity sistema-inimigo-sync="idBd: goblin_zona_1; hpMax: 40; xpDrop: 20; tipo: meelee" position="5 0 -8" shadow>
-            <a-entity class="modelo-visual" gltf-model="#modelo-inimigo2"></a-entity>
-            <a-text class="hp-texto" value="HP: 40" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
-            <a-box class="inimigo-fallback" color="#8e44ad" visible="false" scale="0.5 1.2 0.5" position="0 0.6 0"></a-box>
-            <a-box class="colisao-inimigo" visible="false" scale="1 1.5 1" position="0 0.75 0"></a-box>
-        </a-entity>
 
         <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" position="0 0 0">
             <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
