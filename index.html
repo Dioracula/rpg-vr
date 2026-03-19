@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Servidor Dedicado + Combate VR)</title>
+    <title>RPG VR e PC - Versão Definitiva (Combate Físico Total)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -40,7 +40,7 @@
         };
 
         // ==========================================
-        // 2. SISTEMA MULTIPLAYER (Apenas Sincronização, Sem Host)
+        // 2. SISTEMA MULTIPLAYER (Apenas Sincronização)
         // ==========================================
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
@@ -161,7 +161,21 @@
 
                             let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); let cameraObj = document.querySelector('[camera]').object3D; cameraObj.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.quaternion);
                             let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-                            inimigosEls.forEach(inimigoEl => { let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); if (posCamera.distanceTo(posInimigo) < 3.5 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { let dano = window.playerState.forca + armaStats.danoBonus; inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria, direcao.clone(), posInimigo.clone().add(new THREE.Vector3(0,1,0))); } });
+                            inimigosEls.forEach(inimigoEl => { 
+                                let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); posInimigo.y += 1.0;
+                                if (posCamera.distanceTo(posInimigo) < 3.5 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { 
+                                    let dano = window.playerState.forca + armaStats.danoBonus; 
+                                    inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria); 
+                                } 
+                            });
+                        }
+                        else if(armaStats.categoria === 'Varinha') {
+                            if (window.playerState.mpAtual < 15 || !podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 500); window.playerState.mpAtual -= 15; atualizarUI(); window.tocarSom('snd-magic');
+                            let cena = document.querySelector('a-scene'); let magia = document.createElement('a-sphere'); magia.setAttribute('color', '#FF4500'); magia.setAttribute('radius', '0.1'); let cameraObj = document.querySelector('[camera]').object3D; let direcao = new THREE.Vector3(0, 0, -1); direcao.applyQuaternion(cameraObj.quaternion); let posCamera = new THREE.Vector3(); cameraObj.getWorldPosition(posCamera); magia.setAttribute('position', `${posCamera.x} ${posCamera.y - 0.2} ${posCamera.z}`); magia.setAttribute('projetil-fisico', `velocidade: ${direcao.x * 20} ${direcao.y * 20} ${direcao.z * 20}; dano: ${window.playerState.forca + armaStats.danoBonus + 10}`); cena.appendChild(magia);
+                        }
+                        else if(armaStats.categoria === 'Shuriken') {
+                            if (window.playerState.shurikens <= 0 || !podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 400); window.playerState.shurikens--; atualizarUI(); window.tocarSom('snd-magic');
+                            let cena = document.querySelector('a-scene'); let shuri = document.createElement('a-entity'); let cameraObj = document.querySelector('[camera]').object3D; let direcao = new THREE.Vector3(0, 0, -1); direcao.applyQuaternion(cameraObj.quaternion); let posCamera = new THREE.Vector3(); cameraObj.getWorldPosition(posCamera); shuri.setAttribute('position', `${posCamera.x} ${posCamera.y - 0.2} ${posCamera.z}`); shuri.innerHTML = `<a-box color="#888" width="0.15" height="0.01" depth="0.15" rotation="0 0 0"></a-box><a-box color="#888" width="0.15" height="0.01" depth="0.15" rotation="0 45 0"></a-box>`; shuri.setAttribute('animation__rot', `property: rotation; to: 0 720 0; dur: 300; loop: true`); shuri.setAttribute('projetil-fisico', `velocidade: ${direcao.x * 25} ${direcao.y * 25} ${direcao.z * 25}; dano: ${Math.floor((window.playerState.forca + armaStats.danoBonus) * 0.8)}`); cena.appendChild(shuri);
                         }
                     } else if (e.button === 2 && window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') {
                         if (!podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800); 
@@ -180,44 +194,90 @@
             }
         });
 
-        // ====== NOVOS CONTROLES VR (Espada e Escudo) ======
-        AFRAME.registerComponent('controles-vr-melee', {
+        // ====== NOVOS CONTROLES VR UNIFICADOS (Melee, Magia e Shuriken) ======
+        AFRAME.registerComponent('controles-vr-ataque', {
             init: function() {
                 this.podeAtacar = true;
                 this.el.addEventListener('triggerdown', () => {
                     if (window.GAME_MODE === 'PC' || !window.playerState.vivo) return;
                     
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-                    if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
+                    if (!armaStats || armaStats.categoria === 'Arco') return; // Arco já tem sistema próprio
                     
                     if (!this.podeAtacar) return;
                     this.podeAtacar = false;
-                    setTimeout(() => this.podeAtacar = true, 800);
                     
-                    if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
-
-                    // Animação do golpe no VR
-                    let armaVisual = document.querySelector('#arma-visual-dir');
-                    if (armaVisual) {
-                        armaVisual.removeAttribute('animation');
-                        armaVisual.setAttribute('animation', 'property: rotation; to: -160 0 0; dur: 150; dir: alternate; loop: 1');
-                        setTimeout(() => armaVisual.setAttribute('rotation', '-90 0 0'), 300);
-                    }
-
-                    // Lógica de Dano (Alcance do braço + espada)
+                    let cooldown = 800;
+                    if (armaStats.categoria === 'Varinha') cooldown = 500;
+                    if (armaStats.categoria === 'Shuriken') cooldown = 400;
+                    setTimeout(() => this.podeAtacar = true, cooldown);
+                    
                     let posMao = new THREE.Vector3();
                     this.el.object3D.getWorldPosition(posMao);
-                    
-                    let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-                    inimigosEls.forEach(inimigoEl => {
-                        let posInimigo = new THREE.Vector3();
-                        inimigoEl.object3D.getWorldPosition(posInimigo);
-                        
-                        if (posMao.distanceTo(posInimigo) < 2.5) {
-                            let dano = window.playerState.forca + armaStats.danoBonus;
-                            inimigoEl.components['sistema-inimigo-sync'].receberDano(dano, armaStats.categoria);
+
+                    let direcaoMao = new THREE.Vector3(0, 0, -1);
+                    direcaoMao.applyQuaternion(this.el.object3D.quaternion);
+
+                    if (armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
+                        if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
+
+                        let armaVisual = document.querySelector('#arma-visual-dir');
+                        if (armaVisual) {
+                            armaVisual.removeAttribute('animation');
+                            armaVisual.setAttribute('animation', 'property: rotation; to: -160 0 0; dur: 150; dir: alternate; loop: 1');
+                            setTimeout(() => armaVisual.setAttribute('rotation', '-90 0 0'), 300);
                         }
-                    });
+
+                        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+                        inimigosEls.forEach(inimigoEl => {
+                            let posInimigo = new THREE.Vector3();
+                            inimigoEl.object3D.getWorldPosition(posInimigo);
+                            posInimigo.y += 1.0; // Mirar no peito, não no chão
+                            
+                            let distHorizontal = Math.hypot(posMao.x - posInimigo.x, posMao.z - posInimigo.z);
+                            let distVertical = Math.abs(posMao.y - posInimigo.y);
+
+                            // Alcance VR corrigido (mais tolerante)
+                            if (distHorizontal < 2.0 && distVertical < 2.0) { 
+                                let dano = window.playerState.forca + armaStats.danoBonus;
+                                if (inimigoEl.components['sistema-inimigo-sync']) {
+                                    inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria);
+                                }
+                            }
+                        });
+                    } 
+                    else if (armaStats.categoria === 'Varinha') {
+                        if (window.playerState.mpAtual < 15) return;
+                        window.playerState.mpAtual -= 15;
+                        atualizarUI();
+                        window.tocarSom('snd-magic');
+
+                        let cena = document.querySelector('a-scene');
+                        let magia = document.createElement('a-sphere');
+                        magia.setAttribute('color', '#FF4500');
+                        magia.setAttribute('radius', '0.1');
+                        magia.setAttribute('position', `${posMao.x} ${posMao.y} ${posMao.z}`);
+                        
+                        let forca = window.playerState.forca + armaStats.danoBonus + 10;
+                        magia.setAttribute('projetil-fisico', `velocidade: ${direcaoMao.x * 20} ${direcaoMao.y * 20} ${direcaoMao.z * 20}; dano: ${forca}`);
+                        cena.appendChild(magia);
+                    }
+                    else if (armaStats.categoria === 'Shuriken') {
+                        if (window.playerState.shurikens <= 0) return;
+                        window.playerState.shurikens--;
+                        atualizarUI();
+                        window.tocarSom('snd-magic');
+
+                        let cena = document.querySelector('a-scene');
+                        let shuri = document.createElement('a-entity');
+                        shuri.setAttribute('position', `${posMao.x} ${posMao.y} ${posMao.z}`);
+                        shuri.innerHTML = `<a-box color="#888" width="0.15" height="0.01" depth="0.15" rotation="0 0 0"></a-box><a-box color="#888" width="0.15" height="0.01" depth="0.15" rotation="0 45 0"></a-box>`;
+                        shuri.setAttribute('animation__rot', `property: rotation; to: 0 720 0; dur: 300; loop: true`);
+                        
+                        let forca = Math.floor((window.playerState.forca + armaStats.danoBonus) * 0.8);
+                        shuri.setAttribute('projetil-fisico', `velocidade: ${direcaoMao.x * 25} ${direcaoMao.y * 25} ${direcaoMao.z * 25}; dano: ${forca}`);
+                        cena.appendChild(shuri);
+                    }
                 });
             }
         });
@@ -232,7 +292,6 @@
                     this.podeParry = false;
                     setTimeout(() => this.podeParry = true, 800);
 
-                    // Animação de defesa no VR
                     let vrEscudo = document.querySelector('#arma-visual-esq');
                     if(vrEscudo) {
                         vrEscudo.removeAttribute('animation');
@@ -240,7 +299,6 @@
                         setTimeout(() => vrEscudo.setAttribute('position', '0 0 0'), 300);
                     }
 
-                    // Lógica de refletir magia (Parry)
                     let magias = document.querySelectorAll('.projetil-inimigo'); 
                     let posMao = new THREE.Vector3(); 
                     this.el.object3D.getWorldPosition(posMao);
@@ -284,10 +342,6 @@
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
-            dispararProjetilMagico: function(forma, cor, origem, destino, extras = '', girar = false) { 
-                let cena = document.querySelector('a-scene'); let proj = document.createElement(`a-${forma}`); proj.setAttribute('color', cor); if (extras) extras.split(';').forEach(p => { let [k, v] = p.split(':'); if(k && v) proj.setAttribute(k.trim(), v.trim()); }); else proj.setAttribute('radius', '0.1'); proj.setAttribute('position', `${origem.x} ${origem.y} ${origem.z}`); proj.setAttribute('animation', `property: position; to: ${destino.x} ${destino.y + 0.5} ${destino.z}; dur: 300; easing: linear`); if (girar) proj.setAttribute('animation__rot', `property: rotation; to: 0 720 0; dur: 300; loop: true`); cena.appendChild(proj); setTimeout(() => { if(proj.parentNode) proj.parentNode.removeChild(proj); }, 300); 
-            }, 
-
             tocarAnimacao: function(nomeAnimacao, loopState, clamp = false) { 
                 let visual = this.el.querySelector('.modelo-visual');
                 if (visual && visual.hasAttribute('gltf-model')) { 
@@ -409,7 +463,7 @@
                         
                         if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
                         
-                        this.tocarAnimacao(window.ANIM_Dano, 'once');
+                        this.tocarAnimacao(window.ANIM_DANO, 'once');
                         setTimeout(() => { if (this.hpAtual > 0) this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 600);
                     } else if (!estavaMorto && data.hp > 0) {
                         if(textoHp) textoHp.setAttribute('value', 'HP: ' + this.hpAtual); 
@@ -417,7 +471,7 @@
                 });
 
                 // ENVIA DANO PARA O SERVIDOR
-                this.receberDano = (dano, tipoCategoria = '', vetorGolpe = null, pontoImpacto = null) => { 
+                this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
                         if (currentHp === null) return this.data.hpMax - dano; 
@@ -437,18 +491,10 @@
                             } 
                             atualizarUI(); 
                             
-                            // Avisa ao servidor que morreu para ele calcular o tempo de respawn
                             this.dbRef.update({ mortoEm: Date.now() }); 
                         }
                     });
                 }; 
-
-                let podeAtacarMagia = true;
-                this.el.addEventListener('click', () => { 
-                    if (this.hpAtual <= 0 || !window.playerState.vivo || !window.GAME_STARTED) return; let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!podeAtacarMagia) return; 
-                    let posJogador = new THREE.Vector3(); document.querySelector('[camera]').object3D.getWorldPosition(posJogador); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo);
-                    if (armaStats.categoria === 'Varinha' && window.playerState.mpAtual >= 15) { podeAtacarMagia = false; setTimeout(() => podeAtacarMagia = true, 500); window.playerState.mpAtual -= 15; atualizarUI(); window.tocarSom('snd-magic'); this.dispararProjetilMagico('sphere', '#FF4500', posJogador, posInimigo); setTimeout(() => this.receberDano(window.playerState.forca + armaStats.danoBonus + 10, 'Magia'), 300); } else if (armaStats.categoria === 'Shuriken' && window.playerState.shurikens > 0) { podeAtacarMagia = false; setTimeout(() => podeAtacarMagia = true, 400); window.playerState.shurikens--; atualizarUI(); window.tocarSom('snd-magic'); this.dispararProjetilMagico('box', '#888', posJogador, posInimigo, 'width: 0.15; height: 0.01; depth: 0.15', true); setTimeout(() => this.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 0.8), 'Shuriken'), 300); }
-                }); 
             }
         });
     </script>
@@ -602,7 +648,7 @@
             </a-entity>
             
             <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" controles-hud controles-vr-escudo><a-entity id="arma-visual-esq" position="0 0 0" rotation="180 0 0"></a-entity></a-entity>
-            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" sistema-arco controles-vr-melee><a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity></a-entity>
+            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" sistema-arco controles-vr-ataque><a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity></a-entity>
         </a-entity>
     </a-scene>
 </body>
