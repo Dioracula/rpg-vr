@@ -22,6 +22,7 @@
         .input-group label { font-size: 0.80rem; color: #bdc3c7; margin-bottom: 3px; font-weight: bold; }
         .input-group input, .input-group select { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 90px; }
         .input-group input[type="text"] { width: 180px; }
+        .input-group input:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; }
@@ -49,15 +50,13 @@
         <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Jogadores)</button>
     </div>
 
-    <div id="lista-inimigos">
-        <p>Carregando dados do servidor...</p>
-    </div>
+    <div id="lista-inimigos"></div>
 
     <div class="painel-spawn">
         <h2>🪄 Invocar Novo Inimigo (Customizado)</h2>
         <div class="grid-spawn">
             <div class="input-group">
-                <label>ID Único (ex: esqueleto_01)</label>
+                <label>ID Único (ex: orc_01)</label>
                 <input type="text" id="novo-id" placeholder="ID sem espaço">
             </div>
             <div class="input-group">
@@ -95,7 +94,6 @@
 </div>
 
 <script>
-    // 1. Conexão com o seu Banco de Dados
     const firebaseConfig = {
         apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
         authDomain: "rpg-vr-online.firebaseapp.com",
@@ -108,59 +106,68 @@
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
+    const listaDiv = document.getElementById('lista-inimigos');
     
-    // 2. Escutar e Montar a Lista de Inimigos Vivos
-    db.ref('cenario_inimigos').on('value', (snapshot) => {
-        const dados = snapshot.val();
-        const listaDiv = document.getElementById('lista-inimigos');
-        
-        if (!dados) {
-            listaDiv.innerHTML = '<p>Nenhum inimigo encontrado no servidor.</p>';
-            return;
-        }
+    // SISTEMA INTELIGENTE DE LEITURA
+    // Ao invés de redesenhar a tela inteira toda vez, ele cria os cards individualmente
+    db.ref('cenario_inimigos').on('child_added', (snapshot) => {
+        let id = snapshot.key;
+        let inimigo = snapshot.val();
+        if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
 
-        listaDiv.innerHTML = ''; 
+        let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
+        let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
 
-        for (let id in dados) {
-            let inimigo = dados[id];
-            if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
+        let card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${id}`;
+        card.innerHTML = `
+            <h3 id="titulo-${id}">👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
+            <div class="input-group"><label>HP Atual</label><input type="number" id="hp-${id}" value="${inimigo.hp}"></div>
+            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="x-${id}" value="${inimigo.pos.x.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="y-${id}" value="${inimigo.pos.y.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="z-${id}" value="${inimigo.pos.z.toFixed(2)}"></div>
 
-            let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
-            let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
-
-            let html = `
-                <div class="card" id="card-${id}">
-                    <h3>👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
-                    
-                    <div class="input-group">
-                        <label>HP Atual</label>
-                        <input type="number" id="hp-${id}" value="${inimigo.hp}">
-                    </div>
-                    <div class="input-group">
-                        <label>Posição X</label>
-                        <input type="number" step="0.1" id="x-${id}" value="${inimigo.pos.x}">
-                    </div>
-                    <div class="input-group">
-                        <label>Posição Y</label>
-                        <input type="number" step="0.1" id="y-${id}" value="${inimigo.pos.y}">
-                    </div>
-                    <div class="input-group">
-                        <label>Posição Z</label>
-                        <input type="number" step="0.1" id="z-${id}" value="${inimigo.pos.z}">
-                    </div>
-
-                    <div class="action-buttons">
-                        <button class="btn btn-green" onclick="salvarAlteracao('${id}')">💾 Atualizar/Teleportar</button>
-                        <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill (Zerar HP)</button>
-                        <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir Definitivo</button>
-                    </div>
-                </div>
-            `;
-            listaDiv.innerHTML += html;
-        }
+            <div class="action-buttons">
+                <button class="btn btn-green" onclick="salvarAlteracao('${id}')">💾 Atualizar/Teleportar</button>
+                <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill (Zerar HP)</button>
+                <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir Definitivo</button>
+            </div>
+        `;
+        listaDiv.appendChild(card);
     });
 
-    // 3. Funções do Painel
+    // Quando o servidor mexe o inimigo, ele atualiza SÓ se você não estiver clicado na caixa!
+    db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
+        let id = snapshot.key;
+        let inimigo = snapshot.val();
+        if (!inimigo.pos) return;
+
+        let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
+        let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
+        
+        let titulo = document.getElementById(`titulo-${id}`);
+        if(titulo) titulo.innerHTML = `👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span>`;
+
+        let hpInput = document.getElementById(`hp-${id}`);
+        let xInput = document.getElementById(`x-${id}`);
+        let yInput = document.getElementById(`y-${id}`);
+        let zInput = document.getElementById(`z-${id}`);
+
+        // document.activeElement verifica onde o seu cursor do mouse está piscando
+        if (hpInput && document.activeElement !== hpInput) hpInput.value = inimigo.hp;
+        if (xInput && document.activeElement !== xInput) xInput.value = inimigo.pos.x.toFixed(2);
+        if (yInput && document.activeElement !== yInput) yInput.value = inimigo.pos.y.toFixed(2);
+        if (zInput && document.activeElement !== zInput) zInput.value = inimigo.pos.z.toFixed(2);
+    });
+
+    // Quando você deleta o inimigo, o painel apaga o card da tela
+    db.ref('cenario_inimigos').on('child_removed', (snapshot) => {
+        let id = snapshot.key;
+        let card = document.getElementById(`card-${id}`);
+        if (card) card.remove();
+    });
+
     window.salvarAlteracao = function(id) {
         let hp = parseFloat(document.getElementById(`hp-${id}`).value);
         let x = parseFloat(document.getElementById(`x-${id}`).value);
@@ -170,6 +177,9 @@
         db.ref('cenario_inimigos/' + id).update({
             hp: hp, pos: { x: x, y: y, z: z }
         });
+        
+        // Tira o foco do input para ele voltar a mostrar a movimentação real
+        document.activeElement.blur(); 
     };
 
     window.matarInimigo = function(id) {
@@ -205,7 +215,6 @@
             tipo: tipo,
             ultimoAtaque: 0,
             mortoEm: null,
-            // Salva os dados visuais no banco!
             modeloGlb: glb,
             animParado: animP,
             animAtaque: animA,
@@ -215,16 +224,10 @@
         alert(`Monstro ${id} invocado com sucesso!`);
     };
 
-    // 4. Sistema de Kick Global
     window.kickarTodos = function() {
         if(confirm("ALERTA: Isso vai desconectar TODOS os jogadores instantaneamente. Tem certeza?")) {
-            // Deleta todos os avatares visuais da sala
             db.ref('players').remove();
-            
-            // Envia um comando de reload forçado para as telas
             db.ref('server_commands/kick_all').set(Date.now());
-            
-            alert("Sinal de KICK enviado para todos os jogadores!");
         }
     };
 </script>
