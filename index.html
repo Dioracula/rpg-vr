@@ -194,15 +194,20 @@
             }
         });
 
-        // ====== NOVOS CONTROLES VR UNIFICADOS (Melee, Magia e Shuriken) ======
+        // ====== NOVOS CONTROLES VR UNIFICADOS (Melee por contato, Magia e Shuriken no gatilho) ======
         AFRAME.registerComponent('controles-vr-ataque', {
             init: function() {
                 this.podeAtacar = true;
+                this.podeAtacarMelee = true;
+                this.posicaoAnterior = new THREE.Vector3();
+                this.velocidadeMao = 0;
+
                 this.el.addEventListener('triggerdown', () => {
                     if (window.GAME_MODE === 'PC' || !window.playerState.vivo) return;
                     
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-                    if (!armaStats || armaStats.categoria === 'Arco') return; // Arco já tem sistema próprio
+                    // Ignora Arco (sistema próprio) e Espada/Luva (agora funcionam por contato físico)
+                    if (!armaStats || armaStats.categoria === 'Arco' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') return; 
                     
                     if (!this.podeAtacar) return;
                     this.podeAtacar = false;
@@ -218,35 +223,7 @@
                     let direcaoMao = new THREE.Vector3(0, 0, -1);
                     direcaoMao.applyQuaternion(this.el.object3D.quaternion);
 
-                    if (armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
-                        if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
-
-                        let armaVisual = document.querySelector('#arma-visual-dir');
-                        if (armaVisual) {
-                            armaVisual.removeAttribute('animation');
-                            armaVisual.setAttribute('animation', 'property: rotation; to: -160 0 0; dur: 150; dir: alternate; loop: 1');
-                            setTimeout(() => armaVisual.setAttribute('rotation', '-90 0 0'), 300);
-                        }
-
-                        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-                        inimigosEls.forEach(inimigoEl => {
-                            let posInimigo = new THREE.Vector3();
-                            inimigoEl.object3D.getWorldPosition(posInimigo);
-                            posInimigo.y += 1.0; // Mirar no peito, não no chão
-                            
-                            let distHorizontal = Math.hypot(posMao.x - posInimigo.x, posMao.z - posInimigo.z);
-                            let distVertical = Math.abs(posMao.y - posInimigo.y);
-
-                            // Alcance VR corrigido (mais tolerante)
-                            if (distHorizontal < 2.0 && distVertical < 2.0) { 
-                                let dano = window.playerState.forca + armaStats.danoBonus;
-                                if (inimigoEl.components['sistema-inimigo-sync']) {
-                                    inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria);
-                                }
-                            }
-                        });
-                    } 
-                    else if (armaStats.categoria === 'Varinha') {
+                    if (armaStats.categoria === 'Varinha') {
                         if (window.playerState.mpAtual < 15) return;
                         window.playerState.mpAtual -= 15;
                         atualizarUI();
@@ -277,6 +254,88 @@
                         let forca = Math.floor((window.playerState.forca + armaStats.danoBonus) * 0.8);
                         shuri.setAttribute('projetil-fisico', `velocidade: ${direcaoMao.x * 25} ${direcaoMao.y * 25} ${direcaoMao.z * 25}; dano: ${forca}`);
                         cena.appendChild(shuri);
+                    }
+                });
+            },
+            tick: function(time, timeDelta) {
+                if (window.GAME_MODE === 'PC' || !window.playerState.vivo || !window.GAME_STARTED) return;
+                
+                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
+
+                let posAtual = new THREE.Vector3();
+                this.el.object3D.getWorldPosition(posAtual);
+                
+                if (timeDelta > 0) {
+                    this.velocidadeMao = posAtual.distanceTo(this.posicaoAnterior) / (timeDelta / 1000);
+                }
+                this.posicaoAnterior.copy(posAtual);
+
+                // 1. Dano por Contato Físico nos Inimigos
+                if (this.podeAtacarMelee) {
+                    let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+                    for (let i = 0; i < inimigosEls.length; i++) {
+                        let inimigoEl = inimigosEls[i];
+                        let posInimigo = new THREE.Vector3();
+                        inimigoEl.object3D.getWorldPosition(posInimigo);
+                        posInimigo.y += 1.0; // Centraliza a hitbox do inimigo
+                        
+                        // Checa se a mão/arma cruzou a hitbox do inimigo
+                        if (posAtual.distanceTo(posInimigo) < 1.0) { 
+                            this.podeAtacarMelee = false;
+                            setTimeout(() => this.podeAtacarMelee = true, 600); // Recarga para não matar em 1 segundo
+                            
+                            if(armaStats.categoria === 'Espada') window.tocarSom('snd-sword');
+                            
+                            let dano = window.playerState.forca + armaStats.danoBonus;
+                            if (inimigoEl.components['sistema-inimigo-sync']) {
+                                inimigoEl.components['sistema-inimigo-sync'].receberDano(Math.floor(dano * 1.5), armaStats.categoria);
+                            }
+                            break; // Acerta apenas 1 inimigo por movimento para evitar bugs
+                        }
+                    }
+                }
+
+                // 2. Interação Dinâmica com Magias Inimigas (A MÁGICA ACONTECE AQUI)
+                let magias = document.querySelectorAll('.projetil-inimigo'); 
+                magias.forEach(magia => { 
+                    let posMagia = new THREE.Vector3(); 
+                    magia.object3D.getWorldPosition(posMagia); 
+                    
+                    // Se o projétil se aproximar a meio metro da sua mão armada...
+                    if (posMagia.distanceTo(posAtual) < 0.5) { 
+                        
+                        // REGRA 1: Cortar magia com a Espada (exige movimento superior a 1.2 m/s)
+                        if (armaStats.categoria === 'Espada' && this.velocidadeMao > 1.2) { 
+                            magia.removeAttribute('projetil-inimigo-fisico');
+                            if(magia.parentNode) magia.parentNode.removeChild(magia);
+                            
+                            let aviso = document.querySelector('#texto-central'); 
+                            aviso.setAttribute('value', 'CORTE PERFEITO!'); 
+                            aviso.setAttribute('color', '#00FFFF'); 
+                            aviso.setAttribute('visible', 'true'); 
+                            setTimeout(() => aviso.setAttribute('visible', 'false'), 800); 
+                            window.tocarSom('snd-sword');
+                        }
+                        
+                        // REGRA 2: Ricochetear magia com Luva de Boxe
+                        else if (armaStats.categoria === 'Luva') {
+                            if (magia.dataset.defletido !== "true") {
+                                magia.dataset.defletido = "true"; 
+                                magia.removeAttribute('projetil-inimigo-fisico'); 
+                                magia.setAttribute('color', '#00FF00'); 
+                                
+                                // Reflete a magia exatamente para onde as costas da sua mão apontam
+                                let direcao = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.quaternion); 
+                                magia.setAttribute('projetil-fisico', { velocidade: direcao.multiplyScalar(20), dano: window.playerState.forca * 2 }); 
+                                
+                                let aviso = document.querySelector('#texto-central'); 
+                                aviso.setAttribute('value', 'RICOCHETE!'); 
+                                aviso.setAttribute('color', '#FFD700'); 
+                                aviso.setAttribute('visible', 'true'); 
+                                setTimeout(() => aviso.setAttribute('visible', 'false'), 800); 
+                            }
+                        }
                     }
                 });
             }
