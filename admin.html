@@ -10,22 +10,34 @@
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
-        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .card h3 { margin: 0 0 10px 0; color: #3498db; width: 100%; }
+        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        .header-controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        
+        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h3 { margin: 0 0 10px 0; color: #3498db; width: 100%; display: flex; justify-content: space-between;}
+        
         .input-group { display: flex; flex-direction: column; margin-right: 15px; margin-bottom: 10px; }
-        .input-group label { font-size: 0.85rem; color: #bdc3c7; margin-bottom: 3px; }
-        .input-group input, .input-group select { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 80px; }
-        .input-group input[type="text"] { width: 150px; }
-        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .input-group label { font-size: 0.80rem; color: #bdc3c7; margin-bottom: 3px; font-weight: bold; }
+        .input-group input, .input-group select { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 90px; }
+        .input-group input[type="text"] { width: 180px; }
+        
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; }
         .btn-green:hover { background: #2ecc71; }
         .btn-red { background: #c0392b; color: white; }
         .btn-red:hover { background: #e74c3c; }
-        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 30px; }
-        .painel-spawn h2 { margin-top: 0; color: #fff; }
-        .grid-spawn { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+        .btn-dark { background: #111; color: #e74c3c; border: 1px solid #e74c3c; }
+        .btn-dark:hover { background: #e74c3c; color: white; }
+
+        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .painel-spawn h2 { margin-top: 0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px;}
+        .grid-spawn { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .grid-spawn .input-group { margin: 0; }
+        .grid-spawn .input-group input, .grid-spawn .input-group select { width: 100%; box-sizing: border-box; }
+        
+        .action-buttons { width: 100%; display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px;}
     </style>
 </head>
 <body>
@@ -33,15 +45,19 @@
 <div class="container">
     <h1>👑 PAINEL DO MESTRE (GAME MASTER)</h1>
     
+    <div class="header-controls">
+        <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Jogadores)</button>
+    </div>
+
     <div id="lista-inimigos">
         <p>Carregando dados do servidor...</p>
     </div>
 
     <div class="painel-spawn">
-        <h2>🪄 Invocar Novo Inimigo</h2>
+        <h2>🪄 Invocar Novo Inimigo (Customizado)</h2>
         <div class="grid-spawn">
             <div class="input-group">
-                <label>ID Único (ex: lobo_01)</label>
+                <label>ID Único (ex: esqueleto_01)</label>
                 <input type="text" id="novo-id" placeholder="ID sem espaço">
             </div>
             <div class="input-group">
@@ -52,11 +68,29 @@
                 </select>
             </div>
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+            
+            <div class="input-group">
+                <label>Link/Caminho do .GLB</label>
+                <input type="text" id="novo-glb" placeholder="Inimigos/novo.glb" value="#modelo-inimigo2">
+            </div>
+            <div class="input-group">
+                <label>Nome Anim. Parado</label>
+                <input type="text" id="novo-anim-parado" value="chr784_armature|chr784_bn01">
+            </div>
+            <div class="input-group">
+                <label>Nome Anim. Ataque</label>
+                <input type="text" id="novo-anim-ataque" value="chr784_armature|chr784_ba01">
+            </div>
+            <div class="input-group">
+                <label>Nome Anim. Morte</label>
+                <input type="text" id="novo-anim-morte" value="chr784_armature|chr784_bd02">
+            </div>
+
             <div class="input-group"><label>Pos X</label><input type="number" id="novo-x" value="0"></div>
             <div class="input-group"><label>Pos Y</label><input type="number" id="novo-y" value="0"></div>
             <div class="input-group"><label>Pos Z</label><input type="number" id="novo-z" value="-5"></div>
         </div>
-        <button class="btn btn-green" onclick="spawnarNovoInimigo()">⚡ Invocar no Mapa</button>
+        <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR NO MAPA</button>
     </div>
 </div>
 
@@ -85,11 +119,10 @@
             return;
         }
 
-        listaDiv.innerHTML = ''; // Limpa a lista antes de atualizar
+        listaDiv.innerHTML = ''; 
 
         for (let id in dados) {
             let inimigo = dados[id];
-            // Previne erro se o banco estiver criando a estrutura
             if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
 
             let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
@@ -103,25 +136,23 @@
                         <label>HP Atual</label>
                         <input type="number" id="hp-${id}" value="${inimigo.hp}">
                     </div>
-                    
                     <div class="input-group">
                         <label>Posição X</label>
                         <input type="number" step="0.1" id="x-${id}" value="${inimigo.pos.x}">
                     </div>
-                    
                     <div class="input-group">
                         <label>Posição Y</label>
                         <input type="number" step="0.1" id="y-${id}" value="${inimigo.pos.y}">
                     </div>
-                    
                     <div class="input-group">
                         <label>Posição Z</label>
                         <input type="number" step="0.1" id="z-${id}" value="${inimigo.pos.z}">
                     </div>
 
-                    <div>
+                    <div class="action-buttons">
                         <button class="btn btn-green" onclick="salvarAlteracao('${id}')">💾 Atualizar/Teleportar</button>
                         <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill (Zerar HP)</button>
+                        <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir Definitivo</button>
                     </div>
                 </div>
             `;
@@ -136,17 +167,19 @@
         let y = parseFloat(document.getElementById(`y-${id}`).value);
         let z = parseFloat(document.getElementById(`z-${id}`).value);
 
-        // Atualiza no banco de dados na hora
         db.ref('cenario_inimigos/' + id).update({
-            hp: hp,
-            pos: { x: x, y: y, z: z }
+            hp: hp, pos: { x: x, y: y, z: z }
         });
-
-        alert(`O inimigo ${id} foi atualizado no mapa!`);
     };
 
     window.matarInimigo = function(id) {
         db.ref('cenario_inimigos/' + id).update({ hp: 0, mortoEm: Date.now() });
+    };
+
+    window.excluirInimigo = function(id) {
+        if(confirm(`Tem certeza que deseja APAGAR o monstro ${id} do banco de dados para sempre?`)) {
+            db.ref('cenario_inimigos/' + id).remove();
+        }
     };
 
     window.spawnarNovoInimigo = function() {
@@ -156,19 +189,43 @@
         let x = parseFloat(document.getElementById('novo-x').value);
         let y = parseFloat(document.getElementById('novo-y').value);
         let z = parseFloat(document.getElementById('novo-z').value);
+        
+        let glb = document.getElementById('novo-glb').value;
+        let animP = document.getElementById('novo-anim-parado').value;
+        let animA = document.getElementById('novo-anim-ataque').value;
+        let animM = document.getElementById('novo-anim-morte').value;
 
         if(!id || id.trim() === "") { alert("Digite um ID único para o monstro!"); return; }
 
         db.ref('cenario_inimigos/' + id).set({
+            hpMax: hp,
             hp: hp,
             pos: { x: x, y: y, z: z },
             rotY: 0,
             tipo: tipo,
             ultimoAtaque: 0,
-            mortoEm: null
+            mortoEm: null,
+            // Salva os dados visuais no banco!
+            modeloGlb: glb,
+            animParado: animP,
+            animAtaque: animA,
+            animMorte: animM
         });
 
         alert(`Monstro ${id} invocado com sucesso!`);
+    };
+
+    // 4. Sistema de Kick Global
+    window.kickarTodos = function() {
+        if(confirm("ALERTA: Isso vai desconectar TODOS os jogadores instantaneamente. Tem certeza?")) {
+            // Deleta todos os avatares visuais da sala
+            db.ref('players').remove();
+            
+            // Envia um comando de reload forçado para as telas
+            db.ref('server_commands/kick_all').set(Date.now());
+            
+            alert("Sinal de KICK enviado para todos os jogadores!");
+        }
     };
 </script>
 
