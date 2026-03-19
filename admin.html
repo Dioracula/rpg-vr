@@ -7,6 +7,9 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
@@ -38,6 +41,8 @@
         .grid-spawn .input-group { margin: 0; }
         .grid-spawn .input-group input, .grid-spawn .input-group select { width: 100%; box-sizing: border-box; }
         
+        .leitor-glb { grid-column: 1 / -1; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; border: 1px dashed #f1c40f; display: flex; flex-direction: column; gap: 5px;}
+        
         .action-buttons { width: 100%; display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px;}
     </style>
 </head>
@@ -47,14 +52,24 @@
     <h1>👑 PAINEL DO MESTRE (GAME MASTER)</h1>
     
     <div class="header-controls">
-        <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Jogadores)</button>
+        <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos os Jogadores)</button>
     </div>
 
     <div id="lista-inimigos"></div>
 
     <div class="painel-spawn">
         <h2>🪄 Invocar Novo Inimigo (Customizado)</h2>
+        
         <div class="grid-spawn">
+            
+            <div class="leitor-glb">
+                <label style="color: #f1c40f; font-size: 1rem;">🔍 Extrair Animações (Opcional)</label>
+                <span style="font-size: 0.8rem; color: #ccc;">Selecione o arquivo .GLB do seu Windows. O painel vai ler o arquivo e criar uma lista suspensa com os nomes exatos das animações para você!</span>
+                <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; padding: 5px 0;">
+            </div>
+
+            <datalist id="lista-animacoes"></datalist>
+
             <div class="input-group">
                 <label>ID Único (ex: orc_01)</label>
                 <input type="text" id="novo-id" placeholder="ID sem espaço">
@@ -69,20 +84,21 @@
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
             
             <div class="input-group">
-                <label>Link/Caminho do .GLB</label>
-                <input type="text" id="novo-glb" placeholder="Inimigos/novo.glb" value="#modelo-inimigo2">
+                <label>Caminho do .GLB (No GitHub)</label>
+                <input type="text" id="novo-glb-caminho" placeholder="Inimigos/novo.glb" value="Inimigos/atiradora.glb">
             </div>
+            
             <div class="input-group">
                 <label>Nome Anim. Parado</label>
-                <input type="text" id="novo-anim-parado" value="chr784_armature|chr784_bn01">
+                <input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01">
             </div>
             <div class="input-group">
                 <label>Nome Anim. Ataque</label>
-                <input type="text" id="novo-anim-ataque" value="chr784_armature|chr784_ba01">
+                <input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01">
             </div>
             <div class="input-group">
                 <label>Nome Anim. Morte</label>
-                <input type="text" id="novo-anim-morte" value="chr784_armature|chr784_bd02">
+                <input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02">
             </div>
 
             <div class="input-group"><label>Pos X</label><input type="number" id="novo-x" value="0"></div>
@@ -94,6 +110,52 @@
 </div>
 
 <script>
+    // ==========================================
+    // 1. LEITOR DE ARQUIVOS GLB LOCAIS (MAGIA)
+    // ==========================================
+    document.getElementById('file-glb').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Cria uma URL temporária do arquivo para o Three.js conseguir ler
+        const urlTemporaria = URL.createObjectURL(file);
+        const loader = new THREE.GLTFLoader();
+        
+        loader.load(urlTemporaria, function(gltf) {
+            const animations = gltf.animations;
+            const datalist = document.getElementById('lista-animacoes');
+            datalist.innerHTML = ''; // Limpa a lista antiga
+
+            if (animations && animations.length > 0) {
+                animations.forEach(anim => {
+                    let option = document.createElement('option');
+                    option.value = anim.name;
+                    datalist.appendChild(option);
+                });
+                
+                // Limpa os campos de texto para forçar o usuário a escolher na nova lista
+                document.getElementById('novo-anim-parado').value = '';
+                document.getElementById('novo-anim-ataque').value = '';
+                document.getElementById('novo-anim-morte').value = '';
+                
+                alert(`✅ Sucesso! Encontramos ${animations.length} animações no arquivo "${file.name}". \n\nClique nos campos de "Nome Anim." para abrir a lista suspensa e escolher!`);
+            } else {
+                alert('⚠️ Nenhuma animação foi encontrada dentro deste arquivo GLB.');
+            }
+            
+            // Sugere o caminho para o jogador (opcional, ele tem que garantir que enviou pro GitHub)
+            document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+            
+        }, undefined, function(error) {
+            console.error(error);
+            alert('❌ Erro ao ler o arquivo GLB. Ele pode estar corrompido.');
+        });
+    });
+
+
+    // ==========================================
+    // 2. CONEXÃO COM O FIREBASE
+    // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
         authDomain: "rpg-vr-online.firebaseapp.com",
@@ -108,8 +170,9 @@
     const db = firebase.database();
     const listaDiv = document.getElementById('lista-inimigos');
     
-    // SISTEMA INTELIGENTE DE LEITURA
-    // Ao invés de redesenhar a tela inteira toda vez, ele cria os cards individualmente
+    // ==========================================
+    // 3. RENDERIZA E GERENCIA OS INIMIGOS VIVOS
+    // ==========================================
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key;
         let inimigo = snapshot.val();
@@ -137,7 +200,7 @@
         listaDiv.appendChild(card);
     });
 
-    // Quando o servidor mexe o inimigo, ele atualiza SÓ se você não estiver clicado na caixa!
+    // Atualiza os inputs apenas se você não estiver digitando neles no momento
     db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
         let id = snapshot.key;
         let inimigo = snapshot.val();
@@ -154,20 +217,22 @@
         let yInput = document.getElementById(`y-${id}`);
         let zInput = document.getElementById(`z-${id}`);
 
-        // document.activeElement verifica onde o seu cursor do mouse está piscando
         if (hpInput && document.activeElement !== hpInput) hpInput.value = inimigo.hp;
         if (xInput && document.activeElement !== xInput) xInput.value = inimigo.pos.x.toFixed(2);
         if (yInput && document.activeElement !== yInput) yInput.value = inimigo.pos.y.toFixed(2);
         if (zInput && document.activeElement !== zInput) zInput.value = inimigo.pos.z.toFixed(2);
     });
 
-    // Quando você deleta o inimigo, o painel apaga o card da tela
+    // Remove o card se você deletar o monstro
     db.ref('cenario_inimigos').on('child_removed', (snapshot) => {
         let id = snapshot.key;
         let card = document.getElementById(`card-${id}`);
         if (card) card.remove();
     });
 
+    // ==========================================
+    // 4. FUNÇÕES DE ADMINISTRAÇÃO
+    // ==========================================
     window.salvarAlteracao = function(id) {
         let hp = parseFloat(document.getElementById(`hp-${id}`).value);
         let x = parseFloat(document.getElementById(`x-${id}`).value);
@@ -178,7 +243,6 @@
             hp: hp, pos: { x: x, y: y, z: z }
         });
         
-        // Tira o foco do input para ele voltar a mostrar a movimentação real
         document.activeElement.blur(); 
     };
 
@@ -187,7 +251,7 @@
     };
 
     window.excluirInimigo = function(id) {
-        if(confirm(`Tem certeza que deseja APAGAR o monstro ${id} do banco de dados para sempre?`)) {
+        if(confirm(`🚨 ATENÇÃO!\nTem certeza que deseja APAGAR o monstro "${id}" do banco de dados para sempre?`)) {
             db.ref('cenario_inimigos/' + id).remove();
         }
     };
@@ -200,7 +264,7 @@
         let y = parseFloat(document.getElementById('novo-y').value);
         let z = parseFloat(document.getElementById('novo-z').value);
         
-        let glb = document.getElementById('novo-glb').value;
+        let glb = document.getElementById('novo-glb-caminho').value;
         let animP = document.getElementById('novo-anim-parado').value;
         let animA = document.getElementById('novo-anim-ataque').value;
         let animM = document.getElementById('novo-anim-morte').value;
@@ -221,13 +285,14 @@
             animMorte: animM
         });
 
-        alert(`Monstro ${id} invocado com sucesso!`);
+        alert(`Monstro ${id} invocado com sucesso no mapa!`);
     };
 
     window.kickarTodos = function() {
-        if(confirm("ALERTA: Isso vai desconectar TODOS os jogadores instantaneamente. Tem certeza?")) {
+        if(confirm("🚨 ALERTA MÁXIMO:\nIsso vai desconectar TODOS os jogadores instantaneamente do servidor. Tem certeza?")) {
             db.ref('players').remove();
             db.ref('server_commands/kick_all').set(Date.now());
+            alert("Sinal de KICK enviado para todos os jogadores!");
         }
     };
 </script>
