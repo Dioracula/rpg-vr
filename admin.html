@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <title>Painel do Mestre - RPG MMO</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
+        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card h3 { margin: 0 0 10px 0; color: #3498db; width: 100%; }
+        .input-group { display: flex; flex-direction: column; margin-right: 15px; margin-bottom: 10px; }
+        .input-group label { font-size: 0.85rem; color: #bdc3c7; margin-bottom: 3px; }
+        .input-group input, .input-group select { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 80px; }
+        .input-group input[type="text"] { width: 150px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-green { background: #27ae60; color: white; }
+        .btn-green:hover { background: #2ecc71; }
+        .btn-red { background: #c0392b; color: white; }
+        .btn-red:hover { background: #e74c3c; }
+        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 30px; }
+        .painel-spawn h2 { margin-top: 0; color: #fff; }
+        .grid-spawn { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>👑 PAINEL DO MESTRE (GAME MASTER)</h1>
+    
+    <div id="lista-inimigos">
+        <p>Carregando dados do servidor...</p>
+    </div>
+
+    <div class="painel-spawn">
+        <h2>🪄 Invocar Novo Inimigo</h2>
+        <div class="grid-spawn">
+            <div class="input-group">
+                <label>ID Único (ex: lobo_01)</label>
+                <input type="text" id="novo-id" placeholder="ID sem espaço">
+            </div>
+            <div class="input-group">
+                <label>Tipo (IA)</label>
+                <select id="novo-tipo">
+                    <option value="meelee">Corpo a Corpo</option>
+                    <option value="atirador">Atirador (Magia)</option>
+                </select>
+            </div>
+            <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+            <div class="input-group"><label>Pos X</label><input type="number" id="novo-x" value="0"></div>
+            <div class="input-group"><label>Pos Y</label><input type="number" id="novo-y" value="0"></div>
+            <div class="input-group"><label>Pos Z</label><input type="number" id="novo-z" value="-5"></div>
+        </div>
+        <button class="btn btn-green" onclick="spawnarNovoInimigo()">⚡ Invocar no Mapa</button>
+    </div>
+</div>
+
+<script>
+    // 1. Conexão com o seu Banco de Dados
+    const firebaseConfig = {
+        apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
+        authDomain: "rpg-vr-online.firebaseapp.com",
+        databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
+        projectId: "rpg-vr-online",
+        storageBucket: "rpg-vr-online.firebasestorage.app",
+        messagingSenderId: "676174796336",
+        appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+    };
+    
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.database();
+    
+    // 2. Escutar e Montar a Lista de Inimigos Vivos
+    db.ref('cenario_inimigos').on('value', (snapshot) => {
+        const dados = snapshot.val();
+        const listaDiv = document.getElementById('lista-inimigos');
+        
+        if (!dados) {
+            listaDiv.innerHTML = '<p>Nenhum inimigo encontrado no servidor.</p>';
+            return;
+        }
+
+        listaDiv.innerHTML = ''; // Limpa a lista antes de atualizar
+
+        for (let id in dados) {
+            let inimigo = dados[id];
+            // Previne erro se o banco estiver criando a estrutura
+            if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
+
+            let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
+            let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
+
+            let html = `
+                <div class="card" id="card-${id}">
+                    <h3>👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
+                    
+                    <div class="input-group">
+                        <label>HP Atual</label>
+                        <input type="number" id="hp-${id}" value="${inimigo.hp}">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Posição X</label>
+                        <input type="number" step="0.1" id="x-${id}" value="${inimigo.pos.x}">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Posição Y</label>
+                        <input type="number" step="0.1" id="y-${id}" value="${inimigo.pos.y}">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>Posição Z</label>
+                        <input type="number" step="0.1" id="z-${id}" value="${inimigo.pos.z}">
+                    </div>
+
+                    <div>
+                        <button class="btn btn-green" onclick="salvarAlteracao('${id}')">💾 Atualizar/Teleportar</button>
+                        <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill (Zerar HP)</button>
+                    </div>
+                </div>
+            `;
+            listaDiv.innerHTML += html;
+        }
+    });
+
+    // 3. Funções do Painel
+    window.salvarAlteracao = function(id) {
+        let hp = parseFloat(document.getElementById(`hp-${id}`).value);
+        let x = parseFloat(document.getElementById(`x-${id}`).value);
+        let y = parseFloat(document.getElementById(`y-${id}`).value);
+        let z = parseFloat(document.getElementById(`z-${id}`).value);
+
+        // Atualiza no banco de dados na hora
+        db.ref('cenario_inimigos/' + id).update({
+            hp: hp,
+            pos: { x: x, y: y, z: z }
+        });
+
+        alert(`O inimigo ${id} foi atualizado no mapa!`);
+    };
+
+    window.matarInimigo = function(id) {
+        db.ref('cenario_inimigos/' + id).update({ hp: 0, mortoEm: Date.now() });
+    };
+
+    window.spawnarNovoInimigo = function() {
+        let id = document.getElementById('novo-id').value;
+        let tipo = document.getElementById('novo-tipo').value;
+        let hp = parseFloat(document.getElementById('novo-hp').value);
+        let x = parseFloat(document.getElementById('novo-x').value);
+        let y = parseFloat(document.getElementById('novo-y').value);
+        let z = parseFloat(document.getElementById('novo-z').value);
+
+        if(!id || id.trim() === "") { alert("Digite um ID único para o monstro!"); return; }
+
+        db.ref('cenario_inimigos/' + id).set({
+            hp: hp,
+            pos: { x: x, y: y, z: z },
+            rotY: 0,
+            tipo: tipo,
+            ultimoAtaque: 0,
+            mortoEm: null
+        });
+
+        alert(`Monstro ${id} invocado com sucesso!`);
+    };
+</script>
+
+</body>
+</html>
