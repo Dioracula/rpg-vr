@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Física Realista)</title>
+    <title>RPG VR e PC - Versão Definitiva (Física Realista + AFK Kick)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -30,7 +30,7 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const auth = firebase.auth(); const db = firebase.firestore();
 
-        window.GAME_MODE = 'NONE'; window.GAME_STARTED = false; window.currentUser = null; 
+        window.GAME_MODE = 'NONE'; window.GAME_STARTED = false; window.currentUser = null; window.lastActionTime = Date.now();
         
         window.playerState = {
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0,
@@ -40,7 +40,7 @@
         };
 
         // ==========================================
-        // 2. SISTEMA MULTIPLAYER (Apenas Sincronização)
+        // 2. SISTEMA MULTIPLAYER E AFK KICK
         // ==========================================
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
@@ -50,6 +50,7 @@
                 this.myRef.onDisconnect().remove();
                 
                 this.otherPlayers = {}; this.cena = document.querySelector('a-scene');
+                this.lastPosRot = "";
 
                 this.playersRef.on('child_added', (snapshot) => {
                     let id = snapshot.key; if (id === this.myId) return; 
@@ -90,6 +91,10 @@
                     euler.setFromQuaternion(this.cameraObj.object3D.quaternion);
                     let rotY = euler.y * 180 / Math.PI;
 
+                    // Rastreador de AFK por Movimento
+                    let currentPosRot = pos.x.toFixed(2) + pos.y.toFixed(2) + pos.z.toFixed(2) + rotY.toFixed(2);
+                    if (this.lastPosRot !== currentPosRot) { window.lastActionTime = Date.now(); this.lastPosRot = currentPosRot; }
+
                     this.myRef.set({ 
                         position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, 
                         rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 },
@@ -101,7 +106,36 @@
 
         window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
 
-        document.addEventListener('DOMContentLoaded', () => { document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); document.getElementById('btn-login').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            // Registra cliques de botões e toques para o sistema AFK
+            ['mousedown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, () => window.lastActionTime = Date.now()));
+
+            document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
+            document.getElementById('btn-login').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
+            document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); 
+            document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
+            window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); 
+
+            // Sistema de Kick por Inatividade (15 minutos = 900.000 ms)
+            setInterval(() => {
+                if (window.GAME_STARTED && window.playerState.vivo) {
+                    if (Date.now() - window.lastActionTime > 900000) { 
+                        window.GAME_STARTED = false;
+                        let mpComp = document.querySelector('[firebase-multiplayer]');
+                        if(mpComp && mpComp.components['firebase-multiplayer'] && mpComp.components['firebase-multiplayer'].myRef) {
+                            mpComp.components['firebase-multiplayer'].myRef.remove(); // Desconecta do Firebase para sumir da sala
+                        }
+                        let aviso = document.querySelector('#texto-central');
+                        if(aviso) { 
+                            aviso.setAttribute('value', 'DESCONECTADO:\n15 MIN INATIVO (AFK)'); 
+                            aviso.setAttribute('color', '#ff0000'); 
+                            aviso.setAttribute('visible', 'true'); 
+                        }
+                        setTimeout(() => location.reload(), 4000);
+                    }
+                }
+            }, 5000); // Checa a cada 5 segundos
+        });
         
         function iniciarTelaSelecaoModo() { document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; }
         
