@@ -13,37 +13,49 @@
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
-        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase;}
+        .container { max-width: 1200px; margin: 0 auto; }
         
         .header-controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
         
-        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-top: 40px; border-left: 5px solid #f1c40f; }
+        
+        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 4px solid #3498db;}
+        .card.npc-card { border-left-color: #2ecc71; }
         .card h3 { margin: 0 0 10px 0; color: #3498db; width: 100%; display: flex; justify-content: space-between;}
+        .card.npc-card h3 { color: #2ecc71; }
         
         .input-group { display: flex; flex-direction: column; margin-right: 15px; margin-bottom: 10px; }
         .input-group label { font-size: 0.80rem; color: #bdc3c7; margin-bottom: 3px; font-weight: bold; }
-        .input-group input, .input-group select { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 90px; }
+        .input-group input, .input-group select, .input-group textarea { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 90px; }
         .input-group input[type="text"] { width: 180px; }
-        .input-group input:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
+        .input-group textarea { width: 250px; resize: vertical; height: 35px;}
+        .input-group input:focus, .input-group textarea:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; }
         .btn-green:hover { background: #2ecc71; }
+        .btn-blue { background: #2980b9; color: white; }
+        .btn-blue:hover { background: #3498db; }
         .btn-red { background: #c0392b; color: white; }
         .btn-red:hover { background: #e74c3c; }
         .btn-dark { background: #111; color: #e74c3c; border: 1px solid #e74c3c; }
         .btn-dark:hover { background: #e74c3c; color: white; }
 
-        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .painel-spawn.npc-spawn { background: #2c3e50; border: 2px solid #2ecc71;}
         .painel-spawn h2 { margin-top: 0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px;}
+        
         .grid-spawn { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
         .grid-spawn .input-group { margin: 0; }
-        .grid-spawn .input-group input, .grid-spawn .input-group select { width: 100%; box-sizing: border-box; }
+        .grid-spawn .input-group input, .grid-spawn .input-group select, .grid-spawn .input-group textarea { width: 100%; box-sizing: border-box; }
         
-        .leitor-glb { grid-column: 1 / -1; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; border: 1px dashed #f1c40f; display: flex; flex-direction: column; gap: 5px;}
+        .leitor-glb { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; border: 1px dashed #f1c40f; display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px;}
         
         .action-buttons { width: 100%; display: flex; justify-content: flex-end; margin-top: 10px; border-top: 1px dashed #444; padding-top: 10px;}
+        
+        /* Esconde campos extras de NPC por padrão */
+        .campo-missao, .campo-primario { display: none; }
     </style>
 </head>
 <body>
@@ -55,21 +67,89 @@
         <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos os Jogadores)</button>
     </div>
 
-    <div id="lista-inimigos"></div>
+    <div class="leitor-glb">
+        <label style="color: #f1c40f; font-size: 1rem;">🔍 Extrator de Animações (.GLB)</label>
+        <span style="font-size: 0.8rem; color: #ccc;">Selecione o arquivo .GLB do seu PC. O painel extrai as animações para usar nos Inimigos ou NPCs.</span>
+        <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; padding: 5px 0;">
+    </div>
+    <datalist id="lista-animacoes"></datalist>
 
-    <div class="painel-spawn">
-        <h2>🪄 Invocar Novo Inimigo (Customizado)</h2>
+    <h2 class="section-title">🗣️ TAVERNA DOS NPCs (Missões e Diálogos)</h2>
+    
+    <div id="lista-npcs"><p style="color: #7f8c8d;">Nenhum NPC no servidor.</p></div>
+
+    <div class="painel-spawn npc-spawn">
+        <h2>📜 Criar Novo NPC</h2>
         
         <div class="grid-spawn">
+            <div class="input-group">
+                <label>ID Único (ex: npc_ferreiro)</label>
+                <input type="text" id="npc-id" placeholder="ID sem espaço">
+            </div>
+            <div class="input-group">
+                <label>Nome de Exibição</label>
+                <input type="text" id="npc-nome" placeholder="ex: João, o Ferreiro">
+            </div>
+            <div class="input-group">
+                <label>Tipo de NPC</label>
+                <select id="npc-tipo" onchange="atualizarCamposNPC()">
+                    <option value="dialogo">Apenas Diálogo</option>
+                    <option value="secundaria">Missão Secundária</option>
+                    <option value="primaria">NPC Primário (História)</option>
+                </select>
+            </div>
             
-            <div class="leitor-glb">
-                <label style="color: #f1c40f; font-size: 1rem;">🔍 Extrair Animações (Opcional)</label>
-                <span style="font-size: 0.8rem; color: #ccc;">Selecione o arquivo .GLB do seu Windows. O painel vai ler o arquivo e criar uma lista suspensa com os nomes exatos das animações para você!</span>
-                <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; padding: 5px 0;">
+            <div class="input-group">
+                <label>Caminho do .GLB</label>
+                <input type="text" id="npc-glb" placeholder="Npcs/ferreiro.glb">
+            </div>
+            <div class="input-group">
+                <label>Anim. Parado</label>
+                <input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle">
+            </div>
+            <div class="input-group">
+                <label>Anim. Falando</label>
+                <input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk">
             </div>
 
-            <datalist id="lista-animacoes"></datalist>
+            <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
+            <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
+            <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
+            
+            <div class="input-group" style="grid-column: span 3;">
+                <label>Diálogo Padrão</label>
+                <textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea>
+            </div>
 
+            <div class="input-group campo-missao" style="grid-column: span 3;">
+                <label style="color:#f1c40f">Diálogo de Missão</label>
+                <textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea>
+            </div>
+            <div class="input-group campo-missao">
+                <label style="color:#f1c40f">ID da Missão Que Ele Dá</label>
+                <input type="text" id="npc-missao-id" placeholder="ex: quest_lobos">
+            </div>
+            <div class="input-group campo-missao">
+                <label style="color:#f1c40f">Chave de Conclusão (O que ele gera ao falar com ele)</label>
+                <input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao">
+            </div>
+
+            <div class="input-group campo-primario">
+                <label style="color:#e74c3c">Requisito P/ Falar/Missão</label>
+                <input type="text" id="npc-requisito" placeholder="ex: falei_renato">
+            </div>
+
+        </div>
+        <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">👥 COLOCAR NPC NO MAPA</button>
+    </div>
+
+    <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
+    
+    <div id="lista-inimigos"><p style="color: #7f8c8d;">Nenhum inimigo no servidor.</p></div>
+
+    <div class="painel-spawn">
+        <h2>🪄 Invocar Novo Inimigo (Hostil)</h2>
+        <div class="grid-spawn">
             <div class="input-group">
                 <label>ID Único (ex: orc_01)</label>
                 <input type="text" id="novo-id" placeholder="ID sem espaço">
@@ -84,10 +164,9 @@
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
             
             <div class="input-group">
-                <label>Caminho do .GLB (No GitHub)</label>
+                <label>Caminho do .GLB</label>
                 <input type="text" id="novo-glb-caminho" placeholder="Inimigos/novo.glb" value="Inimigos/atiradora.glb">
             </div>
-            
             <div class="input-group">
                 <label>Nome Anim. Parado</label>
                 <input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01">
@@ -105,7 +184,7 @@
             <div class="input-group"><label>Pos Y</label><input type="number" id="novo-y" value="0"></div>
             <div class="input-group"><label>Pos Z</label><input type="number" id="novo-z" value="-5"></div>
         </div>
-        <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR NO MAPA</button>
+        <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR INIMIGO</button>
     </div>
 </div>
 
@@ -117,14 +196,13 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        // Cria uma URL temporária do arquivo para o Three.js conseguir ler
         const urlTemporaria = URL.createObjectURL(file);
         const loader = new THREE.GLTFLoader();
         
         loader.load(urlTemporaria, function(gltf) {
             const animations = gltf.animations;
             const datalist = document.getElementById('lista-animacoes');
-            datalist.innerHTML = ''; // Limpa a lista antiga
+            datalist.innerHTML = '';
 
             if (animations && animations.length > 0) {
                 animations.forEach(anim => {
@@ -133,24 +211,37 @@
                     datalist.appendChild(option);
                 });
                 
-                // Limpa os campos de texto para forçar o usuário a escolher na nova lista
-                document.getElementById('novo-anim-parado').value = '';
-                document.getElementById('novo-anim-ataque').value = '';
-                document.getElementById('novo-anim-morte').value = '';
-                
-                alert(`✅ Sucesso! Encontramos ${animations.length} animações no arquivo "${file.name}". \n\nClique nos campos de "Nome Anim." para abrir a lista suspensa e escolher!`);
+                alert(`✅ Sucesso! Encontramos ${animations.length} animações no arquivo "${file.name}".`);
             } else {
                 alert('⚠️ Nenhuma animação foi encontrada dentro deste arquivo GLB.');
             }
             
-            // Sugere o caminho para o jogador (opcional, ele tem que garantir que enviou pro GitHub)
+            // Sugere caminhos
             document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+            document.getElementById('npc-glb').value = `Npcs/${file.name}`;
             
         }, undefined, function(error) {
             console.error(error);
             alert('❌ Erro ao ler o arquivo GLB. Ele pode estar corrompido.');
         });
     });
+
+    // Logica de Interface do Formulário de NPC
+    function atualizarCamposNPC() {
+        let tipo = document.getElementById('npc-tipo').value;
+        let camposMissao = document.querySelectorAll('.campo-missao');
+        let camposPrimario = document.querySelectorAll('.campo-primario');
+
+        camposMissao.forEach(el => el.style.display = 'none');
+        camposPrimario.forEach(el => el.style.display = 'none');
+
+        if (tipo === 'secundaria' || tipo === 'primaria') {
+            camposMissao.forEach(el => el.style.display = 'flex');
+        }
+        if (tipo === 'primaria') {
+            camposPrimario.forEach(el => el.style.display = 'flex');
+        }
+    }
 
 
     // ==========================================
@@ -168,126 +259,173 @@
     
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-    const listaDiv = document.getElementById('lista-inimigos');
     
     // ==========================================
-    // 3. RENDERIZA E GERENCIA OS INIMIGOS VIVOS
+    // 3. GERENCIAMENTO DOS INIMIGOS (HOSTIS)
     // ==========================================
+    const listaInimigosDiv = document.getElementById('lista-inimigos');
+    
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
-        let id = snapshot.key;
-        let inimigo = snapshot.val();
+        let id = snapshot.key; let inimigo = snapshot.val();
         if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
-
         let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
-        let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
+        let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO';
 
         let card = document.createElement('div');
-        card.className = 'card';
-        card.id = `card-${id}`;
+        card.className = 'card'; card.id = `card-ini-${id}`;
         card.innerHTML = `
-            <h3 id="titulo-${id}">👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
-            <div class="input-group"><label>HP Atual</label><input type="number" id="hp-${id}" value="${inimigo.hp}"></div>
-            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="x-${id}" value="${inimigo.pos.x.toFixed(2)}"></div>
-            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="y-${id}" value="${inimigo.pos.y.toFixed(2)}"></div>
-            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="z-${id}" value="${inimigo.pos.z.toFixed(2)}"></div>
+            <h3 id="titulo-ini-${id}">👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
+            <div class="input-group"><label>HP Atual</label><input type="number" id="hp-ini-${id}" value="${inimigo.hp}"></div>
+            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="x-ini-${id}" value="${inimigo.pos.x.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="y-ini-${id}" value="${inimigo.pos.y.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="z-ini-${id}" value="${inimigo.pos.z.toFixed(2)}"></div>
 
             <div class="action-buttons">
-                <button class="btn btn-green" onclick="salvarAlteracao('${id}')">💾 Atualizar/Teleportar</button>
-                <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill (Zerar HP)</button>
-                <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir Definitivo</button>
+                <button class="btn btn-green" onclick="salvarAlteracaoInimigo('${id}')">💾 Teleportar</button>
+                <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill</button>
+                <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir</button>
             </div>
         `;
-        listaDiv.appendChild(card);
+        listaInimigosDiv.appendChild(card);
     });
 
-    // Atualiza os inputs apenas se você não estiver digitando neles no momento
     db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
-        let id = snapshot.key;
-        let inimigo = snapshot.val();
-        if (!inimigo.pos) return;
-
+        let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo.pos) return;
         let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c';
-        let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO (Aguardando Respawn)';
-        
-        let titulo = document.getElementById(`titulo-${id}`);
-        if(titulo) titulo.innerHTML = `👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span>`;
+        let titulo = document.getElementById(`titulo-ini-${id}`);
+        if(titulo) titulo.innerHTML = `👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${inimigo.hp > 0 ? 'VIVO' : 'MORTO'})</span>`;
 
-        let hpInput = document.getElementById(`hp-${id}`);
-        let xInput = document.getElementById(`x-${id}`);
-        let yInput = document.getElementById(`y-${id}`);
-        let zInput = document.getElementById(`z-${id}`);
-
+        let hpInput = document.getElementById(`hp-ini-${id}`); let xInput = document.getElementById(`x-ini-${id}`); let yInput = document.getElementById(`y-ini-${id}`); let zInput = document.getElementById(`z-ini-${id}`);
         if (hpInput && document.activeElement !== hpInput) hpInput.value = inimigo.hp;
         if (xInput && document.activeElement !== xInput) xInput.value = inimigo.pos.x.toFixed(2);
         if (yInput && document.activeElement !== yInput) yInput.value = inimigo.pos.y.toFixed(2);
         if (zInput && document.activeElement !== zInput) zInput.value = inimigo.pos.z.toFixed(2);
     });
 
-    // Remove o card se você deletar o monstro
     db.ref('cenario_inimigos').on('child_removed', (snapshot) => {
-        let id = snapshot.key;
-        let card = document.getElementById(`card-${id}`);
+        let card = document.getElementById(`card-ini-${snapshot.key}`);
         if (card) card.remove();
     });
 
-    // ==========================================
-    // 4. FUNÇÕES DE ADMINISTRAÇÃO
-    // ==========================================
-    window.salvarAlteracao = function(id) {
-        let hp = parseFloat(document.getElementById(`hp-${id}`).value);
-        let x = parseFloat(document.getElementById(`x-${id}`).value);
-        let y = parseFloat(document.getElementById(`y-${id}`).value);
-        let z = parseFloat(document.getElementById(`z-${id}`).value);
-
+    window.salvarAlteracaoInimigo = function(id) {
         db.ref('cenario_inimigos/' + id).update({
-            hp: hp, pos: { x: x, y: y, z: z }
+            hp: parseFloat(document.getElementById(`hp-ini-${id}`).value),
+            pos: { x: parseFloat(document.getElementById(`x-ini-${id}`).value), y: parseFloat(document.getElementById(`y-ini-${id}`).value), z: parseFloat(document.getElementById(`z-ini-${id}`).value) }
         });
-        
         document.activeElement.blur(); 
     };
 
-    window.matarInimigo = function(id) {
-        db.ref('cenario_inimigos/' + id).update({ hp: 0, mortoEm: Date.now() });
-    };
-
-    window.excluirInimigo = function(id) {
-        if(confirm(`🚨 ATENÇÃO!\nTem certeza que deseja APAGAR o monstro "${id}" do banco de dados para sempre?`)) {
-            db.ref('cenario_inimigos/' + id).remove();
-        }
-    };
+    window.matarInimigo = function(id) { db.ref('cenario_inimigos/' + id).update({ hp: 0, mortoEm: Date.now() }); };
+    window.excluirInimigo = function(id) { if(confirm(`APAGAR o monstro ${id} para sempre?`)) db.ref('cenario_inimigos/' + id).remove(); };
 
     window.spawnarNovoInimigo = function() {
         let id = document.getElementById('novo-id').value;
-        let tipo = document.getElementById('novo-tipo').value;
-        let hp = parseFloat(document.getElementById('novo-hp').value);
-        let x = parseFloat(document.getElementById('novo-x').value);
-        let y = parseFloat(document.getElementById('novo-y').value);
-        let z = parseFloat(document.getElementById('novo-z').value);
+        if(!id) { alert("Digite um ID único!"); return; }
         
-        let glb = document.getElementById('novo-glb-caminho').value;
-        let animP = document.getElementById('novo-anim-parado').value;
-        let animA = document.getElementById('novo-anim-ataque').value;
-        let animM = document.getElementById('novo-anim-morte').value;
-
-        if(!id || id.trim() === "") { alert("Digite um ID único para o monstro!"); return; }
-
         db.ref('cenario_inimigos/' + id).set({
-            hpMax: hp,
-            hp: hp,
-            pos: { x: x, y: y, z: z },
-            rotY: 0,
-            tipo: tipo,
-            ultimoAtaque: 0,
-            mortoEm: null,
-            modeloGlb: glb,
-            animParado: animP,
-            animAtaque: animA,
-            animMorte: animM
+            hpMax: parseFloat(document.getElementById('novo-hp').value),
+            hp: parseFloat(document.getElementById('novo-hp').value),
+            pos: { x: parseFloat(document.getElementById('novo-x').value), y: parseFloat(document.getElementById('novo-y').value), z: parseFloat(document.getElementById('novo-z').value) },
+            rotY: 0, tipo: document.getElementById('novo-tipo').value, ultimoAtaque: 0, mortoEm: null,
+            modeloGlb: document.getElementById('novo-glb-caminho').value,
+            animParado: document.getElementById('novo-anim-parado').value,
+            animAtaque: document.getElementById('novo-anim-ataque').value,
+            animMorte: document.getElementById('novo-anim-morte').value
         });
-
-        alert(`Monstro ${id} invocado com sucesso no mapa!`);
+        alert(`Monstro ${id} invocado!`);
     };
 
+    // ==========================================
+    // 4. GERENCIAMENTO DOS NPCs (PACÍFICOS)
+    // ==========================================
+    const listaNpcsDiv = document.getElementById('lista-npcs');
+
+    db.ref('cenario_npcs').on('child_added', (snapshot) => {
+        let id = snapshot.key; let npc = snapshot.val();
+        if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
+
+        let card = document.createElement('div');
+        card.className = 'card npc-card'; card.id = `card-npc-${id}`;
+        
+        let tipoDisplay = npc.tipo === 'dialogo' ? '🗣️ Diálogo' : (npc.tipo === 'secundaria' ? '📜 Secundária' : '👑 Primária');
+
+        card.innerHTML = `
+            <h3 id="titulo-npc-${id}">🧑‍🌾 ${npc.nome || id} <span style="font-size: 0.8rem; color: #f1c40f;">(${tipoDisplay})</span></h3>
+            
+            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="x-npc-${id}" value="${npc.pos.x.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="y-npc-${id}" value="${npc.pos.y.toFixed(2)}"></div>
+            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="z-npc-${id}" value="${npc.pos.z.toFixed(2)}"></div>
+
+            <div class="action-buttons">
+                <button class="btn btn-blue" onclick="salvarAlteracaoNpc('${id}')">💾 Teleportar NPC</button>
+                <button class="btn btn-dark" onclick="excluirNpc('${id}')">🗑️ Excluir NPC</button>
+            </div>
+        `;
+        listaNpcsDiv.appendChild(card);
+    });
+
+    db.ref('cenario_npcs').on('child_changed', (snapshot) => {
+        let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) return;
+        let xInput = document.getElementById(`x-npc-${id}`); let yInput = document.getElementById(`y-npc-${id}`); let zInput = document.getElementById(`z-npc-${id}`);
+        if (xInput && document.activeElement !== xInput) xInput.value = npc.pos.x.toFixed(2);
+        if (yInput && document.activeElement !== yInput) yInput.value = npc.pos.y.toFixed(2);
+        if (zInput && document.activeElement !== zInput) zInput.value = npc.pos.z.toFixed(2);
+    });
+
+    db.ref('cenario_npcs').on('child_removed', (snapshot) => {
+        let card = document.getElementById(`card-npc-${snapshot.key}`);
+        if (card) card.remove();
+    });
+
+    window.salvarAlteracaoNpc = function(id) {
+        db.ref('cenario_npcs/' + id).update({
+            pos: { x: parseFloat(document.getElementById(`x-npc-${id}`).value), y: parseFloat(document.getElementById(`y-npc-${id}`).value), z: parseFloat(document.getElementById(`z-npc-${id}`).value) }
+        });
+        document.activeElement.blur(); 
+    };
+
+    window.excluirNpc = function(id) { if(confirm(`APAGAR o NPC ${id} para sempre?`)) db.ref('cenario_npcs/' + id).remove(); };
+
+    window.spawnarNovoNpc = function() {
+        let id = document.getElementById('npc-id').value;
+        if(!id) { alert("Digite um ID único para o NPC!"); return; }
+
+        let tipo = document.getElementById('npc-tipo').value;
+
+        let dadosNpc = {
+            nome: document.getElementById('npc-nome').value,
+            tipo: tipo,
+            pos: { 
+                x: parseFloat(document.getElementById('npc-x').value), 
+                y: parseFloat(document.getElementById('npc-y').value), 
+                z: parseFloat(document.getElementById('npc-z').value) 
+            },
+            rotY: 0,
+            modeloGlb: document.getElementById('npc-glb').value,
+            animParado: document.getElementById('npc-anim-parado').value,
+            animFalando: document.getElementById('npc-anim-falando').value,
+            dialogoPadrao: document.getElementById('npc-dialogo').value
+        };
+
+        // Adiciona campos de missão se não for apenas diálogo
+        if(tipo === 'secundaria' || tipo === 'primaria') {
+            dadosNpc.dialogoMissao = document.getElementById('npc-dialogo-missao').value;
+            dadosNpc.idMissao = document.getElementById('npc-missao-id').value;
+            dadosNpc.chaveConclusao = document.getElementById('npc-chave-conclusao').value;
+        }
+
+        // Adiciona requisito se for história primária
+        if(tipo === 'primaria') {
+            dadosNpc.requisito = document.getElementById('npc-requisito').value;
+        }
+
+        db.ref('cenario_npcs/' + id).set(dadosNpc);
+        alert(`NPC ${id} adicionado ao mundo!`);
+    };
+
+    // ==========================================
+    // 5. FUNÇÕES GLOBAIS
+    // ==========================================
     window.kickarTodos = function() {
         if(confirm("🚨 ALERTA MÁXIMO:\nIsso vai desconectar TODOS os jogadores instantaneamente do servidor. Tem certeza?")) {
             db.ref('players').remove();
