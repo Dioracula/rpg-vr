@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Motor Anti-Crash e Magias Restauradas)</title>
+    <title>RPG VR e PC - Versão Definitiva (Motor Anti-Crash e Anti T-Pose)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -25,6 +25,9 @@
     </style>
 
     <script>
+        // ==========================================
+        // SISTEMAS DE BLINDAGEM VISUAL
+        // ==========================================
         AFRAME.registerComponent('anti-piscar', {
             init: function() {
                 this.el.addEventListener('model-loaded', () => {
@@ -34,6 +37,9 @@
             }
         });
 
+        // ==========================================
+        // CONFIGURAÇÃO FIREBASE E GLOBAL
+        // ==========================================
         const firebaseConfig = {
              apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
              authDomain: "rpg-vr-online.firebaseapp.com",
@@ -49,13 +55,17 @@
         const firestoreDB = firebase.firestore();
         const realtimeDB = firebase.database();
 
-        window.GAME_MODE = 'NONE'; window.GAME_STARTED = false; window.currentUser = null; window.lastActionTime = Date.now();
+        window.GAME_MODE = 'NONE'; 
+        window.GAME_STARTED = false; 
+        window.currentUser = null; 
+        window.lastActionTime = Date.now();
         
         window.playerState = {
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5,
             hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
             armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5, chaves: {},
-            invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
+            invulneravel: false,
+            ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
         };
 
         window.receberDanoJogador = function(danoBase) {
@@ -67,17 +77,14 @@
             window.playerState.hpAtual -= danoFinal; 
             
             let danoTela = document.querySelector('#dano-tela'); 
-            if(danoTela) { 
-                danoTela.setAttribute('visible', 'true'); 
-                setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); 
-            } 
+            if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); } 
             
             atualizarUI(); 
             
             if (window.playerState.hpAtual <= 0) { 
-                window.playerState.vivo = false; window.playerState.hpAtual = 0; 
-                let rig = document.querySelector('#rig'); 
-                if (rig) rig.setAttribute('movement-controls', 'speed', 0);
+                window.playerState.vivo = false; 
+                window.playerState.hpAtual = 0; 
+                let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 atualizarUI(); 
                 
                 let aviso = document.querySelector('#texto-central'); 
@@ -85,12 +92,12 @@
                     aviso.setAttribute('color', '#ff0000'); 
                     aviso.setAttribute('visible', 'true'); 
                     let tempoRespawn = 5; 
-                    aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
+                    aviso.setAttribute('value', `VOCE MORREU!\nRespawn em ${tempoRespawn}...`);
                     
                     let respawnInterval = setInterval(() => {
                         tempoRespawn--;
                         if (tempoRespawn > 0) { 
-                            if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...'); 
+                            if(aviso) aviso.setAttribute('value', `VOCE MORREU!\nRespawn em ${tempoRespawn}...`); 
                         } else {
                             clearInterval(respawnInterval); 
                             window.playerState.vivo = true; window.playerState.hpAtual = window.playerState.hpMax; window.playerState.invulneravel = true; 
@@ -101,7 +108,7 @@
                                 let respY = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.y : 0;
                                 let respZ = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.z : 0;
                                 let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
-                                rig.object3D.position.set(respX + Math.cos(anguloRandom)*raioRandom, respY, respZ + Math.sin(anguloRandom)*raioRandom); 
+                                rig.setAttribute('position', `${respX + Math.cos(anguloRandom)*raioRandom} ${respY} ${respZ + Math.sin(anguloRandom)*raioRandom}`); 
                                 setTimeout(() => { if(rig) rig.setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); }, 50);
                             }
                             
@@ -125,6 +132,79 @@
             }
         };
 
+        // ==========================================
+        // PROJÉTEIS FÍSICOS RESTAURADOS
+        // ==========================================
+        AFRAME.registerComponent('projetil-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () {
+                this.gravidade = new THREE.Vector3(0, -9.8, 0);
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
+            },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0) return;
+                this.vel.add(this.gravidade.clone().multiplyScalar(dt));
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+                this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel));
+                this.el.object3D.rotateX(Math.PI / 2);
+
+                if (this.el.object3D.position.y < 0) {
+                    this.el.removeAttribute('projetil-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                    return;
+                }
+
+                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
+                for (let i = 0; i < inimigosAtuais.length; i++) {
+                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue;
+                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
+                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
+                    let boxInimigo = new THREE.Box3();
+                    let colisorNode = inimigo.querySelector('.colisao-inimigo');
+                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
+                    else { boxInimigo.setFromObject(inimigo.object3D); }
+
+                    if (boxProj.intersectsBox(boxInimigo)) {
+                        syncComp.receberDano(this.data.dano, 'Arco');
+                        if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                        break;
+                    }
+                }
+            }
+        });
+        
+        AFRAME.registerComponent('projetil-inimigo-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () {
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
+                this.camera = document.querySelector('[camera]');
+            },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return;
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+
+                if (this.el.object3D.position.y < -1) {
+                    this.el.removeAttribute('projetil-inimigo-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                    return;
+                }
+
+                if(!this.camera) return;
+                let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer);
+                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+
+                if (posProj.distanceTo(posPlayer) < 2.0) {
+                    if (this.el.dataset.defletido === "true") return;
+                    window.receberDanoJogador(this.data.dano);
+                    this.el.removeAttribute('projetil-inimigo-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                }
+            }
+        });
+
+        // ==========================================
+        // SISTEMA MULTIPLAYER E AFK
+        // ==========================================
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
                 this.db = realtimeDB; this.playersRef = this.db.ref('players'); 
@@ -135,19 +215,21 @@
                 this.playersRef.on('child_added', (snapshot) => {
                     let id = snapshot.key; if (id === this.myId) return; 
                     let data = snapshot.val(); 
+                    
                     let avatar = document.createElement('a-entity');
-                    this.cena.appendChild(avatar); 
-                    avatar.setAttribute('position', data.position || {x:0, y:0, z:0}); 
-                    avatar.setAttribute('rotation', data.rotation || {x:0, y:0, z:0});
                     avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                     avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
                     
-                    let conteudoAvatar = '<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0">';
-                    conteudoAvatar += '<a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box>';
-                    conteudoAvatar += '<a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box>';
-                    conteudoAvatar += '<a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder>';
-                    conteudoAvatar += '<a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>';
-                    avatar.innerHTML = conteudoAvatar;
+                    let pos = data.position || {x:0, y:0, z:0};
+                    avatar.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+                    
+                    let rot = data.rotation || {x:0, y:0, z:0};
+                    avatar.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`);
+
+                    let html = `<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>`;
+                    avatar.innerHTML = html;
+                    
+                    this.cena.appendChild(avatar); 
                     this.otherPlayers[id] = avatar;
                 });
 
@@ -157,12 +239,12 @@
                     if (avatar && data) { 
                         avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                         avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                        avatar.setAttribute('animation__pos', 'property: position; to: ' + data.position.x + ' ' + data.position.y + ' ' + data.position.z + '; dur: 100; easing: linear'); 
-                        avatar.setAttribute('animation__rot', 'property: rotation; to: ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z + '; dur: 100; easing: linear'); 
+                        avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x} ${data.position.y} ${data.position.z}; dur: 100; easing: linear`); 
+                        avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x} ${data.rotation.y} ${data.rotation.z}; dur: 100; easing: linear`); 
                     }
                 });
 
-                this.playersRef.on('child_removed', (snapshot) => { let id = snapshot.key; let avatar = this.otherPlayers[id]; if (avatar) { avatar.parentNode.removeChild(avatar); delete this.otherPlayers[id]; } });
+                this.playersRef.on('child_removed', (snapshot) => { let id = snapshot.key; let avatar = this.otherPlayers[id]; if (avatar && avatar.parentNode) { avatar.parentNode.removeChild(avatar); delete this.otherPlayers[id]; } });
                 this.playersRef.on('value', (snapshot) => { let total = snapshot.numChildren(); let contadorHUD = document.querySelector('#contador-online'); if(contadorHUD) contadorHUD.setAttribute('value', 'Online: ' + total); });
                 
                 this.lastSyncTime = 0; this.cameraObj = document.querySelector('[camera]');
@@ -179,7 +261,7 @@
             }
         });
 
-        window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
+        window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio && audio.src) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
 
         document.addEventListener('DOMContentLoaded', () => { 
             document.body.classList.add('menu-aberto');
@@ -237,13 +319,17 @@
         
         window.salvarJogoNuvem = function() { if (!window.currentUser || window.currentUser.uid === 'test_user_local') return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).then(() => console.log("Salvo na nuvem!")).catch(e => console.error(e)); };
 
+        // ==========================================
+        // BANCOS E FÍSICA
+        // ==========================================
         window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; 
         window.ANIM_ANDANDO = 'chr784_armature|chr784_br01';
         window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         
-        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
+        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
+        window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, durabilidadeMax: Infinity, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -262,18 +348,30 @@
             let elsHtml = ['#txt-nivel-hud', '#txt-status-hud', '#hp-wrapper', '#mp-wrapper', '#txt-arma-hud', '#rig', '#attr-nivel-classe', '#attr-hp-txt', '#attr-mp-txt', '#attr-hpmax', '#attr-mpmax', '#attr-atk', '#attr-def', '#attr-agi', '#attr-exp', '#attr-nextexp', '#attr-pts', '#inv-total-forca', '#inv-total-defesa', '#inv-total-ouro', '#tt-flechas', '#tt-shurikens', '#attr-slot-1', '#attr-slot-2']; 
             for(let i=0; i<elsHtml.length; i++) { if(!document.querySelector(elsHtml[i])) return; } 
             
-            document.querySelector('#txt-nivel-hud').setAttribute('value', 'Nivel: ' + window.playerState.nivel + ' | XP: ' + window.playerState.xp + '/' + window.playerState.xpProxNivel); 
-            document.querySelector('#txt-status-hud').setAttribute('value', 'HP: ' + window.playerState.hpAtual + '/' + window.playerState.hpMax + '   |   MP: ' + window.playerState.mpAtual + '/' + window.playerState.mpMax); 
-            let hpScale = Math.max(0, window.playerState.hpAtual / window.playerState.hpMax); document.querySelector('#hp-wrapper').setAttribute('scale', hpScale + ' 1 1'); 
-            let mpScale = Math.max(0, window.playerState.mpAtual / window.playerState.mpMax); document.querySelector('#mp-wrapper').setAttribute('scale', mpScale + ' 1 1'); 
-            document.querySelector('#txt-arma-hud').setAttribute('value', 'Equipado: ' + window.playerState.armaEquipada + (window.playerState.escudoEquipado ? ' + Escudo' : '')); 
+            document.querySelector('#txt-nivel-hud').setAttribute('value', `Nivel: ${window.playerState.nivel} | XP: ${window.playerState.xp}/${window.playerState.xpProxNivel}`); 
+            document.querySelector('#txt-status-hud').setAttribute('value', `HP: ${window.playerState.hpAtual}/${window.playerState.hpMax}   |   MP: ${window.playerState.mpAtual}/${window.playerState.mpMax}`); 
+            let hpScale = Math.max(0, window.playerState.hpAtual / window.playerState.hpMax); document.querySelector('#hp-wrapper').setAttribute('scale', `${hpScale} 1 1`); 
+            let mpScale = Math.max(0, window.playerState.mpAtual / window.playerState.mpMax); document.querySelector('#mp-wrapper').setAttribute('scale', `${mpScale} 1 1`); 
+            document.querySelector('#txt-arma-hud').setAttribute('value', `Equipado: ${window.playerState.armaEquipada}${window.playerState.escudoEquipado ? ' + Escudo' : ''}`); 
             document.querySelector('#rig').setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); 
             
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; 
             let forcaTotal = window.playerState.forca + (armaStats ? armaStats.danoBonus : 0); 
             let defesaTotal = window.playerState.defesa + (armaStats ? armaStats.defesaBonus : 0) + (window.playerState.escudoEquipado ? 5 : 0); 
             
-            let els = { '#attr-nivel-classe': 'Lv ' + window.playerState.nivel + ' Aventureiro', '#attr-hp-txt': 'HP: ' + window.playerState.hpAtual + '/' + window.playerState.hpMax, '#attr-mp-txt': 'MP: ' + window.playerState.mpAtual + '/' + window.playerState.mpMax, '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, '#attr-slot-1': window.playerState.armaEquipada }; 
+            let els = { 
+                '#attr-nivel-classe': `Lv ${window.playerState.nivel} Aventureiro`, 
+                '#attr-hp-txt': `HP: ${window.playerState.hpAtual}/${window.playerState.hpMax}`, 
+                '#attr-mp-txt': `MP: ${window.playerState.mpAtual}/${window.playerState.mpMax}`, 
+                '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, 
+                '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, 
+                '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, 
+                '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, 
+                '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, 
+                '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, 
+                '#attr-slot-1': window.playerState.armaEquipada 
+            }; 
+            
             for(let id in els) { let e = document.querySelector(id); if(e) e.setAttribute('value', els[id]); } 
             
             let elSlot2 = document.querySelector('#attr-slot-2'); 
@@ -293,22 +391,22 @@
             
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats) return; 
             
-            if (armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerDir.innerHTML = '<a-entity gltf-model="' + armaStats.modeloGlb + '" scale="' + armaStats.escalaMao + '" rotation="' + armaStats.rotMao + '" position="' + armaStats.posMao + '" anti-piscar></a-entity>'; } 
+            if (armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerDir.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}" anti-piscar></a-entity>`; } 
             else if (armaStats.visualDir) { containerDir.innerHTML = armaStats.visualDir; }
             
             if (armaStats.visualEsq && armaStats.visualEsq !== 'ARCO_ESPECIAL') { 
-                if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerEsq.innerHTML = '<a-entity gltf-model="' + armaStats.modeloGlb + '" scale="' + armaStats.escalaMao + '" rotation="' + armaStats.rotMao + '" position="' + armaStats.posMao + '" anti-piscar></a-entity>'; } 
+                if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}" anti-piscar></a-entity>`; } 
                 else { containerEsq.innerHTML = armaStats.visualEsq; }
             } 
             
             if (armaStats.categoria === 'Arco') { 
-                if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerEsq.innerHTML = '<a-entity gltf-model="' + armaStats.modeloGlb + '" scale="' + armaStats.escalaMao + '" rotation="' + armaStats.rotMao + '" position="' + armaStats.posMao + '" anti-piscar></a-entity>'; } 
-                else { let rot = window.CONFIG_ARCO; containerEsq.innerHTML = '<a-entity rotation="' + rot.rotX + ' ' + rot.rotY + ' ' + rot.rotZ + '"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>'; } 
+                if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { containerEsq.innerHTML = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao}" rotation="${armaStats.rotMao}" position="${armaStats.posMao}" anti-piscar></a-entity>`; } 
+                else { let rot = window.CONFIG_ARCO; containerEsq.innerHTML = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`; } 
             } 
             
             if (window.playerState.escudoEquipado && armaStats.categoria !== 'Arco') { 
-                if(window.CONFIG_ESCUDO.modeloGlb && window.CONFIG_ESCUDO.modeloGlb !== '') { containerEsq.innerHTML += '<a-entity gltf-model="' + window.CONFIG_ESCUDO.modeloGlb + '" scale="' + window.CONFIG_ESCUDO.escalaMao + '" rotation="' + window.CONFIG_ESCUDO.rotMao + '" position="' + window.CONFIG_ESCUDO.posMao + '" anti-piscar></a-entity>'; } 
-                else { containerEsq.innerHTML += '<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>'; }
+                if(window.CONFIG_ESCUDO.modeloGlb && window.CONFIG_ESCUDO.modeloGlb !== '') { containerEsq.innerHTML += `<a-entity gltf-model="${window.CONFIG_ESCUDO.modeloGlb}" scale="${window.CONFIG_ESCUDO.escalaMao}" rotation="${window.CONFIG_ESCUDO.rotMao}" position="${window.CONFIG_ESCUDO.posMao}" anti-piscar></a-entity>`; } 
+                else { containerEsq.innerHTML += `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; }
             } 
             
             if(containerPC) containerPC.innerHTML = containerDir.innerHTML; if(escudoPC) escudoPC.innerHTML = containerEsq.innerHTML; 
@@ -318,12 +416,7 @@
             init: function() {
                 let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
                 window.addEventListener('contextmenu', e => e.preventDefault());
-                window.addEventListener('keydown', (e) => { 
-                    if (!window.GAME_STARTED) return; 
-                    if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); } 
-                    if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); } 
-                    if (e.key.toLowerCase() === 'q' && window.GAME_MODE === 'PC') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } 
-                });
+                window.addEventListener('keydown', (e) => { if (!window.GAME_STARTED) return; if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); } if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); } if (e.key.toLowerCase() === 'q' && window.GAME_MODE === 'PC') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } });
 
                 window.addEventListener('mousedown', (e) => {
                     if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo) return;
@@ -353,75 +446,6 @@
         });
 
         // ==========================================
-        // PROJÉTEIS (ARCO E MAGIA) RESTAURADOS
-        // ==========================================
-        AFRAME.registerComponent('projetil-fisico', { 
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, 
-            init: function () { 
-                this.gravidade = new THREE.Vector3(0, -9.8, 0); 
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
-            }, 
-            tick: function (time, timeDelta) { 
-                let dt = timeDelta / 1000; if (dt === 0) return; 
-                this.vel.add(this.gravidade.clone().multiplyScalar(dt)); 
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); 
-                this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); 
-                this.el.object3D.rotateX(Math.PI / 2); 
-                
-                if (this.el.object3D.position.y < 0) { 
-                    this.el.removeAttribute('projetil-fisico'); 
-                    setTimeout(() => { if(this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 200); 
-                } 
-                
-                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]'); 
-                for (let i = 0; i < inimigosAtuais.length; i++) { 
-                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue; 
-                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true); 
-                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D); 
-                    let boxInimigo = new THREE.Box3(); 
-                    let colisorNode = inimigo.querySelector('.colisao-inimigo'); 
-                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } 
-                    else { boxInimigo.setFromObject(inimigo.object3D); } 
-                    
-                    if (boxProj.intersectsBox(boxInimigo)) { 
-                        syncComp.receberDano(this.data.dano, 'Arco'); 
-                        if(this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el); 
-                        break;
-                    } 
-                } 
-            } 
-        });
-        
-        AFRAME.registerComponent('projetil-inimigo-fisico', { 
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} }, 
-            init: function () { 
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
-                this.camera = document.querySelector('[camera]'); 
-            }, 
-            tick: function (time, timeDelta) { 
-                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; 
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); 
-                
-                if (this.el.object3D.position.y < -1) { 
-                    this.el.removeAttribute('projetil-inimigo-fisico'); 
-                    if(this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el); 
-                    return; 
-                } 
-                
-                if(!this.camera) return;
-                let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); 
-                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj); 
-                
-                if (posProj.distanceTo(posPlayer) < 2.0) { 
-                    if (this.el.dataset.defletido === "true") return; 
-                    window.receberDanoJogador(this.data.dano); 
-                    this.el.removeAttribute('projetil-inimigo-fisico'); 
-                    if(this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el); 
-                } 
-            } 
-        });
-
-        // ==========================================
         // GERENCIADOR DE RESPAWNS BLINDADO
         // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
@@ -432,19 +456,19 @@
                 this.db.ref('cenario_respawns').on('child_added', (snap) => {
                     let id = snap.key; let r = snap.val(); this.respawns[id] = r;
                     let el = document.createElement('a-entity'); 
-                    this.el.appendChild(el); 
                     el.dataset.respId = id;
-                    el.setAttribute('position', r.pos.x + ' ' + r.pos.y + ' ' + r.pos.z);
+                    el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`);
                     
                     let rRaio = r.raio || 3;
-                    el.innerHTML = '<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="' + rRaio + '" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>';
+                    el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`;
+                    this.el.appendChild(el); 
                 });
 
                 this.db.ref('cenario_respawns').on('child_changed', (snap) => {
                     let id = snap.key; let r = snap.val(); this.respawns[id] = r;
                     let el = document.querySelector(`[data-resp-id="${id}"]`);
                     if(el) { 
-                        el.setAttribute('position', r.pos.x + ' ' + r.pos.y + ' ' + r.pos.z); 
+                        el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); 
                         let cyl = el.querySelector('a-cylinder'); 
                         if(cyl) cyl.setAttribute('radius', r.raio || 3); 
                     }
@@ -453,7 +477,7 @@
                 this.db.ref('cenario_respawns').on('child_removed', (snap) => {
                     delete this.respawns[snap.key]; 
                     let el = document.querySelector(`[data-resp-id="${snap.key}"]`); 
-                    if(el) el.remove();
+                    if(el && el.parentNode) el.parentNode.removeChild(el);
                 });
             },
             tick: function() {
@@ -507,7 +531,11 @@
                     if (this.animacaoAtual !== nomeAnimacaoFinal) {
                         this.animacaoAtual = nomeAnimacaoFinal;
                         visual.removeAttribute('animation-mixer'); 
-                        setTimeout(() => { if(visual) visual.setAttribute('animation-mixer', 'clip: ' + nomeAnimacaoFinal + '; loop: ' + loopState + '; crossFadeDuration: 0.2; clampWhenFinished: ' + clamp); }, 20); 
+                        setTimeout(() => { 
+                            if(visual && visual.parentNode) {
+                                visual.setAttribute('animation-mixer', `clip: ${nomeAnimacaoFinal}; loop: ${loopState}; crossFadeDuration: 0.2; clampWhenFinished: ${clamp}`); 
+                            }
+                        }, 20); 
                     }
                 }
             },
@@ -521,7 +549,10 @@
                 this.isAttacking = false;
                 this.animacaoAtual = "";
 
-                setTimeout(() => { this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); }, 500);
+                // ESPERA O MODELO CARREGAR PARA TOCAR ANIMAÇÃO (FIM DO T-POSE)
+                this.el.addEventListener('model-loaded', () => {
+                    this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                });
 
                 this.dbRef = realtimeDB.ref('cenario_inimigos/' + this.data.idBd);
                 this.ultimoTempoTiro = 0; this.ultimoTempoMelee = 0; this.dadosBD = null;
@@ -573,7 +604,7 @@
                         if(textoHp) { textoHp.setAttribute('value', 'HP: ' + this.hpAtual); textoHp.setAttribute('color', '#FFF'); }
                         this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     } else if (tomouDano) {
-                        if(textoHp) textoHp.setAttribute('value', 'HP: ' + this.hpAtual); 
+                        if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
                         let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); let obj3D = v ? v.getObject3D('mesh') : null;
                         if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
                         
@@ -581,7 +612,7 @@
                             this.tocarAnimacao(window.ANIM_DANO, 'once'); 
                             setTimeout(() => { if (this.hpAtual > 0 && !this.isAttacking) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 600);
                         }
-                    } else if (!estavaMorto && data.hp > 0) { if(textoHp) textoHp.setAttribute('value', 'HP: ' + this.hpAtual); }
+                    } else if (!estavaMorto && data.hp > 0) { if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); }
                 });
 
                 this.receberDano = (dano, tipoCategoria = '') => { 
@@ -594,7 +625,7 @@
                         if (committed && snapshot.val() === 0) {
                             this.hpAtual = 0; window.playerState.xp += this.data.xpDrop; 
                             let textoHp = this.el.querySelector('.hp-texto');
-                            if(textoHp) { textoHp.setAttribute('value', '+ ' + this.data.xpDrop + ' XP!'); textoHp.setAttribute('color', '#00ff00'); }
+                            if(textoHp) { textoHp.setAttribute('value', `+ ${this.data.xpDrop} XP!`); textoHp.setAttribute('color', '#00ff00'); }
                             this.el.classList.remove('interativo');
                             
                             if (window.playerState.xp >= window.playerState.xpProxNivel) { 
@@ -637,18 +668,24 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
-                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) { this.db.ref('cenario_inimigos/' + id).remove(); return; }
+                    // ESCUDO ANTI-ZUMBI: Se não tiver HP, deleta o fantasma e NÃO desenha!
+                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) {
+                        this.db.ref('cenario_inimigos/' + id).remove(); 
+                        return;
+                    }
+
                     if (document.querySelector(`[data-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
-                    this.el.appendChild(el); 
                     el.dataset.id = id;
+                    
+                    // POSIÇÃO DEVE SER SETADA ANTES DE COLAR NA CENA
+                    if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
                     
                     let xpDrop = data.tipo === 'atirador' ? 50 : 20;
                     let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
                     
-                    el.setAttribute('sistema-inimigo-sync', 'idBd: ' + id + '; hpMax: ' + (data.hpMax || 50) + '; tipo: ' + (data.tipo || 'meelee') + '; xpDrop: ' + xpDrop);
-                    if (data.pos) el.object3D.position.set(data.pos.x, data.pos.y, data.pos.z);
+                    el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`);
                     el.setAttribute('shadow', '');
 
                     let holograma = document.createElement('a-box'); 
@@ -658,13 +695,13 @@
                     let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad'; 
                     let fallback = document.createElement('a-entity'); 
                     el.appendChild(fallback); 
-                    fallback.innerHTML = '<a-box class="inimigo-fallback" color="' + fallbackColor + '" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>'; 
+                    fallback.innerHTML = `<a-box class="inimigo-fallback" color="${fallbackColor}" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; 
                     fallback.setAttribute('visible', 'false'); 
 
                     let visual = document.createElement('a-entity'); 
                     el.appendChild(visual);
                     visual.classList.add('modelo-visual');
-                    visual.setAttribute('scale', escX + ' ' + escY + ' ' + escZ);
+                    visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
                     visual.dataset.currentModel = modelSrc;
@@ -678,7 +715,10 @@
 
                     let infos = document.createElement('a-entity');
                     el.appendChild(infos);
-                    infos.innerHTML = '<a-text class="hp-texto" value="HP: ' + data.hp + '" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0"></a-cylinder>';
+                    infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0"></a-cylinder>`;
+                    
+                    // COLA NA CENA NO FINAL (FIM DOS CRASHES DE RENDER)
+                    this.el.appendChild(el); 
                 });
 
                 this.db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
@@ -690,7 +730,7 @@
                         let visual = el.querySelector('.modelo-visual');
                         if (visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
-                            visual.setAttribute('scale', escX + ' ' + escY + ' ' + escZ);
+                            visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
                             if (visual.dataset.currentModel !== newModel) {
@@ -716,9 +756,8 @@
                     if (!data || document.querySelector(`[data-npc-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
-                    this.el.appendChild(el); 
                     el.dataset.npcId = id;
-                    if (data.pos) el.setAttribute('position', data.pos.x + ' ' + data.pos.y + ' ' + data.pos.z);
+                    if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
                     el.setAttribute('shadow', '');
 
                     let colisor = document.createElement('a-cylinder'); 
@@ -732,13 +771,13 @@
                     
                     let fallback = document.createElement('a-entity'); 
                     el.appendChild(fallback);
-                    fallback.innerHTML = '<a-cylinder color="#3498db" radius="0.3" height="1.6" position="0 0.8 0"></a-cylinder><a-sphere color="#f1c40f" radius="0.25" position="0 1.8 0"></a-sphere>'; 
+                    fallback.innerHTML = `<a-cylinder color="#3498db" radius="0.3" height="1.6" position="0 0.8 0"></a-cylinder><a-sphere color="#f1c40f" radius="0.25" position="0 1.8 0"></a-sphere>`; 
 
                     let visual = document.createElement('a-entity'); 
                     el.appendChild(visual);
                     visual.classList.add('modelo-visual');
                     let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
-                    visual.setAttribute('scale', escX + ' ' + escY + ' ' + escZ);
+                    visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '';
                     visual.dataset.currentModel = modelSrc;
@@ -747,22 +786,24 @@
                         visual.setAttribute('gltf-model', modelSrc);
                         visual.setAttribute('anti-piscar', '');
                         visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
-                        visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.innerHTML = '<a-cylinder color="#e74c3c" radius="0.4" height="1.8" position="0 0.9 0" opacity="0.8"></a-cylinder>'; fallback.setAttribute('visible', 'true'); });
+                        visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.innerHTML = `<a-cylinder color="#e74c3c" radius="0.4" height="1.8" position="0 0.9 0" opacity="0.8"></a-cylinder>`; fallback.setAttribute('visible', 'true'); });
                     }
 
                     let nomeTag = document.createElement('a-text'); 
                     el.appendChild(nomeTag);
                     nomeTag.setAttribute('value', data.nome || 'NPC'); nomeTag.setAttribute('align', 'center'); nomeTag.setAttribute('position', '0 2.4 0'); nomeTag.setAttribute('color', '#f1c40f'); nomeTag.setAttribute('scale', '0.6 0.6 0.6'); nomeTag.setAttribute('side', 'double'); 
+                    
+                    this.el.appendChild(el);
                 });
 
                 this.db.ref('cenario_npcs').on('child_changed', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val(); let el = document.querySelector(`[data-npc-id="${id}"]`);
                     if (el) {
-                        el.setAttribute('position', data.pos.x + ' ' + data.pos.y + ' ' + data.pos.z);
+                        el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
                         let visual = el.querySelector('.modelo-visual');
                         if(visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
-                            visual.setAttribute('scale', escX + ' ' + escY + ' ' + escZ);
+                            visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '';
                             if (visual.dataset.currentModel !== newModel) {
@@ -786,11 +827,14 @@
                     let visual = this.el.parentNode.querySelector('.modelo-visual');
                     if (visual && visual.hasAttribute('gltf-model')) {
                         visual.removeAttribute('animation-mixer');
-                        setTimeout(() => { if(visual) visual.setAttribute('animation-mixer', 'clip: ' + nomeAnimacao + '; loop: repeat; crossFadeDuration: 0.2'); }, 20);
+                        setTimeout(() => { if(visual && visual.parentNode) visual.setAttribute('animation-mixer', `clip: ${nomeAnimacao}; loop: repeat; crossFadeDuration: 0.2`); }, 20);
                     }
                 };
 
-                setTimeout(() => { if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado); }, 500);
+                // AGUARDA MODELO CARREGAR PARA TOCAR ANIMAÇÃO! (FIM DO T-POSE DE NPC)
+                this.el.parentNode.addEventListener('model-loaded', () => {
+                    if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado);
+                });
 
                 this.el.addEventListener('click', () => {
                     if (!window.GAME_STARTED || !window.playerState.vivo) return;
@@ -826,8 +870,8 @@
             }
         });
         
-        AFRAME.registerComponent('gerador-inventario', { init: function () { let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); let gridContainer = document.querySelector('#inv-grid-container'); let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; for (let i = 0; i < 18; i++) { let col = i % cols; let row = Math.floor(i / cols); let slot = document.createElement('a-box'); slot.setAttribute('position', (startX + (col * gap)) + ' ' + (startY - (row * gap)) + ' 0.02'); slot.setAttribute('width', '0.25'); slot.setAttribute('height', '0.25'); slot.setAttribute('depth', '0.02'); slot.setAttribute('color', '#2b1b12'); let borda = document.createElement('a-plane'); borda.setAttribute('width', '0.23'); borda.setAttribute('height', '0.23'); borda.setAttribute('color', '#f19e20'); borda.setAttribute('position', '0 0 0.011'); let fundoCentro = document.createElement('a-plane'); fundoCentro.setAttribute('width', '0.21'); fundoCentro.setAttribute('height', '0.21'); fundoCentro.setAttribute('color', '#1e110b'); fundoCentro.setAttribute('position', '0 0 0.012'); slot.appendChild(borda); slot.appendChild(fundoCentro); if (i < listaArmas.length) { let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; slot.classList.add('interativo'); slot.setAttribute('slot-interativo', 'item: ' + nomeArma); if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { let miniatura = document.createElement('a-entity'); gridContainer.appendChild(slot); slot.appendChild(miniatura); miniatura.setAttribute('gltf-model', armaStats.modeloGlb); miniatura.setAttribute('scale', armaStats.escalaInv); miniatura.setAttribute('rotation', armaStats.rotInv); miniatura.setAttribute('position', armaStats.posInv);  } else { let txtNome = document.createElement('a-text'); txtNome.setAttribute('value', nomeArma); txtNome.setAttribute('align', 'center'); txtNome.setAttribute('width', '1'); txtNome.setAttribute('position', '0 0 0.02'); txtNome.setAttribute('color', '#FFF'); gridContainer.appendChild(slot); slot.appendChild(txtNome); } } else { gridContainer.appendChild(slot); } } } });
-        AFRAME.registerComponent('slot-interativo', { schema: { item: {type: 'string'} }, init: function() { let painelTooltip = document.querySelector('#inv-tooltip'); let txtNome = document.querySelector('#tt-nome'); let txtForca = document.querySelector('#tt-forca'); let txtDefesa = document.querySelector('#tt-defesa'); let boxEquipar = document.querySelector('#tt-acao'); this.el.addEventListener('mouseenter', () => { this.el.children[0].setAttribute('color', '#FFD700'); let itemAlvo = window.bancoDeArmas[this.data.item]; let itemEquipado = window.bancoDeArmas[window.playerState.armaEquipada]; if(!itemAlvo) return; let diffForca = itemAlvo.danoBonus - itemEquipado.danoBonus; let diffDefesa = itemAlvo.defesaBonus - itemEquipado.defesaBonus; if(painelTooltip) painelTooltip.setAttribute('visible', 'true'); if(txtNome) txtNome.setAttribute('value', this.data.item); if(txtForca) { txtForca.setAttribute('value', 'Dano Item: ' + itemAlvo.danoBonus + (diffForca !== 0 ? (diffForca>0?' (+'+diffForca+')':' ('+diffForca+')') : '')); txtForca.setAttribute('color', diffForca>0?'#00FF00':(diffForca<0?'#FF4444':'#FFF')); } if(txtDefesa) { txtDefesa.setAttribute('value', 'Defesa Item: ' + itemAlvo.defesaBonus + (diffDefesa !== 0 ? (diffDefesa>0?' (+'+diffDefesa+')':' ('+diffDefesa+')') : '')); txtDefesa.setAttribute('color', diffDefesa>0?'#00FF00':(diffDefesa<0?'#FF4444':'#FFF')); } if(boxEquipar) { boxEquipar.setAttribute('value', window.playerState.armaEquipada === this.data.item ? 'EQUIPADO' : '[Gatilho/PC] Equipar'); boxEquipar.setAttribute('color', window.playerState.armaEquipada === this.data.item ? '#FFD700' : '#FFF'); } }); this.el.addEventListener('mouseleave', () => { this.el.children[0].setAttribute('color', '#f19e20'); if(painelTooltip) painelTooltip.setAttribute('visible', 'false'); }); this.el.addEventListener('click', () => { window.playerState.armaEquipada = this.data.item; atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', this.data.item + ' Equipado!'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1000); } }); } });
+        AFRAME.registerComponent('gerador-inventario', { init: function () { let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); let gridContainer = document.querySelector('#inv-grid-container'); let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; for (let i = 0; i < 18; i++) { let col = i % cols; let row = Math.floor(i / cols); let slot = document.createElement('a-box'); slot.setAttribute('position', `${startX + (col * gap)} ${startY - (row * gap)} 0.02`); slot.setAttribute('width', '0.25'); slot.setAttribute('height', '0.25'); slot.setAttribute('depth', '0.02'); slot.setAttribute('color', '#2b1b12'); let borda = document.createElement('a-plane'); borda.setAttribute('width', '0.23'); borda.setAttribute('height', '0.23'); borda.setAttribute('color', '#f19e20'); borda.setAttribute('position', '0 0 0.011'); let fundoCentro = document.createElement('a-plane'); fundoCentro.setAttribute('width', '0.21'); fundoCentro.setAttribute('height', '0.21'); fundoCentro.setAttribute('color', '#1e110b'); fundoCentro.setAttribute('position', '0 0 0.012'); slot.appendChild(borda); slot.appendChild(fundoCentro); if (i < listaArmas.length) { let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; slot.classList.add('interativo'); slot.setAttribute('slot-interativo', 'item: ' + nomeArma); if(armaStats.modeloGlb && armaStats.modeloGlb !== '') { let miniatura = document.createElement('a-entity'); gridContainer.appendChild(slot); slot.appendChild(miniatura); miniatura.setAttribute('gltf-model', armaStats.modeloGlb); miniatura.setAttribute('scale', armaStats.escalaInv); miniatura.setAttribute('rotation', armaStats.rotInv); miniatura.setAttribute('position', armaStats.posInv);  } else { let txtNome = document.createElement('a-text'); txtNome.setAttribute('value', nomeArma); txtNome.setAttribute('align', 'center'); txtNome.setAttribute('width', '1'); txtNome.setAttribute('position', '0 0 0.02'); txtNome.setAttribute('color', '#FFF'); gridContainer.appendChild(slot); slot.appendChild(txtNome); } } else { gridContainer.appendChild(slot); } } } });
+        AFRAME.registerComponent('slot-interativo', { schema: { item: {type: 'string'} }, init: function() { let painelTooltip = document.querySelector('#inv-tooltip'); let txtNome = document.querySelector('#tt-nome'); let txtForca = document.querySelector('#tt-forca'); let txtDefesa = document.querySelector('#tt-defesa'); let boxEquipar = document.querySelector('#tt-acao'); this.el.addEventListener('mouseenter', () => { this.el.children[0].setAttribute('color', '#FFD700'); let itemAlvo = window.bancoDeArmas[this.data.item]; let itemEquipado = window.bancoDeArmas[window.playerState.armaEquipada]; if(!itemAlvo) return; let diffForca = itemAlvo.danoBonus - itemEquipado.danoBonus; let diffDefesa = itemAlvo.defesaBonus - itemEquipado.defesaBonus; if(painelTooltip) painelTooltip.setAttribute('visible', 'true'); if(txtNome) txtNome.setAttribute('value', this.data.item); if(txtForca) { txtForca.setAttribute('value', `Dano Item: ${itemAlvo.danoBonus}${diffForca !== 0 ? (diffForca>0?` (+${diffForca})`:` (${diffForca})`) : ''}`); txtForca.setAttribute('color', diffForca>0?'#00FF00':(diffForca<0?'#FF4444':'#FFF')); } if(txtDefesa) { txtDefesa.setAttribute('value', `Defesa Item: ${itemAlvo.defesaBonus}${diffDefesa !== 0 ? (diffDefesa>0?` (+${diffDefesa})`:` (${diffDefesa})`) : ''}`); txtDefesa.setAttribute('color', diffDefesa>0?'#00FF00':(diffDefesa<0?'#FF4444':'#FFF')); } if(boxEquipar) { boxEquipar.setAttribute('value', window.playerState.armaEquipada === this.data.item ? 'EQUIPADO' : '[Gatilho/PC] Equipar'); boxEquipar.setAttribute('color', window.playerState.armaEquipada === this.data.item ? '#FFD700' : '#FFF'); } }); this.el.addEventListener('mouseleave', () => { this.el.children[0].setAttribute('color', '#f19e20'); if(painelTooltip) painelTooltip.setAttribute('visible', 'false'); }); this.el.addEventListener('click', () => { window.playerState.armaEquipada = this.data.item; atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', `${this.data.item} Equipado!`); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1000); } }); } });
         AFRAME.registerComponent('sistema-jogo', { init: function () { setInterval(() => { if (!window.GAME_STARTED) return; if (window.playerState.vivo && window.playerState.mpAtual < window.playerState.mpMax) { window.playerState.mpAtual = Math.min(window.playerState.mpMax, window.playerState.mpAtual + 5); atualizarUI(); } }, 1000); } });
         AFRAME.registerComponent('controles-hud', { init: function () { let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; this.el.addEventListener('ybuttondown', function () { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); }); this.el.addEventListener('xbuttondown', function () { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); }); } });
         AFRAME.registerComponent('btn-atributo', { schema: { tipo: { type: 'string' } }, init: function () { this.el.addEventListener('click', () => { if (window.playerState.pontos > 0 && window.playerState.vivo) { window.playerState.pontos--; window.playerState[this.data.tipo]++; this.el.setAttribute('color', '#fff'); setTimeout(() => { if(this.el) this.el.setAttribute('color', '#4CC3D9'); }, 150); if (this.data.tipo === 'defesa') { window.playerState.hpMax += 10; window.playerState.hpAtual = window.playerState.hpMax; } if (this.data.tipo === 'forca') { window.playerState.mpMax += 10; window.playerState.mpAtual = window.playerState.mpMax; } atualizarUI(); } }); } });
