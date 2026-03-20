@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG VR, PC e Android - Versão Definitiva Multissistema</title>
+    <title>RPG VR, PC e Android - Versão Definitiva (Anti Save da Morte)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -80,9 +80,6 @@
         }
         acordarServidorRender(); setInterval(acordarServidorRender, 10 * 60 * 1000);
 
-        // ==========================================
-        // LÓGICA DE ATAQUE GLOBAL (MATEMÁTICA 2D AFIADA)
-        // ==========================================
         window.realizarAtaque = function() {
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
@@ -100,7 +97,6 @@
                 let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
                 cameraObj.object3D.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.object3D.quaternion);
                 
-                // Transforma a direção 3D em 2D para ignorar se o jogador está olhando pro céu ou pro chão
                 let dirCam2D = new THREE.Vector2(direcao.x, direcao.z).normalize();
                 
                 let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
@@ -108,10 +104,9 @@
                     if(!inimigoEl.object3D) return; 
                     let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
                     
-                    // Mede a distância apenas pelo chão (ignora a altura do monstro)
                     let dist2D = Math.hypot(posInimigo.x - posCamera.x, posInimigo.z - posCamera.z);
                     let dirInimigo2D = new THREE.Vector2(posInimigo.x - posCamera.x, posInimigo.z - posCamera.z).normalize();
-                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); // Cone de visão
+                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
 
                     if (dist2D < 4.5 && anguloAcerto > 0.5) { 
                         let syncComp = inimigoEl.components['sistema-inimigo-sync']; 
@@ -176,6 +171,7 @@
             window.npcAtivo = data;
             let cx = document.querySelector('#caixa-dialogo'); let tNome = document.querySelector('#npc-nome-ui'); let tTexto = document.querySelector('#npc-texto-ui'); let entRec = document.querySelector('#npc-recompensa-ui'); let tRec = document.querySelector('#npc-rec-texto'); let btnAceitar = document.querySelector('#btn-npc-aceitar'); let btnFechar = document.querySelector('#btn-npc-fechar');
             if(!cx || !tNome || !tTexto) return;
+
             tNome.setAttribute('value', data.nome || "NPC");
             let jaConcluiu = data.chaveConclusao && window.playerState.chaves[data.chaveConclusao]; let podeFazer = !data.requisito || window.playerState.chaves[data.requisito];
 
@@ -206,6 +202,7 @@
             if (data.recXP) window.playerState.xp += Number(data.recXP);
             if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
             if (data.recItem && window.bancoDeArmas[data.recItem]) { window.playerState.armaEquipada = data.recItem; }
+            
             if (window.playerState.xp >= window.playerState.xpProxNivel) { window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); }
             atualizarUI(); window.salvarJogoNuvem(); window.tocarSom('snd-magic');
             let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
@@ -268,29 +265,19 @@
             document.body.classList.add('menu-aberto');
             ['mousedown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, () => window.lastActionTime = Date.now()));
             
-            document.getElementById('btn-registrar').addEventListener('click', () => { 
-                let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value;
-                auth.createUserWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); });
-            }); 
-            
-            document.getElementById('btn-login').addEventListener('click', () => { 
-                let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value;
-                auth.signInWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); });
-            }); 
+            document.getElementById('btn-registrar').addEventListener('click', () => { let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value; auth.createUserWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); }); }); 
+            document.getElementById('btn-login').addEventListener('click', () => { let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value; auth.signInWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); }); }); 
             
             document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); 
             document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
             document.getElementById('btn-android').addEventListener('click', () => { iniciarJogo('ANDROID'); }); 
             
-            window.addEventListener('click', () => { 
-                if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } 
-            }); 
+            window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); 
 
-            // CÓDIGOS DE BOTÕES E JOYSTICK DO ANDROID (MOBILE)
+            // CÓDIGOS DE BOTÕES E JOYSTICK DO ANDROID (MOBILE) COM PREVENTDEFAULT PARA NÃO GIRAR A CÂMERA
             let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); 
             let atribAberto = false; let invAberto = false; let podeAtacarMobile = true;
 
-            // Blindagem de toque (para não mexer a tela ao apertar um botão)
             document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); atualizarUI(); });
             document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); atualizarUI(); });
             document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } });
@@ -313,9 +300,7 @@
             setInterval(() => {
                 if (window.GAME_STARTED && window.playerState.vivo) {
                     if (Date.now() - window.lastActionTime > 900000) { 
-                        window.GAME_STARTED = false; 
-                        let mpComp = document.querySelector('[firebase-multiplayer]'); 
-                        if(mpComp && mpComp.components['firebase-multiplayer'] && mpComp.components['firebase-multiplayer'].myRef) { mpComp.components['firebase-multiplayer'].myRef.remove(); }
+                        window.GAME_STARTED = false; let mpComp = document.querySelector('[firebase-multiplayer]'); if(mpComp && mpComp.components['firebase-multiplayer'] && mpComp.components['firebase-multiplayer'].myRef) { mpComp.components['firebase-multiplayer'].myRef.remove(); }
                         let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'DESCONECTADO:\n15 MIN INATIVO (AFK)'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
                         setTimeout(() => location.reload(), 4000);
                     }
@@ -323,16 +308,25 @@
             }, 5000);
 
             realtimeDB.ref('server_commands/kick_all').on('value', snap => {
-                if(snap.val() && window.GAME_STARTED) {
-                    window.GAME_STARTED = false; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'KICKADO PELO ADMIN!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
-                    setTimeout(() => location.reload(), 3000);
-                }
+                if(snap.val() && window.GAME_STARTED) { window.GAME_STARTED = false; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'KICKADO PELO ADMIN!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); } setTimeout(() => location.reload(), 3000); }
             });
         });
         
         function iniciarTelaSelecaoModo() { 
             document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; 
-            if (window.currentUser) { firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { if (doc.exists) { window.playerState = Object.assign(window.playerState, doc.data()); } }).catch(e => console.error("Erro", e)); }
+            if (window.currentUser) { 
+                firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { 
+                    if (doc.exists) { 
+                        window.playerState = Object.assign(window.playerState, doc.data()); 
+                        // ANTI SAVE DA MORTE: Se carregou o save já com HP <= 0, revive para não ficar preso morto!
+                        if(window.playerState.hpAtual <= 0) {
+                            window.playerState.hpAtual = window.playerState.hpMax;
+                            window.playerState.vivo = true;
+                        }
+                        if (window.GAME_STARTED) atualizarUI(); // Atualiza a tela se demorou pra baixar da nuvem
+                    } 
+                }).catch(e => console.error("Erro", e)); 
+            }
         }
         
         function iniciarJogo(modo) { 
@@ -340,6 +334,10 @@
             document.getElementById('ui-layer').style.display = 'none'; 
             document.body.classList.remove('menu-aberto');
             
+            // Escudo de Spawn (3 Segundos para carregar sem tomar hit kill)
+            window.playerState.invulneravel = true;
+            setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
+
             let maoEsq = document.querySelector('#mao-esquerda'); let maoDir = document.querySelector('#mao-direita');
             let cursor = document.querySelector('[cursor]'); let wpPc = document.querySelector('#arma-visual-pc'); let scPc = document.querySelector('#escudo-visual-pc');
             let cam = document.querySelector('[camera]');
@@ -404,7 +402,7 @@
             let mpScale = Math.max(0, window.playerState.mpAtual / window.playerState.mpMax); document.querySelector('#mp-wrapper').setAttribute('scale', `${mpScale} 1 1`); 
             document.querySelector('#txt-arma-hud').setAttribute('value', `Equipado: ${window.playerState.armaEquipada}${window.playerState.escudoEquipado ? ' + Escudo' : ''}`); 
             
-            if(window.GAME_MODE === 'PC') document.querySelector('#rig').setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); 
+            if (window.GAME_MODE === 'PC') { document.querySelector('#rig').setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); }
             
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; 
             let forcaTotal = window.playerState.forca + (armaStats ? armaStats.danoBonus : 0); 
@@ -471,7 +469,7 @@
         });
 
         // ==========================================
-        // O COMBATE DE PC (DESTRAVADO!)
+        // O COMBATE DE PC (DESTRAVADO E NOVO SENSOR 2D!)
         // ==========================================
         AFRAME.registerComponent('pc-controles', {
             init: function() {
@@ -651,7 +649,7 @@
         });
 
         // ==========================================
-        // MOTOR DE ANIMAÇÃO IA
+        // O MOTOR DE ANIMAÇÃO IA
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -1081,7 +1079,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // INICIALIZAÇÃO DOS BOTÕES MOBILE
             let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); 
             let atribAberto = false; let invAberto = false; let podeAtacarMobile = true;
 
@@ -1127,7 +1124,7 @@
         </a-box>
 
         <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" mobile-movement position="0 0 0">
-            <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: true; magicWindowTrackingEnabled: false;">
+            <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
                 <a-entity cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
                 
                 <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
