@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Motor de Animação Liso)</title>
+    <title>RPG VR e PC - Versão Definitiva (Anti-Travamento)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -167,8 +167,8 @@
                     if (avatar && data && data.position) { 
                         avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                         avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                        avatar.setAttribute('animation__pos', 'property: position; to: ' + data.position.x + ' ' + data.position.y + ' ' + data.position.z + '; dur: 100; easing: linear'); 
-                        avatar.setAttribute('animation__rot', 'property: rotation; to: ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z + '; dur: 100; easing: linear'); 
+                        avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x || 0} ${data.position.y || 0} ${data.position.z || 0}; dur: 100; easing: linear`); 
+                        avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x || 0} ${data.rotation.y || 0} ${data.rotation.z || 0}; dur: 100; easing: linear`); 
                     }
                 });
 
@@ -373,6 +373,9 @@
             }
         });
 
+        // ==========================================
+        // PROJÉTEIS (ARCO E MAGIA)
+        // ==========================================
         AFRAME.registerComponent('projetil-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
             init: function () {
@@ -440,6 +443,9 @@
             }
         });
 
+        // ==========================================
+        // GERENCIADOR DE RESPAWNS
+        // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; 
@@ -503,7 +509,7 @@
         });
 
         // ==========================================
-        // MÁGICA DA IA (MOTOR LISO SEM SOLAVANCOS)
+        // IA INIMIGOS - EXORCISMO E RENDER SEGURO
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -537,15 +543,12 @@
                 
                 this.targetPos = new THREE.Vector3();
                 this.targetRotY = 0;
-                
-                // Variáveis do cérebro de animação
                 this.isMoving = false;
                 this.isAttacking = false;
                 this.animacaoAtual = "";
-                this.isDead = false;
 
                 this.el.addEventListener('model-loaded', () => {
-                    if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                    this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                 });
 
                 this.dbRef = realtimeDB.ref('cenario_inimigos/' + this.data.idBd);
@@ -556,7 +559,6 @@
                     let data = snap.val(); if (!data) return;
                     this.dadosBD = data; let textoHp = this.el.querySelector('.hp-texto');
                     
-                    // O CÉREBRO: O banco de dados SÓ atualiza a posição Alvo. Ele NUNCA mexe na animação de andar/parar.
                     if (data.pos) { 
                         let pX = isNaN(data.pos.x) ? 0 : data.pos.x;
                         let pY = isNaN(data.pos.y) ? 0 : data.pos.y;
@@ -572,7 +574,6 @@
                         
                         setTimeout(() => { 
                             this.isAttacking = false;
-                            // Só volta a tocar Parado/Andando se não tiver morrido no meio do ataque
                             if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); 
                         }, 1000);
 
@@ -599,36 +600,32 @@
                     this.hpAtual = data.hp;
 
                     if (morreuAgora) {
-                        this.isDead = true;
                         if(textoHp) textoHp.setAttribute('value', 'MORTO'); 
-                        this.el.classList.remove('interativo'); 
-                        this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
+                        this.el.classList.remove('interativo'); this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                         setTimeout(() => { if(this.hpAtual <= 0 && this.el) this.el.setAttribute('visible', 'false'); }, 3000);
                     } else if (reviveu) {
-                        this.isDead = false;
                         if(textoHp) { textoHp.setAttribute('value', `HP: ${this.hpAtual}`); textoHp.setAttribute('color', '#FFF'); }
-                        this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); 
-                        this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                        this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     } else if (tomouDano) {
                         if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
                         let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); let obj3D = v ? v.getObject3D('mesh') : null;
                         if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
                         
-                        if(!this.isAttacking && !this.isDead) {
+                        if(!this.isAttacking) {
                             this.tocarAnimacao(window.ANIM_DANO, 'once'); 
                             setTimeout(() => { if (this.hpAtual > 0 && !this.isAttacking) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 600);
                         }
-                    } else if (!estavaMorto && data.hp > 0) { 
-                        if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
-                    }
+                    } else if (!estavaMorto && data.hp > 0) { if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); }
                 });
 
                 this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
+                        // MÁGICA: SE O MONSTRO FOR NULO (FOI DELETADO), ABORTA A TRANSAÇÃO PARA NÃO RESSUSCITAR ELE!
                         if (currentHp === null) return; 
-                        if (currentHp <= 0) return; 
-                        return Math.max(0, currentHp - dano); 
+                        let numHp = Number(currentHp);
+                        if (isNaN(numHp) || numHp <= 0) return; 
+                        return Math.max(0, numHp - dano); 
                     }, (error, committed, snapshot) => {
                         if (committed && snapshot.val() === 0) {
                             this.hpAtual = 0; window.playerState.xp += this.data.xpDrop; 
@@ -646,30 +643,25 @@
                 }; 
             },
 
-            // O CORPO: É ele quem decide qual animação usar baseado na distância real do boneco 3D!
             tick: function(time, timeDelta) {
-                if (!this.targetPos || this.hpAtual <= 0 || this.isDead) return;
+                if (!this.targetPos || this.hpAtual <= 0) return;
 
-                // Calcula a distância exata em 3D de onde o monstro tá pra onde o servidor quer que ele vá
                 let dist = this.el.object3D.position.distanceTo(this.targetPos);
                 
-                // A mágica: Só toca a animação de andar se ele precisar andar mais do que 5 centímetros!
                 if (dist > 0.05) {
-                    this.el.object3D.position.lerp(this.targetPos, 0.2); // Desliza até lá suavemente
+                    this.el.object3D.position.lerp(this.targetPos, 0.2); 
                     
                     if (!this.isMoving && !this.isAttacking) {
                         this.isMoving = true;
                         this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat');
                     }
                 } else {
-                    // Chegou no lugar (ou tá tão perto que não precisa andar).
                     if (this.isMoving && !this.isAttacking) {
                         this.isMoving = false;
                         this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     }
                 }
 
-                // Gira o boneco de forma suave
                 let qTarget = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), this.targetRotY);
                 this.el.object3D.quaternion.slerp(qTarget, 0.2);
             }
