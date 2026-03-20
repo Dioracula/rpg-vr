@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
@@ -114,20 +113,15 @@
         <h2>🪄 Invocar ou Editar Inimigo</h2>
         <div class="grid-spawn">
             <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
-            
-            <div class="input-group grupo-especial">
-                <label style="color:#e74c3c">Comportamento</label>
-                <select id="novo-comportamento">
-                    <option value="hostil">Hostil (Ataca ao ver)</option>
-                    <option value="pacifico">Pacífico (Só ataca se apanhar)</option>
-                </select>
-            </div>
-
+            <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
-            
             <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
+            
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
+            
+            <div class="input-group"><label style="color:#2ecc71">Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
+            
             <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
             <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
 
@@ -195,7 +189,6 @@
         if (tipo === 'primaria') camposPrimario.forEach(el => el.style.display = 'flex');
     }
 
-    // --- INIMIGOS ---
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
@@ -236,6 +229,7 @@
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
             document.getElementById('novo-glb-caminho').value = data.modeloGlb || '';
             document.getElementById('novo-anim-parado').value = data.animParado || '';
+            document.getElementById('novo-anim-andando').value = data.animAndando || ''; // NOVO
             document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
             document.getElementById('novo-anim-morte').value = data.animMorte || '';
             
@@ -282,6 +276,7 @@
             tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value,
             animParado: document.getElementById('novo-anim-parado').value,
+            animAndando: document.getElementById('novo-anim-andando').value, // NOVO
             animAtaque: document.getElementById('novo-anim-ataque').value,
             animMorte: document.getElementById('novo-anim-morte').value
         };
