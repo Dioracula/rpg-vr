@@ -133,7 +133,9 @@
             <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
             <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
+            
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+            <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10" title="Dano que o inimigo causa no jogador"></div>
             
             <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
@@ -184,7 +186,6 @@
         });
     });
 
-    // SISTEMA DE RESPAWNS NO ADMIN
     const listaRespawnsDiv = document.getElementById('lista-respawns');
     db.ref('cenario_respawns').on('child_added', (snapshot) => {
         let id = snapshot.key; let r = snapshot.val();
@@ -226,7 +227,6 @@
             raio: parseFloat(document.getElementById('resp-raio').value) || 3
         }); alert('Cristal de Respawn criado com sucesso!');
     };
-
 
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
@@ -287,6 +287,7 @@
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
             document.getElementById('novo-tipo').value = data.tipo || 'meelee';
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
+            document.getElementById('novo-dano').value = data.dano || 10; // CARREGA A FORÇA DO MONSTRO
             document.getElementById('novo-glb-caminho').value = data.modeloGlb || '';
             document.getElementById('novo-anim-parado').value = data.animParado || '';
             document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
@@ -317,6 +318,7 @@
         let id = document.getElementById('novo-id').value; if(!id) { alert("Digite um ID único!"); return; }
         
         let hp = parseFloat(document.getElementById('novo-hp').value);
+        let forcaDoMonstro = parseFloat(document.getElementById('novo-dano').value) || 10;
         let spawnX = parseFloat(document.getElementById('novo-spawn-x').value);
         let spawnY = parseFloat(document.getElementById('novo-spawn-y').value);
         let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value);
@@ -324,6 +326,7 @@
         let dadosInimigo = {
             hpMax: hp,
             hp: hp, 
+            dano: forcaDoMonstro, // SALVA A FORÇA DO MONSTRO!
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
             pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
@@ -345,6 +348,7 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
+    // --- NPCS ---
     const listaNpcsDiv = document.getElementById('lista-npcs');
     db.ref('cenario_npcs').on('child_added', (snapshot) => {
         let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
