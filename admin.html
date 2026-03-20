@@ -132,10 +132,11 @@
         <div class="grid-spawn">
             <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
             <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
+            
+            <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Parado)</option><option value="livre">Patrulha Livre</option></select></div>
+            
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             
-            <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Fica Parado)</option><option value="livre">Livre (Patrulhando)</option></select></div>
-
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
             <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
             
@@ -256,7 +257,6 @@
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); 
-        
         if (!inimigo || inimigo.hpMax === undefined || !inimigo.modeloGlb) return; 
 
         if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
@@ -293,7 +293,10 @@
             let data = snap.val(); if(!data) return;
             document.getElementById('novo-id').value = id;
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
-            document.getElementById('novo-movimento').value = data.movimento || 'estatico'; // CARREGA MOVIMENTO
+            
+            // CARREGA A PATRULHA
+            document.getElementById('novo-movimento').value = data.movimento || 'estatico';
+            
             document.getElementById('novo-tipo').value = data.tipo || 'meelee';
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
             document.getElementById('novo-dano').value = data.dano || 10;
@@ -315,7 +318,7 @@
             document.getElementById('novo-attack-range').value = data.attackRange || (data.tipo === 'atirador' ? 6.0 : 1.8);
             document.getElementById('novo-speed').value = data.speed || 0.08;
             document.getElementById('novo-cooldown').value = data.cooldown || 2000;
-            document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60; // CARREGA TEMPO RESPAWN
+            document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
 
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
@@ -329,7 +332,7 @@
         
         let hp = parseFloat(document.getElementById('novo-hp').value);
         let forcaDoMonstro = parseFloat(document.getElementById('novo-dano').value) || 10;
-        let tempoRespawnCalculado = (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000; // SALVA EM MS
+        let tempoRespawnCalculado = (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000;
         
         let spawnX = parseFloat(document.getElementById('novo-spawn-x').value);
         let spawnY = parseFloat(document.getElementById('novo-spawn-y').value);
@@ -344,12 +347,15 @@
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
             
             comportamento: document.getElementById('novo-comportamento').value,
-            movimento: document.getElementById('novo-movimento').value, // SALVA O MOVIMENTO
+            
+            // SALVA A PATRULHA
+            movimento: document.getElementById('novo-movimento').value, 
+            
             aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15,
             attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
             speed: parseFloat(document.getElementById('novo-speed').value) || 0.08,
             cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
-            respawnTime: tempoRespawnCalculado, 
+            respawnTime: tempoRespawnCalculado,
             
             tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value,
