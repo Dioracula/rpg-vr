@@ -21,9 +21,12 @@
         .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 4px solid #e74c3c;}
         .card.npc-card { border-left-color: #2ecc71; }
         .card.player-card { border-left-color: #9b59b6; }
+        .card.respawn-card { border-left-color: #00ffcc; }
+        
         .card h3 { margin: 0 0 10px 0; color: #f1c40f; width: 100%; display: flex; justify-content: space-between;}
         .card.npc-card h3 { color: #2ecc71; }
         .card.player-card h3 { color: #9b59b6; }
+        .card.respawn-card h3 { color: #00ffcc; }
         
         .input-group { display: flex; flex-direction: column; margin-right: 15px; margin-bottom: 10px; }
         .input-group label { font-size: 0.80rem; color: #bdc3c7; margin-bottom: 3px; font-weight: bold; }
@@ -42,6 +45,7 @@
         .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .painel-spawn.npc-spawn { background: #2c3e50; border: 2px solid #2ecc71;}
         .painel-spawn.ini-spawn { background: #2c3e50; border: 2px solid #e74c3c;}
+        .painel-spawn.resp-spawn { background: #16a085; border: 2px solid #1abc9c;}
         .painel-spawn h2 { margin-top: 0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px;}
         
         .grid-spawn { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
@@ -69,9 +73,23 @@
         <p style="color: #7f8c8d;">Carregando banco de dados...</p>
     </div>
 
+    <h2 class="section-title">🔮 CRISTAIS DE RESPAWN (Checkpoints)</h2>
+    <div id="lista-respawns"></div>
+
+    <div class="painel-spawn resp-spawn">
+        <h2>📍 Criar ou Editar Ponto de Respawn</h2>
+        <div class="grid-spawn">
+            <div class="input-group"><label>ID Único</label><input type="text" id="resp-id" placeholder="ex: base_floresta"></div>
+            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="resp-x" value="0"></div>
+            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="resp-y" value="0"></div>
+            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="resp-z" value="0"></div>
+            <div class="input-group"><label>Raio Ativação (m)</label><input type="number" step="0.1" id="resp-raio" value="3" title="Tamanho do círculo de captura"></div>
+        </div>
+        <button class="btn" style="background:#1abc9c; color:white; width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarRespawn()">⚡ PLANTAR CRISTAL DE RESPAWN</button>
+    </div>
+
     <div class="leitor-glb" style="margin-top: 40px;">
         <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Extrair Animações do .GLB (Grátis)</label>
-        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações. Depois faça o upload do arquivo para o seu GitHub (pasta Npcs ou Inimigos).</span>
         <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
             <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
             <span id="status-upload">Nenhum arquivo lido.</span>
@@ -123,10 +141,10 @@
             <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
             <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
 
-            <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15" title="Distância para ele te enxergar"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8" title="Ex: 1.8 para espadas | 15 para magia"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08" title="Padrão: 0.08 | Rápido: 0.15"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000" title="2000 = 2 segundos"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
 
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" id="novo-spawn-x" value="0"></div>
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" id="novo-spawn-y" value="0"></div>
@@ -166,6 +184,50 @@
         });
     });
 
+    // SISTEMA DE RESPAWNS NO ADMIN
+    const listaRespawnsDiv = document.getElementById('lista-respawns');
+    db.ref('cenario_respawns').on('child_added', (snapshot) => {
+        let id = snapshot.key; let r = snapshot.val();
+        let card = document.createElement('div'); card.className = 'card respawn-card'; card.id = `card-resp-${id}`;
+        card.innerHTML = `
+            <h3>🔮 ${id}</h3>
+            <div class="input-group"><label>Pos X</label><input type="number" step="0.1" id="x-resp-${id}" value="${r.pos.x.toFixed(2)}"></div>
+            <div class="input-group"><label>Pos Y</label><input type="number" step="0.1" id="y-resp-${id}" value="${r.pos.y.toFixed(2)}"></div>
+            <div class="input-group"><label>Pos Z</label><input type="number" step="0.1" id="z-resp-${id}" value="${r.pos.z.toFixed(2)}"></div>
+            <div class="input-group"><label>Raio Mágico (m)</label><input type="number" step="0.1" id="raio-resp-${id}" value="${r.raio || 3}"></div>
+            <div class="action-buttons">
+                <button class="btn btn-blue" onclick="salvarAlteracaoRespawn('${id}')">💾 Atualizar</button>
+                <button class="btn btn-dark" onclick="excluirRespawn('${id}')">🗑️ Excluir</button>
+            </div>
+        `;
+        listaRespawnsDiv.appendChild(card);
+    });
+    db.ref('cenario_respawns').on('child_changed', (snapshot) => {
+        let id = snapshot.key; let r = snapshot.val();
+        let elX = document.getElementById(`x-resp-${id}`); if(elX && document.activeElement !== elX) elX.value = r.pos.x.toFixed(2);
+        let elY = document.getElementById(`y-resp-${id}`); if(elY && document.activeElement !== elY) elY.value = r.pos.y.toFixed(2);
+        let elZ = document.getElementById(`z-resp-${id}`); if(elZ && document.activeElement !== elZ) elZ.value = r.pos.z.toFixed(2);
+        let elRaio = document.getElementById(`raio-resp-${id}`); if(elRaio && document.activeElement !== elRaio) elRaio.value = r.raio;
+    });
+    db.ref('cenario_respawns').on('child_removed', (snapshot) => { let card = document.getElementById(`card-resp-${snapshot.key}`); if(card) card.remove(); });
+
+    window.salvarAlteracaoRespawn = function(id) {
+        db.ref('cenario_respawns/' + id).update({
+            pos: { x: parseFloat(document.getElementById(`x-resp-${id}`).value), y: parseFloat(document.getElementById(`y-resp-${id}`).value), z: parseFloat(document.getElementById(`z-resp-${id}`).value) },
+            raio: parseFloat(document.getElementById(`raio-resp-${id}`).value) || 3
+        }); alert('Respawn atualizado!');
+    };
+    window.excluirRespawn = function(id) { if(confirm(`APAGAR cristal de respawn ${id}?`)) db.ref('cenario_respawns/' + id).remove(); };
+    
+    window.spawnarRespawn = function() {
+        let id = document.getElementById('resp-id').value; if(!id) { alert("Digite um ID único para o Respawn!"); return; }
+        db.ref('cenario_respawns/' + id).set({
+            pos: { x: parseFloat(document.getElementById('resp-x').value), y: parseFloat(document.getElementById('resp-y').value), z: parseFloat(document.getElementById('resp-z').value) },
+            raio: parseFloat(document.getElementById('resp-raio').value) || 3
+        }); alert('Cristal de Respawn criado com sucesso!');
+    };
+
+
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); const statusText = document.getElementById('status-upload');
@@ -198,7 +260,7 @@
             <div class="input-group"><label>Pos Atual X</label><input type="number" step="0.1" id="x-ini-${id}" value="${inimigo.pos.x.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
             <div class="input-group"><label>Pos Atual Z</label><input type="number" step="0.1" id="z-ini-${id}" value="${inimigo.pos.z.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
             <div class="action-buttons">
-                <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar Tudo</button>
+                <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar / Ajustar Status</button>
                 <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill</button>
                 <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir</button>
             </div>
@@ -261,7 +323,7 @@
 
         let dadosInimigo = {
             hpMax: hp,
-            hp: hp, // FORÇA CURA 100% PARA ELE VOLTAR A SER PACÍFICO!
+            hp: hp, 
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
             pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
@@ -283,7 +345,6 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
-    // --- NPCS ---
     const listaNpcsDiv = document.getElementById('lista-npcs');
     db.ref('cenario_npcs').on('child_added', (snapshot) => {
         let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
