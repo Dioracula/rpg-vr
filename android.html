@@ -2,275 +2,262 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG - Modo Celular (Android/iOS)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Mestre - RPG MMO</title>
     
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #000; touch-action: none; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
+        h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase;}
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #f1c40f; }
         
-        /* INTERFACE MOBILE FLUTUANTE */
-        #mobile-ui { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; pointer-events: none; }
+        .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; background: #2c3e50; padding: 10px; border-radius: 8px; overflow-x: auto; }
+        .tab-btn { flex: 1; background: #34495e; color: #bdc3c7; border: none; padding: 15px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s; white-space: nowrap; }
+        .tab-btn:hover { background: #455a64; color: white; }
+        .tab-btn.active { background: #f1c40f; color: #111; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 4px solid #e74c3c;}
+        .card.npc-card { border-left-color: #2ecc71; }
+        .card.player-card { border-left-color: #9b59b6; }
+        .card.respawn-card { border-left-color: #00ffcc; }
+        .card.arma-card { border-left-color: #e67e22; }
         
-        /* O JOYSTICK */
-        #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: auto; border: 2px solid rgba(255,255,255,0.3); }
-        #joystick-stick { position: absolute; top: 50px; left: 50px; width: 50px; height: 50px; background: rgba(241, 196, 15, 0.8); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); pointer-events: none; transition: 0.05s ease-out;}
+        .card h3 { margin: 0 0 10px 0; color: #f1c40f; width: 100%; display: flex; justify-content: space-between;}
         
-        /* BOTÕES DE AÇÃO */
-        #action-buttons { position: absolute; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; }
-        .hud-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(44, 62, 80, 0.8); border: 2px solid #bdc3c7; color: white; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold;}
-        .hud-btn:active { background: #f1c40f; color: #111; transform: scale(0.95); }
+        .input-group { display: flex; flex-direction: column; margin-right: 15px; margin-bottom: 10px; }
+        .input-group label { font-size: 0.80rem; color: #bdc3c7; margin-bottom: 3px; font-weight: bold; }
+        .input-group input, .input-group select, .input-group textarea { background: #34495e; border: 1px solid #7f8c8d; color: white; padding: 8px; border-radius: 4px; width: 90px; }
+        .input-group input[type="text"] { width: 180px; }
+        .input-group textarea { width: 250px; resize: vertical; height: 35px;}
+        .input-group input:focus, .input-group textarea:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
-        #btn-atacar { width: 80px; height: 80px; background: rgba(192, 57, 43, 0.8); border-color: #e74c3c; font-size: 2rem; margin-top: 10px;}
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
+        .btn-green { background: #27ae60; color: white; } .btn-green:hover { background: #2ecc71; }
+        .btn-blue { background: #2980b9; color: white; } .btn-blue:hover { background: #3498db; }
+        .btn-red { background: #c0392b; color: white; } .btn-red:hover { background: #e74c3c; }
+        .btn-dark { background: #111; color: #e74c3c; border: 1px solid #e74c3c; } .btn-dark:hover { background: #e74c3c; color: white; }
+        .btn-edit { background: #f39c12; color: #111; } .btn-edit:hover { background: #f1c40f; }
+
+        .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .painel-spawn.npc-spawn { background: #2c3e50; border: 2px solid #2ecc71;}
+        .painel-spawn.ini-spawn { background: #2c3e50; border: 2px solid #e74c3c;}
+        .painel-spawn.resp-spawn { background: #16a085; border: 2px solid #1abc9c;}
+        .painel-spawn.arma-spawn { background: #d35400; border: 2px solid #e67e22;}
+        .painel-spawn h2 { margin-top: 0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px;}
         
-        .menu-top-right { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: auto;}
+        .grid-spawn { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .grid-spawn .input-group { margin: 0; }
+        .grid-spawn .input-group input, .grid-spawn .input-group select, .grid-spawn .input-group textarea { width: 100%; box-sizing: border-box; }
+        
+        .grupo-destaque { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); }
+        .grupo-especial { background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(52, 152, 219, 0.3); }
+        .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
     </style>
-
-    <script>
-        // RECUPERA O USUÁRIO DO INDEX.HTML
-        let uidSalvo = localStorage.getItem('mmo_uid');
-        if (!uidSalvo) { window.location.href = 'index.html'; }
-
-        const firebaseConfig = {
-             apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
-             authDomain: "rpg-vr-online.firebaseapp.com",
-             databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
-             projectId: "rpg-vr-online",
-             storageBucket: "rpg-vr-online.firebasestorage.app",
-             messagingSenderId: "676174796336",
-             appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
-        };
-        
-        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-        const firestoreDB = firebase.firestore();
-        const realtimeDB = firebase.database();
-
-        window.GAME_MODE = 'ANDROID'; 
-        window.GAME_STARTED = true; 
-        window.currentUser = { uid: uidSalvo }; 
-        window.lastActionTime = Date.now();
-        
-        window.playerState = {
-            nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5,
-            hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
-            armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5, chaves: {},
-            invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
-        };
-
-        // MÁGICAS ANTI-PISCAR (Mesmas lógicas base do PC)
-        AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
-        
-        window.salvarJogoNuvem = function() { if (!window.currentUser || window.currentUser.uid === 'visitante') return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); };
-        window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio && audio.src) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
-
-        window.bancoDeArmas = {
-            'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, modeloGlb: '', visualDir: '', visualEsq: '' },
-            'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, modeloGlb: '', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' }
-            // Copie o restante do bancoDeArmas do seu outro arquivo se quiser todos os modelos aqui!
-        };
-
-        // SISTEMA DE JOYSTICK VIRTUAL MOBILE
-        let joystickVector = { x: 0, y: 0 };
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const zone = document.getElementById('joystick-zone');
-            const stick = document.getElementById('joystick-stick');
-            let isDragging = false;
-            let centerX, centerY, maxRadius = 50;
-
-            zone.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                let rect = zone.getBoundingClientRect();
-                centerX = rect.left + rect.width / 2;
-                centerY = rect.top + rect.height / 2;
-                handleTouch(e);
-            });
-
-            zone.addEventListener('touchmove', (e) => { if(isDragging) handleTouch(e); });
-            
-            const releaseJoystick = () => {
-                isDragging = false;
-                stick.style.transform = `translate(0px, 0px)`;
-                joystickVector = { x: 0, y: 0 };
-            };
-            
-            zone.addEventListener('touchend', releaseJoystick);
-            zone.addEventListener('touchcancel', releaseJoystick);
-
-            function handleTouch(e) {
-                e.preventDefault();
-                let touch = e.targetTouches[0];
-                let dx = touch.clientX - centerX;
-                let dy = touch.clientY - centerY;
-                let distance = Math.sqrt(dx*dx + dy*dy);
-                
-                if (distance > maxRadius) {
-                    dx = (dx / distance) * maxRadius;
-                    dy = (dy / distance) * maxRadius;
-                }
-                
-                stick.style.transform = `translate(${dx}px, ${dy}px)`;
-                // Normaliza de -1 a 1 para o motor de física
-                joystickVector.x = dx / maxRadius;
-                joystickVector.y = dy / maxRadius;
-            }
-        });
-
-        // COMPONENTE DE MOVIMENTO PELO JOYSTICK VIRTUAL
-        AFRAME.registerComponent('mobile-movement', {
-            tick: function(time, timeDelta) {
-                if (!window.playerState.vivo || !window.GAME_STARTED) return;
-                
-                let dt = timeDelta / 1000;
-                let speed = (0.1 + (window.playerState.velocidade * 0.01)) * 30; // Ajuste de velocidade
-                
-                if (Math.abs(joystickVector.x) > 0.1 || Math.abs(joystickVector.y) > 0.1) {
-                    let camObj = document.querySelector('[camera]').object3D;
-                    let rigObj = this.el.object3D;
-
-                    let rotY = camObj.rotation.y;
-                    let dirX = joystickVector.x;
-                    let dirZ = joystickVector.y; // Y do joystick = Z no 3D
-
-                    // Calcula vetor de direção baseado pra onde a câmera está olhando
-                    let moveX = (dirX * Math.cos(rotY) + dirZ * Math.sin(rotY)) * speed * dt;
-                    let moveZ = (-dirX * Math.sin(rotY) + dirZ * Math.cos(rotY)) * speed * dt;
-
-                    rigObj.position.x += moveX;
-                    rigObj.position.z += moveZ;
-                }
-            }
-        });
-
-        // O SISTEMA DE BOTÕES DA TELA
-        AFRAME.registerComponent('mobile-controles', {
-            init: function() {
-                let menuAtrib = document.querySelector('#menu-atributos'); 
-                let menuInv = document.querySelector('#menu-inventario-novo'); 
-                let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
-
-                // ABRIR MENUS
-                document.getElementById('btn-inv').addEventListener('touchstart', () => {
-                    invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0');
-                    atualizarUI();
-                });
-                
-                document.getElementById('btn-status').addEventListener('touchstart', () => {
-                    atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0');
-                    atualizarUI();
-                });
-
-                // ESCUDO
-                document.getElementById('btn-escudo').addEventListener('touchstart', () => {
-                    window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); 
-                    let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; 
-                    let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); }
-                });
-
-                // ATACAR
-                document.getElementById('btn-atacar').addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    if(!window.playerState.vivo || invAberto || atribAberto) return;
-                    let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
-
-                    if(armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
-                        if (!podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800);
-                        window.tocarSom('snd-sword');
-                        
-                        let pcWeapon = document.querySelector('#arma-visual-pc'); 
-                        if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
-                        
-                        let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
-                        let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); cameraObj.object3D.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.object3D.quaternion);
-                        
-                        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-                        inimigosEls.forEach(inimigoEl => { 
-                            if(!inimigoEl.object3D) return; 
-                            let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); posInimigo.y += 1.0;
-                            if (posCamera.distanceTo(posInimigo) < 4.0 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { 
-                                let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp) syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
-                            } 
-                        });
-                    }
-                });
-            }
-        });
-
-        // ==========================================
-        // DEMAIS FUNÇÕES DE UI E SERVIDOR
-        // ==========================================
-        window.receberDanoJogador = function(danoBase) { /* Copie a lógica de dano do pc.html aqui */ };
-        function atualizarUI() { /* Copie a lógica de atualizarUI do pc.html aqui */ }
-        function atualizarArmaVisual() { /* Copie a lógica de atualizarArmaVisual do pc.html aqui */ }
-        window.abrirDialogoNPC = function(data) { /* Copie a lógica do pc.html aqui */ };
-        window.fecharDialogoNPC = function() { /* Copie a lógica do pc.html aqui */ };
-        window.aceitarMissaoNPC = function() { /* Copie a lógica do pc.html aqui */ };
-        
-        // COPIE AQUI TAMBÉM OS COMPONENTES:
-        // firebase-multiplayer, gerenciador-respawns, sistema-inimigo-sync, gerenciador-inimigos, gerenciador-npcs, sistema-npc-interacao, gerador-inventario, etc. (Igual ao pc.html)
-
-    </script>
 </head>
 <body>
 
-    <div id="mobile-ui">
-        <div class="menu-top-right">
-            <div class="hud-btn" id="btn-inv">🎒</div>
-            <div class="hud-btn" id="btn-status">📈</div>
-        </div>
+<div class="container">
+    <h1>👑 PAINEL DO MESTRE</h1>
+    
+    <div class="header-controls"><button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos)</button></div>
 
-        <div id="joystick-zone">
-            <div id="joystick-stick"></div>
-        </div>
+    <div class="admin-tabs">
+        <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
+        <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Arsenal (Itens)</button>
+        <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Respawns</button>
+        <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ NPCs</button>
+        <button class="tab-btn" onclick="abrirAba('tab-inimigos', this)">⚔️ Inimigos</button>
+    </div>
 
-        <div id="action-buttons">
-            <div class="hud-btn" id="btn-escudo">🛡️</div>
-            <div class="hud-btn" id="btn-atacar">⚔️</div>
+    <div id="tab-jogadores" class="tab-content" style="display: block;">
+        <h2 class="section-title">🎒 INVENTÁRIO E STATUS DOS JOGADORES</h2>
+        <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <p style="color: #7f8c8d;">Carregando banco de dados...</p>
         </div>
     </div>
 
-    <a-scene mobile-controles renderer="colorManagement: true;">
-        
-        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
+    <div id="tab-armas" class="tab-content">
+        <h2 class="section-title">🗡️ FORJA DE ITENS (Armas e Escudos)</h2>
+        <div id="lista-armas"></div>
 
-        <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow>
-            <a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
-        </a-box>
-
-        <a-entity id="rig" mobile-movement position="0 0 0">
-            <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: false">
+        <div class="painel-spawn arma-spawn" id="form-arma">
+            <h2>⚒️ Forjar / Editar Item</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>Nome da Arma/Escudo</label><input type="text" id="arma-id" placeholder="Ex: Espada de Fogo"></div>
+                <div class="input-group"><label>Categoria</label>
+                    <select id="arma-cat">
+                        <option value="Espada">Espada (Corpo a Corpo)</option>
+                        <option value="Luva">Luva de Boxe / Garras</option>
+                        <option value="Arco">Arco (Projétil)</option>
+                        <option value="Varinha">Varinha (Magia)</option>
+                        <option value="Shuriken">Shuriken (Arremesso)</option>
+                        <option value="Escudo">Escudo (Defesa Mão Esq)</option>
+                    </select>
+                </div>
+                <div class="input-group"><label>Caminho GLB</label><input type="text" id="arma-glb" placeholder="Ex: Armas/espada.glb"></div>
                 
-                <a-entity cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
-                
-                <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
-                <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Dano (Força)</label><input type="number" id="arma-dano" value="10"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Defesa (+Armadura)</label><input type="number" id="arma-defesa" value="0"></div>
+                <div class="input-group grupo-especial"><label style="color:#f1c40f">Distância de Acerto</label><input type="number" step="0.1" id="arma-dist" value="3.0" title="Para espadas: 3.0, Para Varinhas/Arcos: 15.0"></div>
 
-                <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
-                <a-text id="texto-central" value="" position="0 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5" align="center"></a-text>
-                
-                <a-entity id="caixa-dialogo" position="0 -0.2 -1.2" visible="false" rotation="-10 0 0">
-                    <a-plane color="#1e272e" width="1.8" height="1.0" opacity="0.95"></a-plane>
-                    <a-plane color="#2c3e50" width="1.8" height="0.2" position="0 0.4 0.01"></a-plane>
-                    <a-text id="npc-nome-ui" value="Nome do NPC" position="-0.85 0.4 0.02" color="#00ffcc" scale="0.45 0.45 0.45"></a-text>
-                    <a-text id="npc-texto-ui" value="Texto..." position="-0.85 0.2 0.01" color="#FFF" scale="0.35 0.35 0.35" wrap-count="45" baseline="top"></a-text>
-                </a-entity>
-                
-            </a-entity> 
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de HP Máx</label><input type="number" id="arma-b-hp" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Velocidade</label><input type="number" id="arma-b-vel" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Sorte</label><input type="number" id="arma-b-sorte" value="0"></div>
 
-            <a-entity id="menu-inventario-novo" scale="0 0 0" position="-0.5 1.5 -1.6" rotation="0 15 0">
-                 </a-entity>
+                <div class="input-group"><label>Escala (X Y Z)</label><input type="text" id="arma-escala" value="1 1 1"></div>
+                <div class="input-group"><label>Rotação na Mão</label><input type="text" id="arma-rot" value="0 0 0"></div>
+                <div class="input-group"><label>Posição na Mão</label><input type="text" id="arma-pos" value="0 0 0"></div>
+            </div>
+            <button class="btn btn-edit" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="forjarArma()">🔨 FORJAR ITEM NO SERVIDOR</button>
+        </div>
+    </div>
 
-            <a-entity id="menu-atributos" scale="0 0 0" position="1.3 1.5 -1.2" rotation="0 -30 0">
-                 </a-entity>
-        </a-entity>
-    </a-scene>
+    <div id="tab-respawns" class="tab-content">
+        <h2 class="section-title">🔮 CRISTAIS DE RESPAWN (Checkpoints)</h2>
+        <div id="lista-respawns"></div>
+        <div class="painel-spawn resp-spawn">
+            <h2>📍 Criar ou Editar Ponto de Respawn</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="resp-id" placeholder="ex: base_floresta"></div>
+                <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="resp-x" value="0"></div>
+                <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="resp-y" value="0"></div>
+                <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="resp-z" value="0"></div>
+                <div class="input-group"><label>Raio Ativação (m)</label><input type="number" step="0.1" id="resp-raio" value="3"></div>
+            </div>
+            <button class="btn" style="background:#1abc9c; color:white; width: 100%; margin-top: 15px;" onclick="spawnarRespawn()">⚡ PLANTAR CRISTAL</button>
+        </div>
+    </div>
+
+    <div id="tab-npcs" class="tab-content">
+        <h2 class="section-title">🗣️ TAVERNA DOS NPCs</h2>
+        <div id="lista-npcs"></div>
+        <div class="painel-spawn npc-spawn" id="form-npc">
+            <h2>📜 Criar ou Editar NPC</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="npc-id"></div>
+                <div class="input-group"><label>Nome</label><input type="text" id="npc-nome"></div>
+                <div class="input-group"><label>Tipo</label><select id="npc-tipo" onchange="atualizarCamposNPC()"><option value="dialogo">Diálogo</option><option value="secundaria">Missão</option></select></div>
+                <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
+                <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
+                <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
+                <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo"></textarea></div>
+                <div class="input-group campo-missao" style="grid-column: span 3;"><label>Diálogo Missão</label><textarea id="npc-dialogo-missao"></textarea></div>
+                <div class="input-group campo-missao"><label>ID Missão</label><input type="text" id="npc-missao-id"></div>
+                <div class="input-group campo-missao"><label>Rec. Ouro</label><input type="number" id="npc-rec-ouro" value="0"></div>
+                <div class="input-group campo-missao"><label>Rec. Item</label><input type="text" id="npc-rec-item"></div>
+            </div>
+            <button class="btn btn-blue" style="width: 100%; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ SALVAR NPC</button>
+        </div>
+    </div>
+
+    <div id="tab-inimigos" class="tab-content">
+        <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
+        <div id="lista-inimigos"></div>
+    </div>
+</div>
+
+<script>
+    function abrirAba(abaId, btnSelecionado) {
+        let abas = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < abas.length; i++) { abas[i].style.display = "none"; }
+        let botoes = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < botoes.length; i++) { botoes[i].classList.remove("active"); }
+        document.getElementById(abaId).style.display = "block";
+        if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
+    }
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0", authDomain: "rpg-vr-online.firebaseapp.com", databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com", projectId: "rpg-vr-online", messagingSenderId: "676174796336", appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+    };
+    if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+    const db = firebase.database(); const firestoreDB = firebase.firestore();
+
+    // ==========================================
+    // LÓGICA DO ARSENAL (ARMAS E ESCUDOS)
+    // ==========================================
+    const listaArmasDiv = document.getElementById('lista-armas');
+    db.ref('banco_armas').on('value', snap => {
+        listaArmasDiv.innerHTML = '';
+        let armas = snap.val(); if(!armas) return;
+        for(let id in armas) {
+            let a = armas[id];
+            let corCard = a.categoria === 'Escudo' ? '#3498db' : (a.categoria === 'Varinha' || a.categoria === 'Arco' ? '#9b59b6' : '#e74c3c');
+            listaArmasDiv.innerHTML += `
+                <div class="card arma-card" style="border-left-color: ${corCard}">
+                    <h3>${id} <span style="font-size:0.8rem; color:#ccc;">[${a.categoria}]</span></h3>
+                    <div style="width: 100%; font-size: 0.9rem;">
+                        🗡️ Dano: <b>${a.danoBonus||0}</b> | 🛡️ Defesa: <b>${a.defesaBonus||0}</b> | 📏 Alcance: <b>${a.distancia||3}m</b><br>
+                        ❤️ Bônus HP: <b>${a.bonusHP||0}</b> | 👟 Bônus Vel: <b>${a.bonusVelocidade||0}</b>
+                    </div>
+                    <div class="action-buttons" style="width: 100%;">
+                        <button class="btn btn-edit" onclick="carregarEdicaoArma('${id}')">✏️ Editar</button>
+                        <button class="btn btn-dark" onclick="excluirArma('${id}')">🗑️ Excluir</button>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    window.carregarEdicaoArma = function(id) {
+        db.ref('banco_armas/' + id).once('value').then(snap => {
+            let a = snap.val(); if(!a) return;
+            document.getElementById('arma-id').value = id;
+            document.getElementById('arma-cat').value = a.categoria || 'Espada';
+            document.getElementById('arma-glb').value = a.modeloGlb || '';
+            document.getElementById('arma-dano').value = a.danoBonus || 0;
+            document.getElementById('arma-defesa').value = a.defesaBonus || 0;
+            document.getElementById('arma-dist').value = a.distancia || 3.0;
+            document.getElementById('arma-b-hp').value = a.bonusHP || 0;
+            document.getElementById('arma-b-vel').value = a.bonusVelocidade || 0;
+            document.getElementById('arma-b-sorte').value = a.bonusSorte || 0;
+            document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
+            document.getElementById('arma-rot').value = a.rotMao || '0 0 0';
+            document.getElementById('arma-pos').value = a.posMao || '0 0 0';
+            document.getElementById('form-arma').scrollIntoView({ behavior: 'smooth' });
+        });
+    };
+
+    window.forjarArma = function() {
+        let id = document.getElementById('arma-id').value; if(!id) { alert("Dê um nome para a arma!"); return; }
+        db.ref('banco_armas/' + id).set({
+            categoria: document.getElementById('arma-cat').value,
+            modeloGlb: document.getElementById('arma-glb').value,
+            danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0,
+            defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
+            distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0,
+            bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
+            bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0,
+            bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
+            escalaMao: document.getElementById('arma-escala').value || '1 1 1',
+            rotMao: document.getElementById('arma-rot').value || '0 0 0',
+            posMao: document.getElementById('arma-pos').value || '0 0 0',
+            escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05'
+        }).then(() => alert("Item forjado e enviado para os jogadores!"));
+    };
+
+    window.excluirArma = function(id) { if(confirm(`DESTRUIR o item ${id}? Ele sumirá do inventário de todos!`)) db.ref('banco_armas/' + id).remove(); };
+
+    // CARREGA OS OUTROS SISTEMAS ORIGINAIS (MANTIDOS INTACTOS)
+    firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
+        const listaJogadores = document.getElementById('lista-jogadores'); listaJogadores.innerHTML = '';
+        querySnapshot.forEach((doc) => {
+            let p = doc.data(); let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
+            listaJogadores.innerHTML += `<div class="card player-card"><h3>👤 Usuário: ${doc.id}</h3><div style="width: 100%;"><span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br><b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'}</div></div>`;
+        });
+    });
+
+    window.kickarTodos = function() {
+        if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
+            db.ref('players').remove(); db.ref('server_commands/kick_all').set(Date.now()); alert("Sinal de KICK enviado!");
+        }
+    };
+</script>
 </body>
 </html>
