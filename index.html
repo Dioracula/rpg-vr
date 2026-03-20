@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG MMO - Portal de Entrada</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <style>
+        body { 
+            margin: 0; padding: 0; height: 100vh; display: flex; 
+            justify-content: center; align-items: center; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #2c3e50 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        .menu-box { 
+            background: rgba(15, 15, 20, 0.9); padding: 40px; 
+            border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+            text-align: center; width: 320px; border-top: 4px solid #f1c40f;
+        }
+        .menu-box input { 
+            width: 100%; padding: 12px; margin: 10px 0; 
+            border-radius: 5px; border: 1px solid #34495e; 
+            background: #2c3e50; color: white; box-sizing: border-box; 
+        }
+        .btn { 
+            padding: 14px 20px; font-size: 1.1rem; font-weight: bold; 
+            cursor: pointer; border: none; border-radius: 5px; 
+            margin: 8px 0; width: 100%; color: white; transition: 0.3s;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn-green { background: #27ae60; } .btn-green:hover { background: #2ecc71; }
+        .btn-blue { background: #2980b9; } .btn-blue:hover { background: #3498db; }
+        .btn-orange { background: #d35400; } .btn-orange:hover { background: #e67e22; }
+        .btn-vr { background: #8e44ad; } .btn-vr:hover { background: #9b59b6; }
+        
+        #start-menu { display: none; }
+        .logo { font-size: 2rem; margin-bottom: 20px; color: #f1c40f; text-transform: uppercase; letter-spacing: 2px;}
+    </style>
+</head>
+<body>
+
+    <div id="login-menu" class="menu-box">
+        <div class="logo">⚔️ Aetheria MMO</div>
+        <p style="color: #bdc3c7; font-size: 0.9rem; margin-bottom: 20px;">Faça login para entrar no mundo.</p>
+        
+        <input type="email" id="login-email" placeholder="Email">
+        <input type="password" id="login-senha" placeholder="Senha">
+        
+        <button id="btn-login" class="btn btn-blue">Entrar</button>
+        <button id="btn-registrar" class="btn btn-green">Criar Conta</button>
+    </div>
+
+    <div id="start-menu" class="menu-box">
+        <div class="logo">⚔️ Plataforma</div>
+        <p style="color: #2ecc71; font-weight: bold;">Logado com sucesso!</p>
+        <p style="color: #bdc3c7; font-size: 0.85rem; margin-bottom: 20px;">Escolha como você quer jogar agora:</p>
+        
+        <button onclick="irPara('pc.html')" class="btn btn-orange">🖥️ Jogar no PC (Teclado/Mouse)</button>
+        <button onclick="irPara('android.html')" class="btn btn-green">📱 Jogar no Celular (Touch)</button>
+        <button onclick="irPara('vr.html')" class="btn btn-vr">🥽 Jogar em VR (Óculos)</button>
+    </div>
+
+    <script>
+        // Simulador de Login Rápido (Mantendo o seu fluxo)
+        document.getElementById('btn-registrar').addEventListener('click', () => { 
+            localStorage.setItem('mmo_uid', 'test_user_local'); 
+            iniciarTelaSelecaoModo(); 
+        }); 
+        document.getElementById('btn-login').addEventListener('click', () => { 
+            localStorage.setItem('mmo_uid', 'test_user_local'); 
+            iniciarTelaSelecaoModo(); 
+        }); 
+
+        function iniciarTelaSelecaoModo() { 
+            document.getElementById('login-menu').style.display = 'none'; 
+            document.getElementById('start-menu').style.display = 'block'; 
+        }
+
+        function irPara(arquivo) {
+            // Salva o tempo e vai para o arquivo do jogo focado
+            window.location.href = arquivo;
+        }
+    </script>
+
+</body>
+</html>
