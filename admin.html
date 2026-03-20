@@ -15,9 +15,17 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
         h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase;}
         .container { max-width: 1200px; margin: 0 auto; }
-        .header-controls { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-top: 40px; border-left: 5px solid #f1c40f; }
+        .header-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #f1c40f; }
         
+        /* SISTEMA DE ABAS (TABS) */
+        .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; background: #2c3e50; padding: 10px; border-radius: 8px; overflow-x: auto; }
+        .tab-btn { flex: 1; background: #34495e; color: #bdc3c7; border: none; padding: 15px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s; white-space: nowrap; }
+        .tab-btn:hover { background: #455a64; color: white; }
+        .tab-btn.active { background: #f1c40f; color: #111; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .card { background: #2c3e50; padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-left: 4px solid #e74c3c;}
         .card.npc-card { border-left-color: #2ecc71; }
         .card.player-card { border-left-color: #9b59b6; }
@@ -65,31 +73,13 @@
 <body>
 
 <div class="container">
-    <h1>👑 PAINEL DO MESTRE (GAME MASTER)</h1>
-    <div class="header-controls"><button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos)</button></div>
+    <h1>👑 PAINEL DO MESTRE</h1>
+    
+    <div class="header-controls"><button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos os Jogadores)</button></div>
 
-    <h2 class="section-title">🎒 INVENTÁRIO DOS JOGADORES (Missões e Status)</h2>
-    <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-        <p style="color: #7f8c8d;">Carregando banco de dados...</p>
-    </div>
-
-    <h2 class="section-title">🔮 CRISTAIS DE RESPAWN (Checkpoints)</h2>
-    <div id="lista-respawns"></div>
-
-    <div class="painel-spawn resp-spawn">
-        <h2>📍 Criar ou Editar Ponto de Respawn</h2>
-        <div class="grid-spawn">
-            <div class="input-group"><label>ID Único</label><input type="text" id="resp-id" placeholder="ex: base_floresta"></div>
-            <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="resp-x" value="0"></div>
-            <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="resp-y" value="0"></div>
-            <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="resp-z" value="0"></div>
-            <div class="input-group"><label>Raio Ativação (m)</label><input type="number" step="0.1" id="resp-raio" value="3" title="Tamanho do círculo de captura"></div>
-        </div>
-        <button class="btn" style="background:#1abc9c; color:white; width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarRespawn()">⚡ PLANTAR CRISTAL DE RESPAWN</button>
-    </div>
-
-    <div class="leitor-glb" style="margin-top: 40px;">
-        <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Extrair Animações do .GLB (Grátis)</label>
+    <div class="leitor-glb">
+        <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Ferramenta Extrair Animações (.GLB)</label>
+        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações direto do seu PC (Grátis).</span>
         <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
             <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
             <span id="status-upload">Nenhum arquivo lido.</span>
@@ -97,72 +87,137 @@
     </div>
     <datalist id="lista-animacoes"></datalist>
 
-    <h2 class="section-title">🗣️ TAVERNA DOS NPCs (Missões e Diálogos)</h2>
-    <div id="lista-npcs"></div>
-
-    <div class="painel-spawn npc-spawn" id="form-npc">
-        <h2>📜 Criar ou Editar NPC</h2>
-        <div class="grid-spawn">
-            <div class="input-group"><label>ID Único</label><input type="text" id="npc-id" placeholder="ex: ferreiro"></div>
-            <div class="input-group"><label>Nome de Exibição</label><input type="text" id="npc-nome" placeholder="ex: João"></div>
-            <div class="input-group"><label>Tipo de NPC</label><select id="npc-tipo" onchange="atualizarCamposNPC()"><option value="dialogo">Apenas Diálogo</option><option value="secundaria">Missão Secundária</option><option value="primaria">NPC Primário (História)</option></select></div>
-            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb" value=""></div>
-            <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
-            <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
-            <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
-            <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
-            <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
-            <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho X</label><input type="number" step="0.01" id="npc-scale-x" value="1"></div>
-            <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Y</label><input type="number" step="0.01" id="npc-scale-y" value="1"></div>
-            <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Z</label><input type="number" step="0.01" id="npc-scale-z" value="1"></div>
-            <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
-            <div class="input-group campo-missao" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
-            <div class="input-group campo-missao"><label style="color:#f1c40f">ID da Missão</label><input type="text" id="npc-missao-id" placeholder="ex: quest_lobos"></div>
-            <div class="input-group campo-missao"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
-            <div class="input-group campo-primario"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
-        </div>
-        <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ INVOCAR / SALVAR EDIÇÃO DO NPC</button>
+    <div class="admin-tabs">
+        <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
+        <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Cristais Respawn</button>
+        <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ Taverna NPCs</button>
+        <button class="tab-btn" onclick="abrirAba('tab-inimigos', this)">⚔️ Quartel Inimigos</button>
     </div>
 
-    <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
-    <div id="lista-inimigos"></div>
-
-    <div class="painel-spawn ini-spawn" id="form-inimigo">
-        <h2>🪄 Invocar ou Editar Inimigo</h2>
-        <div class="grid-spawn">
-            <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
-            <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
-            <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Parado)</option><option value="livre">Patrulha Livre</option></select></div>
-            <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
-            
-            <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
-            <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
-            
-            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
-            <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
-            <div class="input-group"><label style="color:#2ecc71">Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
-            <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
-            <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
-
-            <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
-            <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Segundos)</label><input type="number" id="novo-respawn-time" value="60" title="Tempo para renascer"></div>
-
-            <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
-            <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" step="0.1" id="novo-spawn-y" value="0"></div>
-            <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Z</label><input type="number" step="0.1" id="novo-spawn-z" value="-5"></div>
-
-            <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho X</label><input type="number" step="0.01" id="novo-scale-x" value="1"></div>
-            <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho Y</label><input type="number" step="0.01" id="novo-scale-y" value="1"></div>
-            <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho Z</label><input type="number" step="0.01" id="novo-scale-z" value="1"></div>
+    <div id="tab-jogadores" class="tab-content" style="display: block;">
+        <h2 class="section-title">🎒 INVENTÁRIO E STATUS DOS JOGADORES</h2>
+        <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+            <p style="color: #7f8c8d;">Carregando banco de dados...</p>
         </div>
-        <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR / SALVAR EDIÇÃO DO INIMIGO</button>
+    </div>
+
+    <div id="tab-respawns" class="tab-content">
+        <h2 class="section-title">🔮 CRISTAIS DE RESPAWN (Checkpoints)</h2>
+        <div id="lista-respawns"></div>
+
+        <div class="painel-spawn resp-spawn">
+            <h2>📍 Criar ou Editar Ponto de Respawn</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="resp-id" placeholder="ex: base_floresta"></div>
+                <div class="input-group"><label>Posição X</label><input type="number" step="0.1" id="resp-x" value="0"></div>
+                <div class="input-group"><label>Posição Y</label><input type="number" step="0.1" id="resp-y" value="0"></div>
+                <div class="input-group"><label>Posição Z</label><input type="number" step="0.1" id="resp-z" value="0"></div>
+                <div class="input-group"><label>Raio Ativação (m)</label><input type="number" step="0.1" id="resp-raio" value="3" title="Tamanho do círculo de captura"></div>
+            </div>
+            <button class="btn" style="background:#1abc9c; color:white; width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarRespawn()">⚡ PLANTAR CRISTAL DE RESPAWN</button>
+        </div>
+    </div>
+
+    <div id="tab-npcs" class="tab-content">
+        <h2 class="section-title">🗣️ TAVERNA DOS NPCs (Missões e Diálogos)</h2>
+        <div id="lista-npcs"></div>
+
+        <div class="painel-spawn npc-spawn" id="form-npc">
+            <h2>📜 Criar ou Editar NPC</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="npc-id" placeholder="ex: ferreiro"></div>
+                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="npc-nome" placeholder="ex: João"></div>
+                <div class="input-group"><label>Tipo de NPC</label><select id="npc-tipo" onchange="atualizarCamposNPC()"><option value="dialogo">Apenas Diálogo</option><option value="secundaria">Missão Secundária</option><option value="primaria">NPC Primário (História)</option></select></div>
+                <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb" value=""></div>
+                <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
+                <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
+                <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
+                <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
+                <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho X</label><input type="number" step="0.01" id="npc-scale-x" value="1"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Y</label><input type="number" step="0.01" id="npc-scale-y" value="1"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Z</label><input type="number" step="0.01" id="npc-scale-z" value="1"></div>
+                <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
+                <div class="input-group campo-missao" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
+                <div class="input-group campo-missao"><label style="color:#f1c40f">ID da Missão</label><input type="text" id="npc-missao-id" placeholder="ex: quest_lobos"></div>
+                <div class="input-group campo-missao"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
+                <div class="input-group campo-primario"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
+            </div>
+            <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ INVOCAR / SALVAR EDIÇÃO DO NPC</button>
+        </div>
+    </div>
+
+    <div id="tab-inimigos" class="tab-content">
+        <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
+        <div id="lista-inimigos"></div>
+
+        <div class="painel-spawn ini-spawn" id="form-inimigo">
+            <h2>🪄 Invocar ou Editar Inimigo</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
+                <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Parado)</option><option value="livre">Patrulha Livre</option></select></div>
+                <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
+                
+                <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
+                
+                <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
+                <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
+                <div class="input-group"><label style="color:#2ecc71">Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
+                <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
+                <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
+
+                <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
+                <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Segundos)</label><input type="number" id="novo-respawn-time" value="60" title="Tempo para renascer"></div>
+
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" step="0.1" id="novo-spawn-y" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Z</label><input type="number" step="0.1" id="novo-spawn-z" value="-5"></div>
+
+                <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho X</label><input type="number" step="0.01" id="novo-scale-x" value="1"></div>
+                <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho Y</label><input type="number" step="0.01" id="novo-scale-y" value="1"></div>
+                <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho Z</label><input type="number" step="0.01" id="novo-scale-z" value="1"></div>
+            </div>
+            <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR / SALVAR EDIÇÃO DO INIMIGO</button>
+        </div>
     </div>
 </div>
 
 <script>
+    // ==========================================
+    // FUNÇÃO DE MUDAR DE ABAS
+    // ==========================================
+    function abrirAba(abaId, btnSelecionado) {
+        // Esconde todas as abas
+        let abas = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < abas.length; i++) {
+            abas[i].style.display = "none";
+        }
+        
+        // Remove a cor ativa de todos os botões
+        let botoes = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < botoes.length; i++) {
+            botoes[i].classList.remove("active");
+        }
+        
+        // Mostra a aba correta e colore o botão clicado
+        document.getElementById(abaId).style.display = "block";
+        if (btnSelecionado) {
+            btnSelecionado.classList.add("active");
+        } else {
+            // Caso seja acionado pelo código (sem clicar)
+            document.querySelector(`button[onclick*="${abaId}"]`).classList.add("active");
+        }
+    }
+
+
+    // ==========================================
+    // CÓDIGO FIREBASE E FUNCIONALIDADES
+    // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
         authDomain: "rpg-vr-online.firebaseapp.com",
@@ -175,6 +230,7 @@
     const db = firebase.database();
     const firestoreDB = firebase.firestore();
 
+    // JOGADORES
     firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
         const listaJogadores = document.getElementById('lista-jogadores');
         listaJogadores.innerHTML = '';
@@ -188,6 +244,7 @@
         });
     });
 
+    // RESPAWNS
     const listaRespawnsDiv = document.getElementById('lista-respawns');
     db.ref('cenario_respawns').on('child_added', (snapshot) => {
         let id = snapshot.key; let r = snapshot.val();
@@ -230,6 +287,7 @@
         }); alert('Cristal de Respawn criado com sucesso!');
     };
 
+    // LEITOR GLB
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); const statusText = document.getElementById('status-upload');
@@ -243,14 +301,7 @@
         }, undefined, function(error) { statusText.innerText = '❌ Arquivo GLB inválido.'; });
     });
 
-    function atualizarCamposNPC() {
-        let tipo = document.getElementById('npc-tipo').value;
-        let camposMissao = document.querySelectorAll('.campo-missao'); let camposPrimario = document.querySelectorAll('.campo-primario');
-        camposMissao.forEach(el => el.style.display = 'none'); camposPrimario.forEach(el => el.style.display = 'none');
-        if (tipo === 'secundaria' || tipo === 'primaria') camposMissao.forEach(el => el.style.display = 'flex');
-        if (tipo === 'primaria') camposPrimario.forEach(el => el.style.display = 'flex');
-    }
-
+    // INIMIGOS
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); 
@@ -289,6 +340,10 @@
     window.carregarEdicaoInimigo = function(id) {
         db.ref('cenario_inimigos/' + id).once('value').then(snap => {
             let data = snap.val(); if(!data) return;
+            
+            // MUDA PARA A ABA DE INIMIGOS AUTOMATICAMENTE!
+            abrirAba('tab-inimigos', null);
+            
             document.getElementById('novo-id').value = id;
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
             document.getElementById('novo-movimento').value = data.movimento || 'estatico';
@@ -334,13 +389,10 @@
         let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value) || 0;
 
         let dadosInimigo = {
-            hpMax: hp,
-            hp: hp, 
-            dano: forcaDoMonstro,
+            hpMax: hp, hp: hp, dano: forcaDoMonstro,
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
             pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
-            
             comportamento: document.getElementById('novo-comportamento').value,
             movimento: document.getElementById('novo-movimento').value, 
             aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15,
@@ -348,7 +400,6 @@
             speed: parseFloat(document.getElementById('novo-speed').value) || 0.08,
             cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
             respawnTime: tempoRespawnCalculado,
-            
             tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value,
             animParado: document.getElementById('novo-anim-parado').value,
@@ -360,7 +411,15 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
-    // NPCS... (resto se mantém igual)
+    // NPCs
+    function atualizarCamposNPC() {
+        let tipo = document.getElementById('npc-tipo').value;
+        let camposMissao = document.querySelectorAll('.campo-missao'); let camposPrimario = document.querySelectorAll('.campo-primario');
+        camposMissao.forEach(el => el.style.display = 'none'); camposPrimario.forEach(el => el.style.display = 'none');
+        if (tipo === 'secundaria' || tipo === 'primaria') camposMissao.forEach(el => el.style.display = 'flex');
+        if (tipo === 'primaria') camposPrimario.forEach(el => el.style.display = 'flex');
+    }
+
     const listaNpcsDiv = document.getElementById('lista-npcs');
     db.ref('cenario_npcs').on('child_added', (snapshot) => {
         let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
@@ -393,6 +452,10 @@
     window.carregarEdicaoNpc = function(id) {
         db.ref('cenario_npcs/' + id).once('value').then(snap => {
             let data = snap.val(); if(!data) return;
+            
+            // MUDA PARA A ABA DE NPCS AUTOMATICAMENTE!
+            abrirAba('tab-npcs', null);
+
             document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
             document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; atualizarCamposNPC(); 
             document.getElementById('npc-glb').value = data.modeloGlb || ''; document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
