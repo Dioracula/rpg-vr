@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Motor de Animação com Velocímetro Real)</title>
+    <title>RPG VR e PC - Versão Definitiva (Diálogos Interativos e Missões)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -75,16 +75,12 @@
             atualizarUI(); 
             
             if (window.playerState.hpAtual <= 0) { 
-                window.playerState.vivo = false; 
-                window.playerState.hpAtual = 0; 
+                window.playerState.vivo = false; window.playerState.hpAtual = 0; 
                 let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 atualizarUI(); 
                 
                 let aviso = document.querySelector('#texto-central'); 
-                if(aviso) { 
-                    aviso.setAttribute('color', '#ff0000'); 
-                    aviso.setAttribute('visible', 'true'); 
-                }
+                if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
                 
                 let tempoRespawn = 5; 
                 if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
@@ -116,15 +112,104 @@
             }
         };
 
-        window.dialogoTimeout = null;
-        window.mostrarDialogo = function(nome, texto) {
-            let cx = document.querySelector('#caixa-dialogo'); let tNome = document.querySelector('#npc-nome-ui'); let tTexto = document.querySelector('#npc-texto-ui');
-            if(cx && tNome && tTexto) {
-                tNome.setAttribute('value', nome); tTexto.setAttribute('value', texto); cx.setAttribute('visible', 'true');
-                if(window.dialogoTimeout) clearTimeout(window.dialogoTimeout);
-                window.dialogoTimeout = setTimeout(() => { if(cx) cx.setAttribute('visible', 'false'); }, 8000);
+        // ==========================================
+        // NOVO SISTEMA DE DIÁLOGOS INTERATIVOS
+        // ==========================================
+        window.npcAtivo = null;
+
+        window.abrirDialogoNPC = function(data) {
+            window.npcAtivo = data;
+            let cx = document.querySelector('#caixa-dialogo');
+            let tNome = document.querySelector('#npc-nome-ui');
+            let tTexto = document.querySelector('#npc-texto-ui');
+            let entRec = document.querySelector('#npc-recompensa-ui');
+            let tRec = document.querySelector('#npc-rec-texto');
+            let btnAceitar = document.querySelector('#btn-npc-aceitar');
+            let btnFechar = document.querySelector('#btn-npc-fechar');
+
+            if(!cx || !tNome || !tTexto) return;
+
+            tNome.setAttribute('value', data.nome || "NPC");
+
+            let jaConcluiu = data.chaveConclusao && window.playerState.chaves[data.chaveConclusao];
+            let podeFazer = !data.requisito || window.playerState.chaves[data.requisito];
+
+            if (data.tipo === 'dialogo' || jaConcluiu) {
+                tTexto.setAttribute('value', data.dialogoPadrao || "Olá aventureiro.");
+                entRec.setAttribute('visible', 'false');
+                btnAceitar.setAttribute('visible', 'false');
+                btnFechar.setAttribute('position', '0 -0.4 0.01'); // Centraliza botão fechar
+            } else if ((data.tipo === 'secundaria' || data.tipo === 'primaria') && podeFazer) {
+                tTexto.setAttribute('value', data.dialogoMissao || "Preciso de ajuda com esta missão!");
+                
+                // Formata a string de recompensas
+                let recStr = "";
+                if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `;
+                if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `;
+                if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
+                
+                if (recStr.trim() !== "") {
+                    tRec.setAttribute('value', recStr);
+                    entRec.setAttribute('visible', 'true');
+                } else {
+                    entRec.setAttribute('visible', 'false');
+                }
+
+                btnAceitar.setAttribute('visible', 'true');
+                btnFechar.setAttribute('position', '0.55 -0.4 0.01'); // Move fechar pra direita
+            } else {
+                tTexto.setAttribute('value', "Você ainda não tem os requisitos para falar comigo.");
+                entRec.setAttribute('visible', 'false');
+                btnAceitar.setAttribute('visible', 'false');
+                btnFechar.setAttribute('position', '0 -0.4 0.01');
             }
+
+            cx.setAttribute('visible', 'true');
         };
+
+        window.fecharDialogoNPC = function() {
+            let cx = document.querySelector('#caixa-dialogo');
+            if(cx) cx.setAttribute('visible', 'false');
+            window.npcAtivo = null;
+        };
+
+        window.aceitarMissaoNPC = function() {
+            let data = window.npcAtivo;
+            if (!data) return;
+
+            // Marca Missão como Feita
+            if (data.chaveConclusao) { window.playerState.chaves[data.chaveConclusao] = true; }
+
+            // Dá Recompensas
+            if (data.recXP) window.playerState.xp += Number(data.recXP);
+            if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
+            if (data.recItem && window.bancoDeArmas[data.recItem]) {
+                window.playerState.armaEquipada = data.recItem; // Equipa o item ganho
+            }
+            
+            // Subir de Nível?
+            if (window.playerState.xp >= window.playerState.xpProxNivel) {
+                window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
+            }
+
+            atualizarUI();
+            window.salvarJogoNuvem();
+            window.tocarSom('snd-magic');
+            
+            let aviso = document.querySelector('#texto-central'); 
+            if(aviso) {
+                aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); 
+                aviso.setAttribute('color', '#f1c40f'); 
+                aviso.setAttribute('visible', 'true'); 
+                setTimeout(() => aviso.setAttribute('visible', 'false'), 3000);
+            }
+
+            window.fecharDialogoNPC();
+        };
+
+        // Componentes dos botões
+        AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('click', () => { window.fecharDialogoNPC(); }); } });
+        AFRAME.registerComponent('btn-dialogo-aceitar', { init: function() { this.el.addEventListener('click', () => { window.aceitarMissaoNPC(); }); } });
 
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
@@ -505,9 +590,6 @@
             }
         });
 
-        // ==========================================
-        // O MOTOR DE ANIMAÇÃO BLINDADO (VELOCÍMETRO)
-        // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
@@ -545,6 +627,7 @@
                 this.isAttacking = false;
                 this.animacaoAtual = "";
                 this.isDead = false;
+                this.lastMoveTime = 0;
 
                 this.el.addEventListener('model-loaded', () => {
                     if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
@@ -647,28 +730,26 @@
                 }; 
             },
 
-            // O NOVO CÉREBRO FÍSICO DO BONECO
             tick: function(time, timeDelta) {
                 if (!this.targetPos || this.hpAtual <= 0 || this.isDead) return;
 
                 let posAnterior = this.el.object3D.position.clone();
                 let distParaAlvo = this.el.object3D.position.distanceTo(this.targetPos);
                 
-                // Suaviza a ida até o alvo
                 if (distParaAlvo > 0.01) {
                     this.el.object3D.position.lerp(this.targetPos, 0.2); 
                 }
 
-                // O Velocímetro Mágico: Só roda a animação de perna se ele fisicamente andou neste frame!
                 let velocidadeAtual = this.el.object3D.position.distanceTo(posAnterior);
 
                 if (velocidadeAtual > 0.002) {
+                    this.lastMoveTime = time;
                     if (!this.isMoving && !this.isAttacking) {
                         this.isMoving = true;
                         this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat');
                     }
                 } else {
-                    if (this.isMoving && !this.isAttacking) {
+                    if (this.isMoving && !this.isAttacking && (time - this.lastMoveTime > 200)) {
                         this.isMoving = false;
                         this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     }
@@ -685,7 +766,7 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
-                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) return; 
+                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) { return; }
                     if (document.querySelector(`[data-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
@@ -758,7 +839,7 @@
         });
 
         // ==========================================
-        // GERENCIADOR DINÂMICO DE NPCs
+        // GERENCIADOR DE NPCs E MIRA GLOW
         // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
@@ -804,6 +885,7 @@
 
                     let nomeTag = document.createElement('a-text'); 
                     el.appendChild(nomeTag);
+                    nomeTag.className = 'npc-nome-tag'; // Para mudar a cor no HOVER
                     nomeTag.setAttribute('value', data.nome || 'NPC'); nomeTag.setAttribute('align', 'center'); nomeTag.setAttribute('position', '0 2.4 0'); nomeTag.setAttribute('color', '#f1c40f'); nomeTag.setAttribute('scale', '0.6 0.6 0.6'); nomeTag.setAttribute('side', 'double'); 
                 });
 
@@ -823,7 +905,7 @@
                             }
                         }
                         let colisor = el.querySelector('a-cylinder.interativo'); if (colisor) colisor.npcData = data; 
-                        let nomeTag = el.querySelector('a-text'); if (nomeTag) nomeTag.setAttribute('value', data.nome || 'NPC');
+                        let nomeTag = el.querySelector('.npc-nome-tag'); if (nomeTag) nomeTag.setAttribute('value', data.nome || 'NPC');
                     }
                 });
 
@@ -845,6 +927,16 @@
                 this.el.parentNode.addEventListener('model-loaded', () => {
                     if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado);
                 });
+                
+                // MIRA GLOW! Ao olhar para o NPC, o nome fica Azul
+                this.el.addEventListener('mouseenter', () => {
+                    let tag = this.el.parentNode.querySelector('.npc-nome-tag');
+                    if(tag) tag.setAttribute('color', '#00ffcc');
+                });
+                this.el.addEventListener('mouseleave', () => {
+                    let tag = this.el.parentNode.querySelector('.npc-nome-tag');
+                    if(tag) tag.setAttribute('color', '#f1c40f');
+                });
 
                 this.el.addEventListener('click', () => {
                     if (!window.GAME_STARTED || !window.playerState.vivo) return;
@@ -852,7 +944,7 @@
                     let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
                     let posPlayer = new THREE.Vector3(); cameraObj.object3D.getWorldPosition(posPlayer);
                     let posNPC = new THREE.Vector3(); this.el.parentNode.object3D.getWorldPosition(posNPC);
-                    if (posPlayer.distanceTo(posNPC) > 4.0) return; 
+                    if (posPlayer.distanceTo(posNPC) > 5.0) return; 
 
                     let data = this.el.npcData; if (!data) return;
 
@@ -860,22 +952,8 @@
                         this.tocarAnimacao(data.animFalando); setTimeout(() => { if(data.animParado) this.tocarAnimacao(data.animParado); }, 8000);
                     }
 
-                    let textoFinal = data.dialogoPadrao || "...";
-
-                    if (data.tipo === 'secundaria') {
-                        if (data.chaveConclusao && !window.playerState.chaves[data.chaveConclusao]) {
-                            textoFinal = data.dialogoMissao || textoFinal; window.playerState.chaves[data.chaveConclusao] = true; window.salvarJogoNuvem(); 
-                        }
-                    } 
-                    else if (data.tipo === 'primaria') {
-                        if (data.requisito && !window.playerState.chaves[data.requisito]) { textoFinal = data.dialogoPadrao || "Você ainda não está pronto para a minha missão."; } 
-                        else if (data.chaveConclusao && !window.playerState.chaves[data.chaveConclusao]) {
-                            textoFinal = data.dialogoMissao || "Aqui está a sua nova missão!"; window.playerState.chaves[data.chaveConclusao] = true; window.salvarJogoNuvem();
-                        } 
-                        else { textoFinal = data.dialogoPadrao || "Obrigado pela sua ajuda nobre aventureiro."; }
-                    }
-
-                    window.mostrarDialogo(data.nome, textoFinal);
+                    // CHAMA A NOVA TELA DE DIÁLOGO
+                    window.abrirDialogoNPC(data);
                 });
             }
         });
@@ -924,13 +1002,28 @@
                 <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
 
                 <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
-                
                 <a-text id="texto-central" value="" position="0 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5" align="center"></a-text>
                 
-                <a-entity id="caixa-dialogo" position="0 -0.3 -1.2" visible="false" rotation="-15 0 0">
-                    <a-plane color="#2c3e50" width="1.6" height="0.6" opacity="0.95"></a-plane>
-                    <a-text id="npc-nome-ui" value="Nome do NPC" position="-0.75 0.22 0.01" color="#f1c40f" scale="0.35 0.35 0.35"></a-text>
-                    <a-text id="npc-texto-ui" value="Texto..." position="-0.75 0.05 0.01" color="#FFF" scale="0.3 0.3 0.3" wrap-count="45" baseline="top"></a-text>
+                <a-entity id="caixa-dialogo" position="0 -0.2 -1.2" visible="false" rotation="-10 0 0">
+                    <a-plane color="#1e272e" width="1.8" height="1.0" opacity="0.95"></a-plane>
+                    
+                    <a-plane color="#2c3e50" width="1.8" height="0.2" position="0 0.4 0.01"></a-plane>
+                    <a-text id="npc-nome-ui" value="Nome do NPC" position="-0.85 0.4 0.02" color="#00ffcc" scale="0.45 0.45 0.45"></a-text>
+                    
+                    <a-text id="npc-texto-ui" value="Texto..." position="-0.85 0.2 0.01" color="#FFF" scale="0.35 0.35 0.35" wrap-count="45" baseline="top"></a-text>
+                    
+                    <a-entity id="npc-recompensa-ui" visible="false" position="0 -0.1 0.01">
+                        <a-text value="Recompensas:" position="-0.85 0 0" color="#e67e22" scale="0.3 0.3 0.3"></a-text>
+                        <a-text id="npc-rec-texto" value="" position="-0.85 -0.12 0" color="#2ecc71" scale="0.35 0.35 0.35"></a-text>
+                    </a-entity>
+
+                    <a-box id="btn-npc-aceitar" btn-dialogo-aceitar class="interativo" color="#27ae60" width="0.7" height="0.15" depth="0.01" position="-0.4 -0.4 0.01" visible="false">
+                        <a-text value="ACEITAR/CONCLUIR" align="center" position="0 0 0.02" scale="0.3 0.3 0.3"></a-text>
+                    </a-box>
+                    
+                    <a-box id="btn-npc-fechar" btn-dialogo-fechar class="interativo" color="#c0392b" width="0.4" height="0.15" depth="0.01" position="0.55 -0.4 0.01">
+                        <a-text value="FECHAR" align="center" position="0 0 0.02" scale="0.3 0.3 0.3"></a-text>
+                    </a-box>
                 </a-entity>
                 
                 <a-text id="contador-online" value="Conectando Servidor..." position="0.6 0.8 -1.2" color="#00FF00" scale="0.4 0.4 0.4" align="right"></a-text>
