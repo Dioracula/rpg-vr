@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Anti-Fantasmas e Dano Real)</title>
+    <title>RPG VR e PC - Versão Definitiva (Anti-Fantasmas e Matemática Segura)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -138,8 +138,17 @@
                     let data = snapshot.val(); 
                     let avatar = document.createElement('a-entity');
                     this.cena.appendChild(avatar); 
-                    avatar.setAttribute('position', data.position || {x:0, y:0, z:0}); 
-                    avatar.setAttribute('rotation', data.rotation || {x:0, y:0, z:0});
+                    
+                    let pX = data.position ? data.position.x || 0 : 0;
+                    let pY = data.position ? data.position.y || 0 : 0;
+                    let pZ = data.position ? data.position.z || 0 : 0;
+                    avatar.setAttribute('position', `${pX} ${pY} ${pZ}`); 
+                    
+                    let rX = data.rotation ? data.rotation.x || 0 : 0;
+                    let rY = data.rotation ? data.rotation.y || 0 : 0;
+                    let rZ = data.rotation ? data.rotation.z || 0 : 0;
+                    avatar.setAttribute('rotation', `${rX} ${rY} ${rZ}`);
+                    
                     avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                     avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
                     
@@ -155,11 +164,11 @@
                 this.playersRef.on('child_changed', (snapshot) => {
                     let id = snapshot.key; if (id === this.myId) return;
                     let avatar = this.otherPlayers[id]; let data = snapshot.val();
-                    if (avatar && data) { 
+                    if (avatar && data && data.position) { 
                         avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                         avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                        avatar.setAttribute('animation__pos', 'property: position; to: ' + data.position.x + ' ' + data.position.y + ' ' + data.position.z + '; dur: 100; easing: linear'); 
-                        avatar.setAttribute('animation__rot', 'property: rotation; to: ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z + '; dur: 100; easing: linear'); 
+                        avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x || 0} ${data.position.y || 0} ${data.position.z || 0}; dur: 100; easing: linear`); 
+                        avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x || 0} ${data.rotation.y || 0} ${data.rotation.z || 0}; dur: 100; easing: linear`); 
                     }
                 });
 
@@ -365,7 +374,7 @@
         });
 
         // ==========================================
-        // GERENCIADOR DE RESPAWNS
+        // GERENCIADOR DE RESPAWNS BLINDADO
         // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
@@ -430,7 +439,7 @@
         });
 
         // ==========================================
-        // SISTEMA INIMIGO BLINDADO (FANTASMAS CORRIGIDOS)
+        // IA INIMIGOS E DANO PERSONALIZADO
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -481,8 +490,12 @@
                     this.dadosBD = data; let textoHp = this.el.querySelector('.hp-texto');
                     
                     if (data.pos) { 
-                        this.targetPos.set(data.pos.x, data.pos.y, data.pos.z);
-                        this.targetRotY = data.rotY || 0;
+                        // Garante que não trava se o servidor mandar posição quebrada
+                        let pX = isNaN(data.pos.x) ? 0 : data.pos.x;
+                        let pY = isNaN(data.pos.y) ? 0 : data.pos.y;
+                        let pZ = isNaN(data.pos.z) ? 0 : data.pos.z;
+                        this.targetPos.set(pX, pY, pZ);
+                        this.targetRotY = isNaN(data.rotY) ? 0 : data.rotY;
                     }
 
                     if (data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
@@ -539,7 +552,6 @@
                 this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
-                        // MÁGICA: SE O MONSTRO FOR NULO (FOI DELETADO), ABORTA A TRANSAÇÃO PARA NÃO RESSUSCITAR ELE!
                         if (currentHp === null) return; 
                         if (currentHp <= 0) return; 
                         return Math.max(0, currentHp - dano); 
@@ -590,9 +602,8 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
-                    // ESCUDO ANTI-ZUMBI EXTREMO (Impede a renderização de fantasmas)
                     if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) {
-                        return; // O SERVIDOR VAI DELETAR ISSO SOZINHO! NÃO TENTA RENDERIZAR!
+                        return; 
                     }
 
                     if (document.querySelector(`[data-id="${id}"]`)) return;
@@ -601,7 +612,10 @@
                     this.el.appendChild(el); 
                     el.dataset.id = id;
                     
-                    if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
+                    let pX = data.pos && !isNaN(data.pos.x) ? data.pos.x : 0;
+                    let pY = data.pos && !isNaN(data.pos.y) ? data.pos.y : 0;
+                    let pZ = data.pos && !isNaN(data.pos.z) ? data.pos.z : 0;
+                    el.setAttribute('position', `${pX} ${pY} ${pZ}`);
                     
                     let xpDrop = data.tipo === 'atirador' ? 50 : 20;
                     let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
@@ -663,6 +677,9 @@
             }
         });
 
+        // ==========================================
+        // GERENCIADOR DINÂMICO DE NPCs
+        // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
                 this.db = realtimeDB;
@@ -673,7 +690,11 @@
                     let el = document.createElement('a-entity'); 
                     this.el.appendChild(el); 
                     el.dataset.npcId = id;
-                    if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
+                    
+                    let pX = data.pos && !isNaN(data.pos.x) ? data.pos.x : 0;
+                    let pY = data.pos && !isNaN(data.pos.y) ? data.pos.y : 0;
+                    let pZ = data.pos && !isNaN(data.pos.z) ? data.pos.z : 0;
+                    el.setAttribute('position', `${pX} ${pY} ${pZ}`);
                     el.setAttribute('shadow', '');
 
                     let colisor = document.createElement('a-cylinder'); 
