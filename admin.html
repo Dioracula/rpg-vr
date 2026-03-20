@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
@@ -130,9 +131,9 @@
             <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
             <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
 
-            <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Aggro (m)</label><input type="number" id="novo-aggro-range" value="15" title="Distância para ele te enxergar"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Distância de Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8" title="Ex: 1.8 para espadas | 15 para magia"></div>
-            <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.07" title="Padrão: 0.07"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15" title="Distância para ele te enxergar"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8" title="Ex: 1.8 para espadas | 15 para magia"></div>
+            <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08" title="Padrão: 0.08 | Rápido: 0.15"></div>
             <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000" title="2000 = 2 segundos"></div>
 
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" id="novo-spawn-x" value="0"></div>
@@ -194,6 +195,7 @@
         if (tipo === 'primaria') camposPrimario.forEach(el => el.style.display = 'flex');
     }
 
+    // --- INIMIGOS ---
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
@@ -247,7 +249,7 @@
             
             document.getElementById('novo-aggro-range').value = data.aggroRange || 15;
             document.getElementById('novo-attack-range').value = data.attackRange || (data.tipo === 'atirador' ? 6.0 : 1.8);
-            document.getElementById('novo-speed').value = data.speed || (data.tipo === 'atirador' ? 0.04 : 0.07);
+            document.getElementById('novo-speed').value = data.speed || 0.08;
             document.getElementById('novo-cooldown').value = data.cooldown || (data.tipo === 'atirador' ? 3500 : 2000);
 
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -274,7 +276,7 @@
             comportamento: document.getElementById('novo-comportamento').value,
             aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15,
             attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
-            speed: parseFloat(document.getElementById('novo-speed').value) || 0.07,
+            speed: parseFloat(document.getElementById('novo-speed').value) || 0.08,
             cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
             
             tipo: document.getElementById('novo-tipo').value,
