@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
@@ -73,7 +74,7 @@
 
     <div class="leitor-glb" style="margin-top: 40px;">
         <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Extrair Animações do .GLB (Grátis)</label>
-        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações. Depois faça o upload do arquivo para o GitHub.</span>
+        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações. Depois faça o upload do arquivo para o seu GitHub (pasta Npcs ou Inimigos).</span>
         <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
             <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
             <span id="status-upload">Nenhum arquivo lido.</span>
@@ -87,8 +88,8 @@
     <div class="painel-spawn npc-spawn" id="form-npc">
         <h2>📜 Criar ou Editar NPC</h2>
         <div class="grid-spawn">
-            <div class="input-group"><label>ID Único (ex: npc_ferreiro)</label><input type="text" id="npc-id" placeholder="ID sem espaço"></div>
-            <div class="input-group"><label>Nome de Exibição</label><input type="text" id="npc-nome" placeholder="ex: João, o Ferreiro"></div>
+            <div class="input-group"><label>ID Único</label><input type="text" id="npc-id" placeholder="ex: ferreiro"></div>
+            <div class="input-group"><label>Nome de Exibição</label><input type="text" id="npc-nome" placeholder="ex: João"></div>
             <div class="input-group"><label>Tipo de NPC</label>
                 <select id="npc-tipo" onchange="atualizarCamposNPC()">
                     <option value="dialogo">Apenas Diálogo</option>
@@ -99,20 +100,17 @@
             <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Npcs/arquivo.glb"></div>
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
             <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
-            
             <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
             <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
             <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
-            
             <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho X</label><input type="number" step="0.01" id="npc-scale-x" value="1"></div>
             <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Y</label><input type="number" step="0.01" id="npc-scale-y" value="1"></div>
             <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Z</label><input type="number" step="0.01" id="npc-scale-z" value="1"></div>
-            
             <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
             <div class="input-group campo-missao" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
-            <div class="input-group campo-missao"><label style="color:#f1c40f">ID da Missão Que Ele Dá</label><input type="text" id="npc-missao-id" placeholder="ex: quest_lobos"></div>
+            <div class="input-group campo-missao"><label style="color:#f1c40f">ID da Missão</label><input type="text" id="npc-missao-id" placeholder="ex: quest_lobos"></div>
             <div class="input-group campo-missao"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
-            <div class="input-group campo-primario"><label style="color:#e74c3c">Requisito P/ Falar/Missão</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
+            <div class="input-group campo-primario"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
         </div>
         <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ INVOCAR / SALVAR EDIÇÃO DO NPC</button>
     </div>
@@ -123,14 +121,14 @@
     <div class="painel-spawn ini-spawn" id="form-inimigo">
         <h2>🪄 Invocar ou Editar Inimigo</h2>
         <div class="grid-spawn">
-            <div class="input-group"><label>ID Único (ex: orc_01)</label><input type="text" id="novo-id" placeholder="ID sem espaço"></div>
+            <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
             
             <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Inimigos/arquivo.glb" value="Inimigos/atiradora.glb"></div>
-            <div class="input-group"><label>Nome Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
-            <div class="input-group"><label>Nome Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
-            <div class="input-group"><label>Nome Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
+            <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
+            <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
+            <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
 
             <div class="input-group grupo-destaque"><label style="color:#3498db">Pos Inicial X</label><input type="number" id="novo-spawn-x" value="0"></div>
             <div class="input-group grupo-destaque"><label style="color:#3498db">Pos Inicial Y</label><input type="number" id="novo-spawn-y" value="0"></div>
@@ -141,7 +139,6 @@
             <div class="input-group grupo-destaque"><label style="color:#e74c3c">Tamanho Z</label><input type="number" step="0.01" id="novo-scale-z" value="1"></div>
             
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Campo de Visão (m)</label><input type="number" id="novo-range" value="30"></div>
-
         </div>
         <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR / SALVAR EDIÇÃO DO INIMIGO</button>
     </div>
@@ -203,8 +200,8 @@
         card.innerHTML = `
             <h3 id="titulo-ini-${id}">👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${statusTexto})</span></h3>
             <div class="input-group"><label>HP Atual</label><input type="number" id="hp-ini-${id}" value="${inimigo.hp}"></div>
-            <div class="input-group"><label>Posição X Atual</label><input type="number" step="0.1" id="x-ini-${id}" value="${inimigo.pos.x.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
-            <div class="input-group"><label>Posição Z Atual</label><input type="number" step="0.1" id="z-ini-${id}" value="${inimigo.pos.z.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
+            <div class="input-group"><label>Pos Atual X</label><input type="number" step="0.1" id="x-ini-${id}" value="${inimigo.pos.x.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
+            <div class="input-group"><label>Pos Atual Z</label><input type="number" step="0.1" id="z-ini-${id}" value="${inimigo.pos.z.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
             <div class="action-buttons">
                 <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar / Ajustar Range</button>
                 <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill</button>
@@ -237,16 +234,15 @@
             document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
             document.getElementById('novo-anim-morte').value = data.animMorte || '';
             
-            // Carrega o Spawn (Pos Inicial) ao invés da pos atual para evitar bugs no teleporte
+            // Carrega com segurança a posição inicial e o range
             document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : (data.pos ? data.pos.x : 0);
             document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : (data.pos ? data.pos.y : 0);
             document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : (data.pos ? data.pos.z : 0);
-            
+            document.getElementById('novo-range').value = data.range || 30;
+
             document.getElementById('novo-scale-x').value = data.escala ? data.escala.x : 1;
             document.getElementById('novo-scale-y').value = data.escala ? data.escala.y : 1;
             document.getElementById('novo-scale-z').value = data.escala ? data.escala.z : 1;
-            
-            document.getElementById('novo-range').value = data.range || 30;
 
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
@@ -257,24 +253,26 @@
 
     window.spawnarNovoInimigo = function() {
         let id = document.getElementById('novo-id').value; if(!id) { alert("Digite um ID único!"); return; }
+        
         let hp = parseFloat(document.getElementById('novo-hp').value);
         let spawnX = parseFloat(document.getElementById('novo-spawn-x').value);
         let spawnY = parseFloat(document.getElementById('novo-spawn-y').value);
         let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value);
-        let range = parseFloat(document.getElementById('novo-range').value);
+        let rangeVisao = parseFloat(document.getElementById('novo-range').value);
 
         let dadosInimigo = {
             hpMax: hp,
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
-            pos: { x: spawnX, y: spawnY, z: spawnZ }, // Ao invocar, joga ele direto no Spawn
+            pos: { x: spawnX, y: spawnY, z: spawnZ }, // Atualiza também a posição atual para ele se teletransportar pra base editada
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
+            range: rangeVisao || 30,
             tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value,
             animParado: document.getElementById('novo-anim-parado').value,
             animAtaque: document.getElementById('novo-anim-ataque').value,
-            animMorte: document.getElementById('novo-anim-morte').value,
-            range: range
+            animMorte: document.getElementById('novo-anim-morte').value
         };
+
         db.ref('cenario_inimigos/' + id).once('value').then(snap => {
             if(!snap.exists()) { dadosInimigo.hp = hp; dadosInimigo.rotY = 0; dadosInimigo.ultimoAtaque = 0; dadosInimigo.mortoEm = null; }
             db.ref('cenario_inimigos/' + id).update(dadosInimigo); alert(`Monstro ${id} atualizado/invocado com sucesso!`);
