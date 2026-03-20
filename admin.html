@@ -251,7 +251,12 @@
 
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
-        let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
+        let id = snapshot.key; let inimigo = snapshot.val(); 
+        
+        // CORTA FANTASMAS AQUI! Se não tiver hpMax, não desenha no painel
+        if (!inimigo || inimigo.hpMax === undefined || !inimigo.modeloGlb) return; 
+
+        if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
         let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c'; let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO';
         let card = document.createElement('div'); card.className = 'card'; card.id = `card-ini-${id}`;
         card.innerHTML = `
@@ -269,7 +274,7 @@
     });
 
     db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
-        let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo.pos) return;
+        let id = snapshot.key; let inimigo = snapshot.val(); if (!inimigo || !inimigo.pos) return;
         let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c'; let titulo = document.getElementById(`titulo-ini-${id}`);
         if(titulo) titulo.innerHTML = `👾 ${id} <span style="font-size: 0.8rem; color: ${statusColor};">(${inimigo.hp > 0 ? 'VIVO' : 'MORTO'})</span>`;
         let hpInput = document.getElementById(`hp-ini-${id}`); let xInput = document.getElementById(`x-ini-${id}`); let zInput = document.getElementById(`z-ini-${id}`);
@@ -287,7 +292,7 @@
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
             document.getElementById('novo-tipo').value = data.tipo || 'meelee';
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
-            document.getElementById('novo-dano').value = data.dano || 10; // CARREGA A FORÇA DO MONSTRO
+            document.getElementById('novo-dano').value = data.dano || 10;
             document.getElementById('novo-glb-caminho').value = data.modeloGlb || '';
             document.getElementById('novo-anim-parado').value = data.animParado || '';
             document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
@@ -326,7 +331,7 @@
         let dadosInimigo = {
             hpMax: hp,
             hp: hp, 
-            dano: forcaDoMonstro, // SALVA A FORÇA DO MONSTRO!
+            dano: forcaDoMonstro,
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
             pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
@@ -348,7 +353,6 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
-    // --- NPCS ---
     const listaNpcsDiv = document.getElementById('lista-npcs');
     db.ref('cenario_npcs').on('child_added', (snapshot) => {
         let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
