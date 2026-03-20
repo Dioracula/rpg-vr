@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Diálogos Interativos e Missões)</title>
+    <title>RPG VR e PC - Versão Definitiva (Diálogos e Despertador de IA)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -58,6 +58,24 @@
             invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
         };
 
+        // ==========================================
+        // DESPERTADOR DA IA (ANTI-SONO DO RENDER)
+        // ==========================================
+        // ⚠️ IMPORTANTE: Cole abaixo o link exato do seu servidor Render!
+        const URL_DO_SERVIDOR_IA = "https://servidor-rpg-vr.onrender.com"; 
+
+        function acordarServidorRender() {
+            if (URL_DO_SERVIDOR_IA.startsWith("http")) {
+                // Faz uma chamada "falsa" só para bater na porta do Render e ele ligar a máquina
+                fetch(URL_DO_SERVIDOR_IA, { mode: 'no-cors' })
+                    .then(() => console.log("Sinal enviado para manter a IA acordada!"))
+                    .catch(() => console.warn("Aguardando IA ligar..."));
+            }
+        }
+        
+        acordarServidorRender(); // Acorda assim que você abre o jogo
+        setInterval(acordarServidorRender, 10 * 60 * 1000); // Cutuca a cada 10 minutos para não dormir
+
         window.receberDanoJogador = function(danoBase) {
             if (!window.playerState.vivo || window.playerState.invulneravel) return;
 
@@ -112,11 +130,7 @@
             }
         };
 
-        // ==========================================
-        // NOVO SISTEMA DE DIÁLOGOS INTERATIVOS
-        // ==========================================
-        window.npcAtivo = null;
-
+        window.dialogoTimeout = null;
         window.abrirDialogoNPC = function(data) {
             window.npcAtivo = data;
             let cx = document.querySelector('#caixa-dialogo');
@@ -429,10 +443,15 @@
             init: function() {
                 let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
                 window.addEventListener('contextmenu', e => e.preventDefault());
-                window.addEventListener('keydown', (e) => { if (!window.GAME_STARTED) return; if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); } if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); } if (e.key.toLowerCase() === 'q' && window.GAME_MODE === 'PC') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } });
+                window.addEventListener('keydown', (e) => { 
+                    if (!window.GAME_STARTED || window.GAME_MODE !== 'PC') return; 
+                    if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock(); atualizarUI(); } 
+                    if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock(); atualizarUI(); } 
+                    if (e.key.toLowerCase() === 'q') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } 
+                });
 
                 window.addEventListener('mousedown', (e) => {
-                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo) return;
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo || window.npcAtivo) return;
                     let cursor = document.querySelector('[cursor]'); if(cursor && cursor.components && cursor.components.raycaster && cursor.components.raycaster.intersectedEls.some(el => el.classList.contains('interativo'))) return;
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
 
@@ -528,6 +547,9 @@
             }
         });
 
+        // ==========================================
+        // GERENCIADOR DE RESPAWNS
+        // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; 
@@ -590,6 +612,9 @@
             }
         });
 
+        // ==========================================
+        // O MOTOR DE ANIMAÇÃO E IA INIMIGOS
+        // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
@@ -627,7 +652,6 @@
                 this.isAttacking = false;
                 this.animacaoAtual = "";
                 this.isDead = false;
-                this.lastMoveTime = 0;
 
                 this.el.addEventListener('model-loaded', () => {
                     if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
@@ -672,6 +696,35 @@
                                 }
                             }
                         }
+                    }
+
+                    if (data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
+                        this.ultimoTempoTiro = data.shoot.time;
+                        this.isAttacking = true;
+                        this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+                        
+                        setTimeout(() => { 
+                            this.isAttacking = false;
+                            if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); 
+                        }, 1000);
+
+                        let proj = document.createElement('a-entity');
+                        let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo);
+                        proj.setAttribute('position', `${posInimigo.x} ${posInimigo.y + 1.2} ${posInimigo.z}`);
+                        
+                        let tX = isNaN(data.shoot.tx) ? 0 : data.shoot.tx;
+                        let tY = isNaN(data.shoot.ty) ? 0 : data.shoot.ty;
+                        let tZ = isNaN(data.shoot.tz) ? 0 : data.shoot.tz;
+                        let targetVec = new THREE.Vector3(tX, tY, tZ);
+                        
+                        let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize();
+                        let forcaTiro = data.dano !== undefined ? data.dano : 15;
+                        
+                        proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`);
+                        proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
+                        
+                        let scene = document.querySelector('a-scene');
+                        if(scene) scene.appendChild(proj);
                     }
 
                     let estavaMorto = (this.hpAtual <= 0); 
@@ -839,7 +892,7 @@
         });
 
         // ==========================================
-        // GERENCIADOR DE NPCs E MIRA GLOW
+        // GERENCIADOR DE NPCs 
         // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
@@ -885,7 +938,7 @@
 
                     let nomeTag = document.createElement('a-text'); 
                     el.appendChild(nomeTag);
-                    nomeTag.className = 'npc-nome-tag'; // Para mudar a cor no HOVER
+                    nomeTag.className = 'npc-nome-tag'; 
                     nomeTag.setAttribute('value', data.nome || 'NPC'); nomeTag.setAttribute('align', 'center'); nomeTag.setAttribute('position', '0 2.4 0'); nomeTag.setAttribute('color', '#f1c40f'); nomeTag.setAttribute('scale', '0.6 0.6 0.6'); nomeTag.setAttribute('side', 'double'); 
                 });
 
@@ -928,7 +981,6 @@
                     if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado);
                 });
                 
-                // MIRA GLOW! Ao olhar para o NPC, o nome fica Azul
                 this.el.addEventListener('mouseenter', () => {
                     let tag = this.el.parentNode.querySelector('.npc-nome-tag');
                     if(tag) tag.setAttribute('color', '#00ffcc');
@@ -944,7 +996,7 @@
                     let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
                     let posPlayer = new THREE.Vector3(); cameraObj.object3D.getWorldPosition(posPlayer);
                     let posNPC = new THREE.Vector3(); this.el.parentNode.object3D.getWorldPosition(posNPC);
-                    if (posPlayer.distanceTo(posNPC) > 5.0) return; 
+                    if (posPlayer.distanceTo(posNPC) > 4.0) return; 
 
                     let data = this.el.npcData; if (!data) return;
 
@@ -952,7 +1004,6 @@
                         this.tocarAnimacao(data.animFalando); setTimeout(() => { if(data.animParado) this.tocarAnimacao(data.animParado); }, 8000);
                     }
 
-                    // CHAMA A NOVA TELA DE DIÁLOGO
                     window.abrirDialogoNPC(data);
                 });
             }
