@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Motor Anti-Crash e Anti T-Pose)</title>
+    <title>RPG VR e PC - Versão Definitiva (Respawn Visível e Força Inimiga)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -25,9 +25,6 @@
     </style>
 
     <script>
-        // ==========================================
-        // SISTEMAS DE BLINDAGEM VISUAL
-        // ==========================================
         AFRAME.registerComponent('anti-piscar', {
             init: function() {
                 this.el.addEventListener('model-loaded', () => {
@@ -37,9 +34,6 @@
             }
         });
 
-        // ==========================================
-        // CONFIGURAÇÃO FIREBASE E GLOBAL
-        // ==========================================
         const firebaseConfig = {
              apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
              authDomain: "rpg-vr-online.firebaseapp.com",
@@ -55,17 +49,13 @@
         const firestoreDB = firebase.firestore();
         const realtimeDB = firebase.database();
 
-        window.GAME_MODE = 'NONE'; 
-        window.GAME_STARTED = false; 
-        window.currentUser = null; 
-        window.lastActionTime = Date.now();
+        window.GAME_MODE = 'NONE'; window.GAME_STARTED = false; window.currentUser = null; window.lastActionTime = Date.now();
         
         window.playerState = {
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5,
             hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
             armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5, chaves: {},
-            invulneravel: false,
-            ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
+            invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
         };
 
         window.receberDanoJogador = function(danoBase) {
@@ -77,7 +67,10 @@
             window.playerState.hpAtual -= danoFinal; 
             
             let danoTela = document.querySelector('#dano-tela'); 
-            if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); } 
+            if(danoTela) { 
+                danoTela.setAttribute('visible', 'true'); 
+                setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); 
+            } 
             
             atualizarUI(); 
             
@@ -87,38 +80,40 @@
                 let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 atualizarUI(); 
                 
+                // TEXTO CENTRAL FOI RESTAURADO NA CAMERA E BLINDADO AQUI!
                 let aviso = document.querySelector('#texto-central'); 
                 if(aviso) { 
                     aviso.setAttribute('color', '#ff0000'); 
                     aviso.setAttribute('visible', 'true'); 
-                    let tempoRespawn = 5; 
-                    aviso.setAttribute('value', `VOCE MORREU!\nRespawn em ${tempoRespawn}...`);
-                    
-                    let respawnInterval = setInterval(() => {
-                        tempoRespawn--;
-                        if (tempoRespawn > 0) { 
-                            if(aviso) aviso.setAttribute('value', `VOCE MORREU!\nRespawn em ${tempoRespawn}...`); 
-                        } else {
-                            clearInterval(respawnInterval); 
-                            window.playerState.vivo = true; window.playerState.hpAtual = window.playerState.hpMax; window.playerState.invulneravel = true; 
-                            
-                            if (rig) { 
-                                rig.removeAttribute('movement-controls'); 
-                                let respX = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.x : 0;
-                                let respY = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.y : 0;
-                                let respZ = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.z : 0;
-                                let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
-                                rig.setAttribute('position', `${respX + Math.cos(anguloRandom)*raioRandom} ${respY} ${respZ + Math.sin(anguloRandom)*raioRandom}`); 
-                                setTimeout(() => { if(rig) rig.setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); }, 50);
-                            }
-                            
-                            atualizarUI(); 
-                            if(aviso) { aviso.setAttribute('visible', 'false'); aviso.setAttribute('value', ''); }
-                            window.tocarSom('snd-magic'); 
-                            setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
+                }
+                
+                let tempoRespawn = 5; 
+                if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
+                
+                let respawnInterval = setInterval(() => {
+                    tempoRespawn--;
+                    if (tempoRespawn > 0) { 
+                        if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...'); 
+                    } else {
+                        clearInterval(respawnInterval); 
+                        window.playerState.vivo = true; window.playerState.hpAtual = window.playerState.hpMax; window.playerState.invulneravel = true; 
+                        
+                        if (rig) { 
+                            rig.removeAttribute('movement-controls'); 
+                            let respX = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.x : 0;
+                            let respY = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.y : 0;
+                            let respZ = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.z : 0;
+                            let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
+                            rig.setAttribute('position', `${respX + Math.cos(anguloRandom)*raioRandom} ${respY} ${respZ + Math.sin(anguloRandom)*raioRandom}`); 
+                            setTimeout(() => { if(rig) rig.setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); }, 50);
                         }
-                    }, 1000);
-                } 
+                        
+                        atualizarUI(); 
+                        if(aviso) { aviso.setAttribute('visible', 'false'); aviso.setAttribute('value', ''); }
+                        window.tocarSom('snd-magic'); 
+                        setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
+                    }
+                }, 1000);
             }
         };
 
@@ -132,79 +127,6 @@
             }
         };
 
-        // ==========================================
-        // PROJÉTEIS FÍSICOS RESTAURADOS
-        // ==========================================
-        AFRAME.registerComponent('projetil-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () {
-                this.gravidade = new THREE.Vector3(0, -9.8, 0);
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
-            },
-            tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0) return;
-                this.vel.add(this.gravidade.clone().multiplyScalar(dt));
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-                this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel));
-                this.el.object3D.rotateX(Math.PI / 2);
-
-                if (this.el.object3D.position.y < 0) {
-                    this.el.removeAttribute('projetil-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                    return;
-                }
-
-                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
-                for (let i = 0; i < inimigosAtuais.length; i++) {
-                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue;
-                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
-                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
-                    let boxInimigo = new THREE.Box3();
-                    let colisorNode = inimigo.querySelector('.colisao-inimigo');
-                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
-                    else { boxInimigo.setFromObject(inimigo.object3D); }
-
-                    if (boxProj.intersectsBox(boxInimigo)) {
-                        syncComp.receberDano(this.data.dano, 'Arco');
-                        if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                        break;
-                    }
-                }
-            }
-        });
-        
-        AFRAME.registerComponent('projetil-inimigo-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () {
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
-                this.camera = document.querySelector('[camera]');
-            },
-            tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return;
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-
-                if (this.el.object3D.position.y < -1) {
-                    this.el.removeAttribute('projetil-inimigo-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                    return;
-                }
-
-                if(!this.camera) return;
-                let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer);
-                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
-
-                if (posProj.distanceTo(posPlayer) < 2.0) {
-                    if (this.el.dataset.defletido === "true") return;
-                    window.receberDanoJogador(this.data.dano);
-                    this.el.removeAttribute('projetil-inimigo-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                }
-            }
-        });
-
-        // ==========================================
-        // SISTEMA MULTIPLAYER E AFK
-        // ==========================================
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
                 this.db = realtimeDB; this.playersRef = this.db.ref('players'); 
@@ -215,21 +137,19 @@
                 this.playersRef.on('child_added', (snapshot) => {
                     let id = snapshot.key; if (id === this.myId) return; 
                     let data = snapshot.val(); 
-                    
                     let avatar = document.createElement('a-entity');
+                    this.cena.appendChild(avatar); 
+                    avatar.setAttribute('position', data.position || {x:0, y:0, z:0}); 
+                    avatar.setAttribute('rotation', data.rotation || {x:0, y:0, z:0});
                     avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                     avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
                     
-                    let pos = data.position || {x:0, y:0, z:0};
-                    avatar.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-                    
-                    let rot = data.rotation || {x:0, y:0, z:0};
-                    avatar.setAttribute('rotation', `${rot.x} ${rot.y} ${rot.z}`);
-
-                    let html = `<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>`;
-                    avatar.innerHTML = html;
-                    
-                    this.cena.appendChild(avatar); 
+                    let conteudoAvatar = '<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0">';
+                    conteudoAvatar += '<a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box>';
+                    conteudoAvatar += '<a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box>';
+                    conteudoAvatar += '<a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder>';
+                    conteudoAvatar += '<a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>';
+                    avatar.innerHTML = conteudoAvatar;
                     this.otherPlayers[id] = avatar;
                 });
 
@@ -239,8 +159,8 @@
                     if (avatar && data) { 
                         avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; 
                         avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                        avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x} ${data.position.y} ${data.position.z}; dur: 100; easing: linear`); 
-                        avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x} ${data.rotation.y} ${data.rotation.z}; dur: 100; easing: linear`); 
+                        avatar.setAttribute('animation__pos', 'property: position; to: ' + data.position.x + ' ' + data.position.y + ' ' + data.position.z + '; dur: 100; easing: linear'); 
+                        avatar.setAttribute('animation__rot', 'property: rotation; to: ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z + '; dur: 100; easing: linear'); 
                     }
                 });
 
@@ -328,8 +248,7 @@
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         
-        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
-        window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
+        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, durabilidadeMax: Infinity, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -446,6 +365,76 @@
         });
 
         // ==========================================
+        // PROJÉTEIS FÍSICOS
+        // ==========================================
+        AFRAME.registerComponent('projetil-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () {
+                this.gravidade = new THREE.Vector3(0, -9.8, 0);
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
+            },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0) return;
+                this.vel.add(this.gravidade.clone().multiplyScalar(dt));
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+                this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel));
+                this.el.object3D.rotateX(Math.PI / 2);
+
+                if (this.el.object3D.position.y < 0) {
+                    this.el.removeAttribute('projetil-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                    return;
+                }
+
+                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
+                for (let i = 0; i < inimigosAtuais.length; i++) {
+                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue;
+                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
+                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
+                    let boxInimigo = new THREE.Box3();
+                    let colisorNode = inimigo.querySelector('.colisao-inimigo');
+                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
+                    else { boxInimigo.setFromObject(inimigo.object3D); }
+
+                    if (boxProj.intersectsBox(boxInimigo)) {
+                        syncComp.receberDano(this.data.dano, 'Arco');
+                        if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                        break;
+                    }
+                }
+            }
+        });
+        
+        AFRAME.registerComponent('projetil-inimigo-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () {
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
+                this.camera = document.querySelector('[camera]');
+            },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return;
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+
+                if (this.el.object3D.position.y < -1) {
+                    this.el.removeAttribute('projetil-inimigo-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                    return;
+                }
+
+                if(!this.camera) return;
+                let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer);
+                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+
+                if (posProj.distanceTo(posPlayer) < 2.0) {
+                    if (this.el.dataset.defletido === "true") return;
+                    window.receberDanoJogador(this.data.dano);
+                    this.el.removeAttribute('projetil-inimigo-fisico');
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
+                }
+            }
+        });
+
+        // ==========================================
         // GERENCIADOR DE RESPAWNS BLINDADO
         // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
@@ -456,12 +445,12 @@
                 this.db.ref('cenario_respawns').on('child_added', (snap) => {
                     let id = snap.key; let r = snap.val(); this.respawns[id] = r;
                     let el = document.createElement('a-entity'); 
+                    this.el.appendChild(el); 
                     el.dataset.respId = id;
                     el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`);
                     
                     let rRaio = r.raio || 3;
                     el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`;
-                    this.el.appendChild(el); 
                 });
 
                 this.db.ref('cenario_respawns').on('child_changed', (snap) => {
@@ -511,7 +500,7 @@
         });
 
         // ==========================================
-        // MÁGICA DA IA E INIMIGOS - EXORCISMO E RENDER SEGURO
+        // IA INIMIGOS E DANO PERSONALIZADO
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -549,7 +538,6 @@
                 this.isAttacking = false;
                 this.animacaoAtual = "";
 
-                // ESPERA O MODELO CARREGAR PARA TOCAR ANIMAÇÃO (FIM DO T-POSE)
                 this.el.addEventListener('model-loaded', () => {
                     this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                 });
@@ -584,7 +572,11 @@
                                 this.el.object3D.updateMatrixWorld(true); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo);
                                 
                                 let alcanceHit = data.attackRange !== undefined ? data.attackRange : 2.0;
-                                if (posPlayer.distanceTo(posInimigo) <= (alcanceHit + 1.0)) { window.receberDanoJogador(10 + window.playerState.nivel); }
+                                if (posPlayer.distanceTo(posInimigo) <= (alcanceHit + 1.0)) { 
+                                    // AQUI! LÊ A FORÇA DO MONSTRO
+                                    let forcaMonstro = data.dano !== undefined ? data.dano : 10;
+                                    window.receberDanoJogador(forcaMonstro); 
+                                }
                             }
                         }
                     }
@@ -601,7 +593,7 @@
                         this.el.classList.remove('interativo'); this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                         setTimeout(() => { if(this.hpAtual <= 0 && this.el) this.el.setAttribute('visible', 'false'); }, 3000);
                     } else if (reviveu) {
-                        if(textoHp) { textoHp.setAttribute('value', 'HP: ' + this.hpAtual); textoHp.setAttribute('color', '#FFF'); }
+                        if(textoHp) { textoHp.setAttribute('value', `HP: ${this.hpAtual}`); textoHp.setAttribute('color', '#FFF'); }
                         this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     } else if (tomouDano) {
                         if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
@@ -668,7 +660,6 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
-                    // ESCUDO ANTI-ZUMBI: Se não tiver HP, deleta o fantasma e NÃO desenha!
                     if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) {
                         this.db.ref('cenario_inimigos/' + id).remove(); 
                         return;
@@ -677,9 +668,9 @@
                     if (document.querySelector(`[data-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
+                    this.el.appendChild(el); 
                     el.dataset.id = id;
                     
-                    // POSIÇÃO DEVE SER SETADA ANTES DE COLAR NA CENA
                     if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
                     
                     let xpDrop = data.tipo === 'atirador' ? 50 : 20;
@@ -716,9 +707,6 @@
                     let infos = document.createElement('a-entity');
                     el.appendChild(infos);
                     infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0"></a-cylinder>`;
-                    
-                    // COLA NA CENA NO FINAL (FIM DOS CRASHES DE RENDER)
-                    this.el.appendChild(el); 
                 });
 
                 this.db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
@@ -745,9 +733,6 @@
             }
         });
 
-        // ==========================================
-        // GERENCIADOR DINÂMICO DE NPCs
-        // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
                 this.db = realtimeDB;
@@ -756,6 +741,7 @@
                     if (!data || document.querySelector(`[data-npc-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
+                    this.el.appendChild(el); 
                     el.dataset.npcId = id;
                     if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`);
                     el.setAttribute('shadow', '');
@@ -792,8 +778,6 @@
                     let nomeTag = document.createElement('a-text'); 
                     el.appendChild(nomeTag);
                     nomeTag.setAttribute('value', data.nome || 'NPC'); nomeTag.setAttribute('align', 'center'); nomeTag.setAttribute('position', '0 2.4 0'); nomeTag.setAttribute('color', '#f1c40f'); nomeTag.setAttribute('scale', '0.6 0.6 0.6'); nomeTag.setAttribute('side', 'double'); 
-                    
-                    this.el.appendChild(el);
                 });
 
                 this.db.ref('cenario_npcs').on('child_changed', (snapshot) => {
@@ -831,7 +815,6 @@
                     }
                 };
 
-                // AGUARDA MODELO CARREGAR PARA TOCAR ANIMAÇÃO! (FIM DO T-POSE DE NPC)
                 this.el.parentNode.addEventListener('model-loaded', () => {
                     if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado);
                 });
@@ -914,6 +897,8 @@
                 <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
 
                 <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
+                
+                <a-text id="texto-central" value="" position="0 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5" align="center"></a-text>
                 
                 <a-entity id="caixa-dialogo" position="0 -0.3 -1.2" visible="false" rotation="-15 0 0">
                     <a-plane color="#2c3e50" width="1.6" height="0.6" opacity="0.95"></a-plane>
