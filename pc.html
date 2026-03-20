@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>RPG - Modo Computador (PC)</title>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        /* Mira Fixa no Centro da Tela para o PC */
+        #crosshair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; background: rgba(255,255,255,0.8); border-radius: 50%; z-index: 1000; pointer-events: none;}
+    </style>
+
+    <script>
+        // RECUPERA O USUÁRIO DO INDEX.HTML
+        window.currentUser = { uid: localStorage.getItem('mmo_uid') || 'visitante' };
+        window.GAME_MODE = 'PC'; 
+        window.GAME_STARTED = true; 
+        window.lastActionTime = Date.now();
+        
+        window.playerState = {
+            nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5,
+            hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
+            armaEquipada: 'Desarmado', escudoEquipado: false, flechas: 10, shurikens: 5, chaves: {},
+            invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
+        };
+
+        // INICIALIZAÇÃO DIRETA NO PC
+        document.addEventListener('DOMContentLoaded', () => {
+            // Trava o mouse no jogo para visualização FPS
+            let canvas = document.querySelector('a-scene');
+            canvas.addEventListener('click', () => {
+                if (window.playerState.vivo) { canvas.requestPointerLock(); }
+            });
+            atualizarUI();
+        });
+
+        // (TODOS OS OUTROS SCRIPTS DA IA, BANCO DE DADOS, INIMIGOS E RESPAWN FICAM AQUI)
+        // ... CÓPIAS EXATAS DAS FUNÇÕES DO JOGO ANTERIOR ...
+        
+        const firebaseConfig = {
+             apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
+             authDomain: "rpg-vr-online.firebaseapp.com",
+             databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
+             projectId: "rpg-vr-online",
+             messagingSenderId: "676174796336",
+             appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const firestoreDB = firebase.firestore();
+        const realtimeDB = firebase.database();
+
+        window.salvarJogoNuvem = function() { if (!window.currentUser) return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); };
+        window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio && audio.src) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
+
+        // BANCO DE ARMAS
+        window.bancoDeArmas = {
+            'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, modeloGlb: '', visualDir: '', visualEsq: '' },
+            'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, modeloGlb: '', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' }
+            // (Adicione o restante das suas armas aqui)
+        };
+
+        window.receberDanoJogador = function(danoBase) { /*... mesma lógica ...*/ };
+        window.mostrarDialogo = function(nome, texto) { /*... mesma lógica ...*/ };
+        
+        function atualizarUI() { 
+            document.querySelector('#rig').setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); 
+            atualizarArmaVisual(); 
+        }
+
+        function atualizarArmaVisual() { 
+            let containerPC = document.querySelector('#arma-visual-pc'); 
+            let escudoPC = document.querySelector('#escudo-visual-pc'); 
+            if(containerPC) containerPC.innerHTML = ''; if(escudoPC) escudoPC.innerHTML = ''; 
+            
+            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if (!armaStats) return; 
+            
+            if (armaStats.visualDir && containerPC) containerPC.innerHTML = armaStats.visualDir; 
+            if (window.playerState.escudoEquipado && escudoPC) { 
+                escudoPC.innerHTML += `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; 
+            } 
+        }
+
+        AFRAME.registerComponent('pc-controles', {
+            init: function() {
+                let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
+                
+                window.addEventListener('contextmenu', e => e.preventDefault());
+                
+                // ATALHOS DE TECLADO DO PC
+                window.addEventListener('keydown', (e) => { 
+                    if (!window.playerState.vivo) return; 
+                    if (e.key.toLowerCase() === 'i') { 
+                        invAberto = !invAberto; 
+                        if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); 
+                        if (invAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock();
+                    } 
+                    if (e.key.toLowerCase() === 'c') { 
+                        atribAberto = !atribAberto; 
+                        if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); 
+                        if (atribAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock();
+                    } 
+                    if (e.key.toLowerCase() === 'q') { 
+                        window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); 
+                    } 
+                });
+
+                // ATAQUE COM O MOUSE
+                window.addEventListener('mousedown', (e) => {
+                    if(!window.playerState.vivo || invAberto || atribAberto) return;
+                    let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
+
+                    if(e.button === 0) { // Clique Esquerdo
+                        if(armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
+                            if (!podeAtacarPC) return; podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800);
+                            window.tocarSom('snd-sword');
+                            let pcWeapon = document.querySelector('#arma-visual-pc'); if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
+                            
+                            // Lógica de hitcast reta a partir da câmera
+                            let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
+                            let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); cameraObj.object3D.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.object3D.quaternion);
+                            
+                            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+                            inimigosEls.forEach(inimigoEl => { 
+                                if(!inimigoEl.object3D) return; 
+                                let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); posInimigo.y += 1.0;
+                                if (posCamera.distanceTo(posInimigo) < 4.0 && direcao.dot(new THREE.Vector3().subVectors(posInimigo, posCamera).normalize()) > 0.6) { 
+                                    let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp) syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
+                                } 
+                            });
+                        }
+                    }
+                });
+            }
+        });
+        
+        // (Copie os scripts gerenciador-inimigos, gerenciador-npcs e firebase-multiplayer do seu arquivo antigo para cá)
+    </script>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+
+    <a-scene pc-controles renderer="colorManagement: true;">
+        
+        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
+
+        <a-entity id="rig" movement-controls="speed: 0.15" position="0 0 0">
+            <a-entity camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
+                
+                <a-entity cursor="fuse: false" position="0 0 -1" raycaster="objects: .interativo; far: 20"></a-entity>
+                
+                <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
+                <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
+
+                <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
+            </a-entity> 
+
+            <a-entity id="menu-inventario-novo" scale="0 0 0" position="-0.5 1.5 -1.6" rotation="0 15 0">
+                </a-entity>
+            <a-entity id="menu-atributos" scale="0 0 0" position="1.3 1.5 -1.2" rotation="0 -30 0">
+                 </a-entity>
+        </a-entity>
+    </a-scene>
+</body>
+</html>
