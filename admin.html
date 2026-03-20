@@ -18,7 +18,6 @@
         .header-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; }
         .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #f1c40f; }
         
-        /* SISTEMA DE ABAS (TABS) */
         .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; background: #2c3e50; padding: 10px; border-radius: 8px; overflow-x: auto; }
         .tab-btn { flex: 1; background: #34495e; color: #bdc3c7; border: none; padding: 15px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s; white-space: nowrap; }
         .tab-btn:hover { background: #455a64; color: white; }
@@ -137,11 +136,18 @@
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho X</label><input type="number" step="0.01" id="npc-scale-x" value="1"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Y</label><input type="number" step="0.01" id="npc-scale-y" value="1"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Tamanho Z</label><input type="number" step="0.01" id="npc-scale-z" value="1"></div>
+                
                 <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
                 <div class="input-group campo-missao" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
+                
                 <div class="input-group campo-missao"><label style="color:#f1c40f">ID da Missão</label><input type="text" id="npc-missao-id" placeholder="ex: quest_lobos"></div>
                 <div class="input-group campo-missao"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
                 <div class="input-group campo-primario"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
+
+                <div class="input-group campo-missao"><label style="color:#2ecc71">Recompensa (XP)</label><input type="number" id="npc-rec-xp" value="0"></div>
+                <div class="input-group campo-missao"><label style="color:#2ecc71">Recompensa (Ouro)</label><input type="number" id="npc-rec-ouro" value="0"></div>
+                <div class="input-group campo-missao"><label style="color:#2ecc71">Recompensa (Nome Item)</label><input type="text" id="npc-rec-item" placeholder="Ex: Espada Curva"></div>
+
             </div>
             <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ INVOCAR / SALVAR EDIÇÃO DO NPC</button>
         </div>
@@ -188,36 +194,18 @@
 </div>
 
 <script>
-    // ==========================================
-    // FUNÇÃO DE MUDAR DE ABAS
-    // ==========================================
     function abrirAba(abaId, btnSelecionado) {
-        // Esconde todas as abas
         let abas = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < abas.length; i++) {
-            abas[i].style.display = "none";
-        }
+        for (let i = 0; i < abas.length; i++) { abas[i].style.display = "none"; }
         
-        // Remove a cor ativa de todos os botões
         let botoes = document.getElementsByClassName("tab-btn");
-        for (let i = 0; i < botoes.length; i++) {
-            botoes[i].classList.remove("active");
-        }
+        for (let i = 0; i < botoes.length; i++) { botoes[i].classList.remove("active"); }
         
-        // Mostra a aba correta e colore o botão clicado
         document.getElementById(abaId).style.display = "block";
-        if (btnSelecionado) {
-            btnSelecionado.classList.add("active");
-        } else {
-            // Caso seja acionado pelo código (sem clicar)
-            document.querySelector(`button[onclick*="${abaId}"]`).classList.add("active");
-        }
+        if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
+        else { document.querySelector(`button[onclick*="${abaId}"]`).classList.add("active"); }
     }
 
-
-    // ==========================================
-    // CÓDIGO FIREBASE E FUNCIONALIDADES
-    // ==========================================
     const firebaseConfig = {
         apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
         authDomain: "rpg-vr-online.firebaseapp.com",
@@ -230,7 +218,6 @@
     const db = firebase.database();
     const firestoreDB = firebase.firestore();
 
-    // JOGADORES
     firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
         const listaJogadores = document.getElementById('lista-jogadores');
         listaJogadores.innerHTML = '';
@@ -244,7 +231,6 @@
         });
     });
 
-    // RESPAWNS
     const listaRespawnsDiv = document.getElementById('lista-respawns');
     db.ref('cenario_respawns').on('child_added', (snapshot) => {
         let id = snapshot.key; let r = snapshot.val();
@@ -287,7 +273,6 @@
         }); alert('Cristal de Respawn criado com sucesso!');
     };
 
-    // LEITOR GLB
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
         const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); const statusText = document.getElementById('status-upload');
@@ -301,13 +286,10 @@
         }, undefined, function(error) { statusText.innerText = '❌ Arquivo GLB inválido.'; });
     });
 
-    // INIMIGOS
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); 
-        
         if (!inimigo || inimigo.hpMax === undefined || !inimigo.modeloGlb) return; 
-
         if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
         let statusColor = inimigo.hp > 0 ? '#2ecc71' : '#e74c3c'; let statusTexto = inimigo.hp > 0 ? 'VIVO' : 'MORTO';
         let card = document.createElement('div'); card.className = 'card'; card.id = `card-ini-${id}`;
@@ -340,10 +322,7 @@
     window.carregarEdicaoInimigo = function(id) {
         db.ref('cenario_inimigos/' + id).once('value').then(snap => {
             let data = snap.val(); if(!data) return;
-            
-            // MUDA PARA A ABA DE INIMIGOS AUTOMATICAMENTE!
             abrirAba('tab-inimigos', null);
-            
             document.getElementById('novo-id').value = id;
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
             document.getElementById('novo-movimento').value = data.movimento || 'estatico';
@@ -355,21 +334,17 @@
             document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
             document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
             document.getElementById('novo-anim-morte').value = data.animMorte || '';
-            
             document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : (data.pos ? data.pos.x : 0);
             document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : (data.pos ? data.pos.y : 0);
             document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : (data.pos ? data.pos.z : 0);
-            
             document.getElementById('novo-scale-x').value = data.escala ? data.escala.x : 1;
             document.getElementById('novo-scale-y').value = data.escala ? data.escala.y : 1;
             document.getElementById('novo-scale-z').value = data.escala ? data.escala.z : 1;
-            
             document.getElementById('novo-aggro-range').value = data.aggroRange || 15;
             document.getElementById('novo-attack-range').value = data.attackRange || (data.tipo === 'atirador' ? 6.0 : 1.8);
             document.getElementById('novo-speed').value = data.speed || 0.08;
             document.getElementById('novo-cooldown').value = data.cooldown || 2000;
             document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
-
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
     };
@@ -384,14 +359,10 @@
         let forcaDoMonstro = parseFloat(document.getElementById('novo-dano').value) || 10;
         let tempoRespawnCalculado = (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000;
         
-        let spawnX = parseFloat(document.getElementById('novo-spawn-x').value) || 0;
-        let spawnY = parseFloat(document.getElementById('novo-spawn-y').value) || 0;
-        let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value) || 0;
-
         let dadosInimigo = {
             hpMax: hp, hp: hp, dano: forcaDoMonstro,
-            spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
-            pos: { x: spawnX, y: spawnY, z: spawnZ }, 
+            spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
+            pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
             comportamento: document.getElementById('novo-comportamento').value,
             movimento: document.getElementById('novo-movimento').value, 
@@ -411,7 +382,6 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
-    // NPCs
     function atualizarCamposNPC() {
         let tipo = document.getElementById('npc-tipo').value;
         let camposMissao = document.querySelectorAll('.campo-missao'); let camposPrimario = document.querySelectorAll('.campo-primario');
@@ -452,10 +422,7 @@
     window.carregarEdicaoNpc = function(id) {
         db.ref('cenario_npcs/' + id).once('value').then(snap => {
             let data = snap.val(); if(!data) return;
-            
-            // MUDA PARA A ABA DE NPCS AUTOMATICAMENTE!
             abrirAba('tab-npcs', null);
-
             document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
             document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; atualizarCamposNPC(); 
             document.getElementById('npc-glb').value = data.modeloGlb || ''; document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
@@ -463,6 +430,12 @@
             document.getElementById('npc-scale-x').value = data.escala ? data.escala.x : 1; document.getElementById('npc-scale-y').value = data.escala ? data.escala.y : 1; document.getElementById('npc-scale-z').value = data.escala ? data.escala.z : 1;
             document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; document.getElementById('npc-missao-id').value = data.idMissao || '';
             document.getElementById('npc-chave-conclusao').value = data.chaveConclusao || ''; document.getElementById('npc-requisito').value = data.requisito || '';
+            
+            // CARREGA RECOMPENSAS
+            document.getElementById('npc-rec-xp').value = data.recXP || 0;
+            document.getElementById('npc-rec-ouro').value = data.recOuro || 0;
+            document.getElementById('npc-rec-item').value = data.recItem || '';
+
             document.getElementById('form-npc').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
     };
@@ -486,8 +459,16 @@
             dialogoPadrao: document.getElementById('npc-dialogo').value
         };
         if(tipo === 'secundaria' || tipo === 'primaria') {
-            dadosNpc.dialogoMissao = document.getElementById('npc-dialogo-missao').value; dadosNpc.idMissao = document.getElementById('npc-missao-id').value; dadosNpc.chaveConclusao = document.getElementById('npc-chave-conclusao').value;
-        } else { dadosNpc.dialogoMissao = ""; dadosNpc.idMissao = ""; dadosNpc.chaveConclusao = ""; }
+            dadosNpc.dialogoMissao = document.getElementById('npc-dialogo-missao').value; 
+            dadosNpc.idMissao = document.getElementById('npc-missao-id').value; 
+            dadosNpc.chaveConclusao = document.getElementById('npc-chave-conclusao').value;
+            dadosNpc.recXP = parseFloat(document.getElementById('npc-rec-xp').value) || 0;
+            dadosNpc.recOuro = parseFloat(document.getElementById('npc-rec-ouro').value) || 0;
+            dadosNpc.recItem = document.getElementById('npc-rec-item').value;
+        } else { 
+            dadosNpc.dialogoMissao = ""; dadosNpc.idMissao = ""; dadosNpc.chaveConclusao = ""; 
+            dadosNpc.recXP = 0; dadosNpc.recOuro = 0; dadosNpc.recItem = "";
+        }
         if(tipo === 'primaria') dadosNpc.requisito = document.getElementById('npc-requisito').value; else dadosNpc.requisito = "";
 
         db.ref('cenario_npcs/' + id).update(dadosNpc).then(() => { alert(`NPC ${id} atualizado/adicionado com sucesso!`); });
