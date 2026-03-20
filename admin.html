@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
@@ -97,7 +96,9 @@
                     <option value="primaria">NPC Primário (História)</option>
                 </select>
             </div>
-            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Npcs/arquivo.glb"></div>
+            
+            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb" value=""></div>
+            
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
             <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
             <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
@@ -125,7 +126,8 @@
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
             
-            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Inimigos/arquivo.glb" value="Inimigos/atiradora.glb"></div>
+            <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
+            
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
             <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
             <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
@@ -234,7 +236,6 @@
             document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
             document.getElementById('novo-anim-morte').value = data.animMorte || '';
             
-            // Carrega com segurança a posição inicial e o range
             document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : (data.pos ? data.pos.x : 0);
             document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : (data.pos ? data.pos.y : 0);
             document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : (data.pos ? data.pos.z : 0);
@@ -263,7 +264,7 @@
         let dadosInimigo = {
             hpMax: hp,
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
-            pos: { x: spawnX, y: spawnY, z: spawnZ }, // Atualiza também a posição atual para ele se teletransportar pra base editada
+            pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
             range: rangeVisao || 30,
             tipo: document.getElementById('novo-tipo').value,
@@ -341,6 +342,7 @@
             animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
             dialogoPadrao: document.getElementById('npc-dialogo').value
         };
+
         if(tipo === 'secundaria' || tipo === 'primaria') {
             dadosNpc.dialogoMissao = document.getElementById('npc-dialogo-missao').value; dadosNpc.idMissao = document.getElementById('npc-missao-id').value; dadosNpc.chaveConclusao = document.getElementById('npc-chave-conclusao').value;
         } else { dadosNpc.dialogoMissao = ""; dadosNpc.idMissao = ""; dadosNpc.chaveConclusao = ""; }
