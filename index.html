@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG VR, PC e Android - Versão Definitiva (Anti Save da Morte)</title>
+    <title>RPG VR, PC e Android - Versão Definitiva (Câmera Touch e Combate Polido)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -274,27 +274,26 @@
             
             window.addEventListener('click', () => { if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } }); 
 
-            // CÓDIGOS DE BOTÕES E JOYSTICK DO ANDROID (MOBILE) COM PREVENTDEFAULT PARA NÃO GIRAR A CÂMERA
             let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); 
             let atribAberto = false; let invAberto = false; let podeAtacarMobile = true;
 
-            document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); atualizarUI(); });
-            document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); atualizarUI(); });
-            document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } });
+            document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); atualizarUI(); }, {passive: false});
+            document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); atualizarUI(); }, {passive: false});
+            document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } }, {passive: false});
             
             document.getElementById('btn-atacar').addEventListener('touchstart', (e) => {
                 e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now();
                 if (!podeAtacarMobile) return; podeAtacarMobile = false; setTimeout(() => podeAtacarMobile = true, 800); 
                 window.realizarAtaque();
-            });
+            }, {passive: false});
 
             const zone = document.getElementById('joystick-zone'); const stick = document.getElementById('joystick-stick');
             let isDragging = false; let centerX, centerY, maxRadius = 40;
-            zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); isDragging = true; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(e); });
-            zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDragging) handleTouch(e); });
-            const releaseJoystick = () => { isDragging = false; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
-            zone.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); releaseJoystick(); }); 
-            zone.addEventListener('touchcancel', (e) => { e.preventDefault(); e.stopPropagation(); releaseJoystick(); });
+            zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); isDragging = true; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(e); }, {passive: false});
+            zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDragging) handleTouch(e); }, {passive: false});
+            const releaseJoystick = (e) => { e.preventDefault(); e.stopPropagation(); isDragging = false; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
+            zone.addEventListener('touchend', releaseJoystick, {passive: false}); 
+            zone.addEventListener('touchcancel', releaseJoystick, {passive: false});
             function handleTouch(e) { window.lastActionTime = Date.now(); let touch = e.targetTouches[0]; let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let distance = Math.sqrt(dx*dx + dy*dy); if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; } stick.style.transform = `translate(${dx}px, ${dy}px)`; window.joystickVector.x = dx / maxRadius; window.joystickVector.y = dy / maxRadius; }
 
             setInterval(() => {
@@ -318,12 +317,8 @@
                 firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { 
                     if (doc.exists) { 
                         window.playerState = Object.assign(window.playerState, doc.data()); 
-                        // ANTI SAVE DA MORTE: Se carregou o save já com HP <= 0, revive para não ficar preso morto!
-                        if(window.playerState.hpAtual <= 0) {
-                            window.playerState.hpAtual = window.playerState.hpMax;
-                            window.playerState.vivo = true;
-                        }
-                        if (window.GAME_STARTED) atualizarUI(); // Atualiza a tela se demorou pra baixar da nuvem
+                        if(window.playerState.hpAtual <= 0) { window.playerState.hpAtual = window.playerState.hpMax; window.playerState.vivo = true; }
+                        if (window.GAME_STARTED) atualizarUI(); 
                     } 
                 }).catch(e => console.error("Erro", e)); 
             }
@@ -334,7 +329,6 @@
             document.getElementById('ui-layer').style.display = 'none'; 
             document.body.classList.remove('menu-aberto');
             
-            // Escudo de Spawn (3 Segundos para carregar sem tomar hit kill)
             window.playerState.invulneravel = true;
             setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
 
@@ -351,15 +345,12 @@
                 if(maoEsq) { maoEsq.setAttribute('visible', 'false'); maoEsq.setAttribute('raycaster', 'far', 0); }
                 if(maoDir) { maoDir.setAttribute('visible', 'false'); maoDir.setAttribute('raycaster', 'far', 0); }
                 
-                // DESLIGA O GIROSCÓPIO E LIBERA O DEDO NA TELA PARA A CÂMERA
-                if(cam) cam.setAttribute('look-controls', 'pointerLockEnabled: false; magicWindowTrackingEnabled: false;'); 
-                
-                // Remove o controle de movimento do PC para não dar conflito com o Joystick
+                // MÁGICA 1: TELA TOTALMENTE LIVRE PRO DEDO (touchEnabled: true) E GIROSCÓPIO DESLIGADO
+                if(cam) cam.setAttribute('look-controls', 'pointerLockEnabled: false; magicWindowTrackingEnabled: false; touchEnabled: true;'); 
                 if(rig) rig.removeAttribute('movement-controls');
                 
                 document.getElementById('mobile-ui').style.display = 'block'; 
                 
-                // MÁGICA FULLSCREEN E LANDSCAPE
                 let elem = document.documentElement;
                 if (elem.requestFullscreen) { elem.requestFullscreen(); } else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
                 if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(e => console.log(e)); }
@@ -373,9 +364,6 @@
         
         window.salvarJogoNuvem = function() { if (!window.currentUser) return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); };
 
-        // ==========================================
-        // BANCOS E FÍSICA
-        // ==========================================
         window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; window.ANIM_ANDANDO = 'chr784_armature|chr784_br01'; window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; window.ANIM_DANO = 'chr784_armature|chr784_bd01'; window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
 
@@ -452,25 +440,6 @@
             if(containerPC) containerPC.innerHTML = containerDir.innerHTML; if(escudoPC) escudoPC.innerHTML = containerEsq.innerHTML; 
         }
 
-        // ==========================================
-        // COMPONENTE DE MOVIMENTO MOBILE (ANDROID)
-        // ==========================================
-        AFRAME.registerComponent('mobile-movement', {
-            tick: function(time, timeDelta) {
-                if (!window.playerState.vivo || window.GAME_MODE !== 'ANDROID' || !window.GAME_STARTED) return;
-                let dt = timeDelta / 1000; let speed = 3.0 + (window.playerState.velocidade * 0.1); 
-                if (Math.abs(window.joystickVector.x) > 0.1 || Math.abs(window.joystickVector.y) > 0.1) {
-                    let camObj = document.querySelector('[camera]').object3D; let rigObj = this.el.object3D;
-                    let rotY = camObj.rotation.y; let dirX = window.joystickVector.x; let dirZ = window.joystickVector.y; 
-                    let moveX = (dirX * Math.cos(rotY) + dirZ * Math.sin(rotY)) * speed * dt; let moveZ = (-dirX * Math.sin(rotY) + dirZ * Math.cos(rotY)) * speed * dt;
-                    rigObj.position.x += moveX; rigObj.position.z += moveZ;
-                }
-            }
-        });
-
-        // ==========================================
-        // O COMBATE DE PC (DESTRAVADO E NOVO SENSOR 2D!)
-        // ==========================================
         AFRAME.registerComponent('pc-controles', {
             init: function() {
                 let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
@@ -498,9 +467,6 @@
             }
         });
 
-        // ==========================================
-        // O COMBATE DE VR
-        // ==========================================
         AFRAME.registerComponent('vr-controles-gatilho', {
             init: function() {
                 let podeAtacarVR = true;
@@ -584,72 +550,7 @@
         });
 
         // ==========================================
-        // GERENCIADOR DE RESPAWNS
-        // ==========================================
-        AFRAME.registerComponent('gerenciador-respawns', {
-            init: function() {
-                this.db = realtimeDB; 
-                this.respawns = {};
-                
-                this.db.ref('cenario_respawns').on('child_added', (snap) => {
-                    let id = snap.key; let r = snap.val(); this.respawns[id] = r;
-                    let el = document.createElement('a-entity'); 
-                    this.el.appendChild(el); 
-                    el.dataset.respId = id;
-                    el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`);
-                    
-                    let rRaio = r.raio || 3;
-                    el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`;
-                });
-
-                this.db.ref('cenario_respawns').on('child_changed', (snap) => {
-                    let id = snap.key; let r = snap.val(); this.respawns[id] = r;
-                    let el = document.querySelector(`[data-resp-id="${id}"]`);
-                    if(el) { 
-                        el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); 
-                        let cyl = el.querySelector('a-cylinder'); 
-                        if(cyl) cyl.setAttribute('radius', r.raio || 3); 
-                    }
-                });
-
-                this.db.ref('cenario_respawns').on('child_removed', (snap) => {
-                    delete this.respawns[snap.key]; 
-                    let el = document.querySelector(`[data-resp-id="${snap.key}"]`); 
-                    if(el && el.parentNode) el.parentNode.removeChild(el);
-                });
-            },
-            tick: function() {
-                if (!window.GAME_STARTED || !window.playerState.vivo) return;
-                let camObj = document.querySelector('[camera]');
-                if (!camObj) return; 
-                let pPos = new THREE.Vector3(); 
-                camObj.object3D.getWorldPosition(pPos);
-                
-                for (let id in this.respawns) {
-                    let r = this.respawns[id];
-                    let raio = r.raio || 3;
-                    let dist = Math.hypot(pPos.x - r.pos.x, pPos.z - r.pos.z);
-                    
-                    if (dist <= raio) {
-                        if (!window.playerState.ultimoRespawn || window.playerState.ultimoRespawn.id !== id) {
-                            window.playerState.ultimoRespawn = { id: id, x: r.pos.x, y: r.pos.y, z: r.pos.z }; 
-                            window.salvarJogoNuvem();
-                            let aviso = document.querySelector('#texto-central'); 
-                            if(aviso) {
-                                aviso.setAttribute('value', 'CHECKPOINT SALVO!'); 
-                                aviso.setAttribute('color', '#00ffcc'); 
-                                aviso.setAttribute('visible', 'true'); 
-                                window.tocarSom('snd-magic'); 
-                                setTimeout(() => { if (aviso) aviso.setAttribute('visible', 'false'); }, 2500);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        // ==========================================
-        // O MOTOR DE ANIMAÇÃO IA
+        // O MOTOR DE ANIMAÇÃO IA E COMBATE (MÁGICA DO PISCAR CORRIGIDA E TRAVA DE MORTE)
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -703,7 +604,8 @@
                         this.targetRotY = isNaN(data.rotY) ? 0 : data.rotY;
                     }
 
-                    if (data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
+                    // A TRAVA: SE A VIDA FOR MAIOR QUE ZERO, ELE PODE ATACAR.
+                    if (data.hp > 0 && data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
                         this.ultimoTempoMelee = data.meleeAttack.time; 
                         this.isAttacking = true;
                         this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
@@ -729,7 +631,8 @@
                         }
                     }
 
-                    if (data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
+                    // A TRAVA MÁGICA: SE A VIDA FOR MAIOR QUE ZERO.
+                    if (data.hp > 0 && data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
                         this.ultimoTempoTiro = data.shoot.time;
                         this.isAttacking = true;
                         this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
@@ -778,8 +681,21 @@
                         this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     } else if (tomouDano) {
                         if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
-                        let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); let obj3D = v ? v.getObject3D('mesh') : null;
-                        if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
+                        let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); 
+                        let obj3D = v ? v.getObject3D('mesh') : null;
+                        
+                        // MÁGICA ANTI-VERMELHO FIXO: Ele salva a cor real na Memória (userData) na primeira vez!
+                        if (obj3D) obj3D.traverse((n) => { 
+                            if (n.isMesh && n.material && n.material.emissive) { 
+                                if (n.userData.corOriginal === undefined) {
+                                    n.userData.corOriginal = n.material.emissive.getHex();
+                                }
+                                n.material.emissive.setHex(0xaa0000); 
+                                setTimeout(() => { 
+                                    if(n.material) n.material.emissive.setHex(n.userData.corOriginal); 
+                                }, 150); 
+                            } 
+                        });
                         
                         if(!this.isAttacking && !this.isDead) {
                             this.tocarAnimacao(window.ANIM_DANO, 'once'); 
@@ -844,6 +760,7 @@
             }
         });
 
+        // (Resto dos componentes gerenciadores)
         AFRAME.registerComponent('gerenciador-inimigos', {
             init: function() {
                 this.db = realtimeDB;
@@ -922,9 +839,6 @@
             }
         });
 
-        // ==========================================
-        // GERENCIADOR DE NPCs E MIRA GLOW
-        // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
                 this.db = realtimeDB;
@@ -1082,23 +996,23 @@
             let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); 
             let atribAberto = false; let invAberto = false; let podeAtacarMobile = true;
 
-            document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); atualizarUI(); });
-            document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); atualizarUI(); });
-            document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } });
+            document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); atualizarUI(); }, {passive: false});
+            document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); atualizarUI(); }, {passive: false});
+            document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } }, {passive: false});
             
             document.getElementById('btn-atacar').addEventListener('touchstart', (e) => {
                 e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now();
                 if (!podeAtacarMobile) return; podeAtacarMobile = false; setTimeout(() => podeAtacarMobile = true, 800); 
                 window.realizarAtaque();
-            });
+            }, {passive: false});
 
             const zone = document.getElementById('joystick-zone'); const stick = document.getElementById('joystick-stick');
             let isDragging = false; let centerX, centerY, maxRadius = 40;
-            zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); isDragging = true; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(e); });
-            zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDragging) handleTouch(e); });
-            const releaseJoystick = () => { isDragging = false; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
-            zone.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); releaseJoystick(); }); 
-            zone.addEventListener('touchcancel', (e) => { e.preventDefault(); e.stopPropagation(); releaseJoystick(); });
+            zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); isDragging = true; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(e); }, {passive: false});
+            zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDragging) handleTouch(e); }, {passive: false});
+            const releaseJoystick = (e) => { e.preventDefault(); e.stopPropagation(); isDragging = false; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
+            zone.addEventListener('touchend', releaseJoystick, {passive: false}); 
+            zone.addEventListener('touchcancel', releaseJoystick, {passive: false});
             function handleTouch(e) { window.lastActionTime = Date.now(); let touch = e.targetTouches[0]; let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let distance = Math.sqrt(dx*dx + dy*dy); if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; } stick.style.transform = `translate(${dx}px, ${dy}px)`; window.joystickVector.x = dx / maxRadius; window.joystickVector.y = dy / maxRadius; }
         });
     </script>
