@@ -132,9 +132,7 @@
         <div class="grid-spawn">
             <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
             <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
-            
             <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Parado)</option><option value="livre">Patrulha Livre</option></select></div>
-            
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
@@ -150,8 +148,7 @@
             <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
             <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
             <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
-
-            <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Segundos)</label><input type="number" id="novo-respawn-time" value="60" title="Tempo para renascer do chão"></div>
+            <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Segundos)</label><input type="number" id="novo-respawn-time" value="60" title="Tempo para renascer"></div>
 
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
             <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" step="0.1" id="novo-spawn-y" value="0"></div>
@@ -219,7 +216,7 @@
 
     window.salvarAlteracaoRespawn = function(id) {
         db.ref('cenario_respawns/' + id).update({
-            pos: { x: parseFloat(document.getElementById(`x-resp-${id}`).value), y: parseFloat(document.getElementById(`y-resp-${id}`).value), z: parseFloat(document.getElementById(`z-resp-${id}`).value) },
+            pos: { x: parseFloat(document.getElementById(`x-resp-${id}`).value)||0, y: parseFloat(document.getElementById(`y-resp-${id}`).value)||0, z: parseFloat(document.getElementById(`z-resp-${id}`).value)||0 },
             raio: parseFloat(document.getElementById(`raio-resp-${id}`).value) || 3
         }); alert('Respawn atualizado!');
     };
@@ -228,7 +225,7 @@
     window.spawnarRespawn = function() {
         let id = document.getElementById('resp-id').value; if(!id) { alert("Digite um ID único para o Respawn!"); return; }
         db.ref('cenario_respawns/' + id).set({
-            pos: { x: parseFloat(document.getElementById('resp-x').value), y: parseFloat(document.getElementById('resp-y').value), z: parseFloat(document.getElementById('resp-z').value) },
+            pos: { x: parseFloat(document.getElementById('resp-x').value)||0, y: parseFloat(document.getElementById('resp-y').value)||0, z: parseFloat(document.getElementById('resp-z').value)||0 },
             raio: parseFloat(document.getElementById('resp-raio').value) || 3
         }); alert('Cristal de Respawn criado com sucesso!');
     };
@@ -257,6 +254,7 @@
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let inimigo = snapshot.val(); 
+        
         if (!inimigo || inimigo.hpMax === undefined || !inimigo.modeloGlb) return; 
 
         if (!inimigo.pos) inimigo.pos = {x: 0, y: 0, z: 0};
@@ -293,10 +291,7 @@
             let data = snap.val(); if(!data) return;
             document.getElementById('novo-id').value = id;
             document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
-            
-            // CARREGA A PATRULHA
             document.getElementById('novo-movimento').value = data.movimento || 'estatico';
-            
             document.getElementById('novo-tipo').value = data.tipo || 'meelee';
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
             document.getElementById('novo-dano').value = data.dano || 10;
@@ -330,13 +325,13 @@
     window.spawnarNovoInimigo = function() {
         let id = document.getElementById('novo-id').value; if(!id) { alert("Digite um ID único!"); return; }
         
-        let hp = parseFloat(document.getElementById('novo-hp').value);
+        let hp = parseFloat(document.getElementById('novo-hp').value) || 50;
         let forcaDoMonstro = parseFloat(document.getElementById('novo-dano').value) || 10;
         let tempoRespawnCalculado = (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000;
         
-        let spawnX = parseFloat(document.getElementById('novo-spawn-x').value);
-        let spawnY = parseFloat(document.getElementById('novo-spawn-y').value);
-        let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value);
+        let spawnX = parseFloat(document.getElementById('novo-spawn-x').value) || 0;
+        let spawnY = parseFloat(document.getElementById('novo-spawn-y').value) || 0;
+        let spawnZ = parseFloat(document.getElementById('novo-spawn-z').value) || 0;
 
         let dadosInimigo = {
             hpMax: hp,
@@ -347,10 +342,7 @@
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
             
             comportamento: document.getElementById('novo-comportamento').value,
-            
-            // SALVA A PATRULHA
             movimento: document.getElementById('novo-movimento').value, 
-            
             aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15,
             attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
             speed: parseFloat(document.getElementById('novo-speed').value) || 0.08,
@@ -368,6 +360,7 @@
         db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
+    // NPCS... (resto se mantém igual)
     const listaNpcsDiv = document.getElementById('lista-npcs');
     db.ref('cenario_npcs').on('child_added', (snapshot) => {
         let id = snapshot.key; let npc = snapshot.val(); if (!npc.pos) npc.pos = {x: 0, y: 0, z: 0};
@@ -412,7 +405,7 @@
     };
 
     window.salvarAlteracaoNpc = function(id) {
-        db.ref('cenario_npcs/' + id).update({ pos: { x: parseFloat(document.getElementById(`x-npc-${id}`).value), y: parseFloat(document.getElementById(`y-npc-${id}`).value), z: parseFloat(document.getElementById(`z-npc-${id}`).value) } });
+        db.ref('cenario_npcs/' + id).update({ pos: { x: parseFloat(document.getElementById(`x-npc-${id}`).value)||0, y: parseFloat(document.getElementById(`y-npc-${id}`).value)||0, z: parseFloat(document.getElementById(`z-npc-${id}`).value)||0 } });
         document.activeElement.blur(); 
     };
 
@@ -423,7 +416,7 @@
         let tipo = document.getElementById('npc-tipo').value;
         let dadosNpc = {
             nome: document.getElementById('npc-nome').value, tipo: tipo,
-            pos: { x: parseFloat(document.getElementById('npc-x').value), y: parseFloat(document.getElementById('npc-y').value), z: parseFloat(document.getElementById('npc-z').value) },
+            pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
             escala: { x: parseFloat(document.getElementById('npc-scale-x').value)||1, y: parseFloat(document.getElementById('npc-scale-y').value)||1, z: parseFloat(document.getElementById('npc-scale-z').value)||1 },
             modeloGlb: document.getElementById('npc-glb').value,
             animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
