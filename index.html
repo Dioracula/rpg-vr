@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Correção do Loading)</title>
+    <title>RPG VR e PC - Versão Definitiva (Loading Corrigido)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -27,8 +27,6 @@
     </style>
 
     <script>
-        document.body.classList.add('menu-aberto');
-
         // ==========================================
         // 1. CONFIGURAÇÃO FIREBASE E ESTADO GLOBAL
         // ==========================================
@@ -147,6 +145,9 @@
         window.tocarSom = function(idSom, volume = 0.5) { let audio = document.getElementById(idSom); if(audio) { audio.volume = volume; audio.currentTime = 0; audio.play().catch(e => {}); } };
 
         document.addEventListener('DOMContentLoaded', () => { 
+            // CORREÇÃO AQUI: Agora a trava do mouse só acontece depois que o corpo existe!
+            document.body.classList.add('menu-aberto');
+
             ['mousedown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, () => window.lastActionTime = Date.now()));
             document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
             document.getElementById('btn-login').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
@@ -225,6 +226,7 @@
                             window.tocarSom('snd-sword');
                             let pcWeapon = document.querySelector('#arma-visual-pc'); if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => pcWeapon.setAttribute('rotation', '-90 0 0'), 300); }
                             let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); let cameraObj = document.querySelector('[camera]').object3D; cameraObj.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.quaternion);
+                            
                             let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
                             inimigosEls.forEach(inimigoEl => { 
                                 if(!inimigoEl.object3D) return; 
@@ -505,10 +507,6 @@
             <a-asset-item id="modelo-escudo" src="Armas/Escudos/escudo.glb"></a-asset-item>
             <a-asset-item id="modelo-inimigo" src="Inimigos/atiradora.glb"></a-asset-item>
             <a-asset-item id="modelo-inimigo2" src="Inimigos/atiradora.glb"></a-asset-item>
-
-            <audio id="snd-sword" src="Sons/espada.mp3" preload="auto"></audio>
-            <audio id="snd-magic" src="Sons/magia.mp3" preload="auto"></audio>
-            <audio id="snd-hit" src="Sons/dano.mp3" preload="auto"></audio>
         </a-assets>
 
         <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
