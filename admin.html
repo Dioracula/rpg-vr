@@ -116,12 +116,10 @@
             <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só ataca se apanhar)</option></select></div>
             <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
             <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+            
             <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="novo-glb-caminho" placeholder="Ex: Inimigos/orc.glb" value="#modelo-inimigo"></div>
-            
             <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
-            
             <div class="input-group"><label style="color:#2ecc71">Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
-            
             <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
             <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
 
@@ -200,7 +198,7 @@
             <div class="input-group"><label>Pos Atual X</label><input type="number" step="0.1" id="x-ini-${id}" value="${inimigo.pos.x.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
             <div class="input-group"><label>Pos Atual Z</label><input type="number" step="0.1" id="z-ini-${id}" value="${inimigo.pos.z.toFixed(2)}" readonly style="background:#222; color:#aaa;"></div>
             <div class="action-buttons">
-                <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar / Ajustar Status</button>
+                <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar Tudo</button>
                 <button class="btn btn-red" onclick="matarInimigo('${id}')">☠️ Kill</button>
                 <button class="btn btn-dark" onclick="excluirInimigo('${id}')">🗑️ Excluir</button>
             </div>
@@ -229,7 +227,7 @@
             document.getElementById('novo-hp').value = data.hpMax || data.hp || 50;
             document.getElementById('novo-glb-caminho').value = data.modeloGlb || '';
             document.getElementById('novo-anim-parado').value = data.animParado || '';
-            document.getElementById('novo-anim-andando').value = data.animAndando || ''; // NOVO
+            document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
             document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
             document.getElementById('novo-anim-morte').value = data.animMorte || '';
             
@@ -244,7 +242,7 @@
             document.getElementById('novo-aggro-range').value = data.aggroRange || 15;
             document.getElementById('novo-attack-range').value = data.attackRange || (data.tipo === 'atirador' ? 6.0 : 1.8);
             document.getElementById('novo-speed').value = data.speed || 0.08;
-            document.getElementById('novo-cooldown').value = data.cooldown || (data.tipo === 'atirador' ? 3500 : 2000);
+            document.getElementById('novo-cooldown').value = data.cooldown || 2000;
 
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
@@ -263,6 +261,7 @@
 
         let dadosInimigo = {
             hpMax: hp,
+            hp: hp, // FORÇA CURA 100% PARA ELE VOLTAR A SER PACÍFICO!
             spawnPos: { x: spawnX, y: spawnY, z: spawnZ },
             pos: { x: spawnX, y: spawnY, z: spawnZ }, 
             escala: { x: parseFloat(document.getElementById('novo-scale-x').value)||1, y: parseFloat(document.getElementById('novo-scale-y').value)||1, z: parseFloat(document.getElementById('novo-scale-z').value)||1 },
@@ -276,15 +275,12 @@
             tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value,
             animParado: document.getElementById('novo-anim-parado').value,
-            animAndando: document.getElementById('novo-anim-andando').value, // NOVO
+            animAndando: document.getElementById('novo-anim-andando').value,
             animAtaque: document.getElementById('novo-anim-ataque').value,
             animMorte: document.getElementById('novo-anim-morte').value
         };
 
-        db.ref('cenario_inimigos/' + id).once('value').then(snap => {
-            if(!snap.exists()) { dadosInimigo.hp = hp; dadosInimigo.rotY = 0; dadosInimigo.ultimoAtaque = 0; dadosInimigo.mortoEm = null; }
-            db.ref('cenario_inimigos/' + id).update(dadosInimigo); alert(`Monstro ${id} atualizado/invocado com sucesso!`);
-        });
+        db.ref('cenario_inimigos/' + id).update(dadosInimigo).then(() => alert(`Monstro ${id} atualizado/invocado com sucesso!`));
     };
 
     // --- NPCS ---
