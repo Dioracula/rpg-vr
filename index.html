@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Respawn Visível e Força Inimiga)</title>
+    <title>RPG VR e PC - Versão Definitiva (Anti-Fantasmas e Dano Real)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -80,7 +80,6 @@
                 let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 atualizarUI(); 
                 
-                // TEXTO CENTRAL FOI RESTAURADO NA CAMERA E BLINDADO AQUI!
                 let aviso = document.querySelector('#texto-central'); 
                 if(aviso) { 
                     aviso.setAttribute('color', '#ff0000'); 
@@ -248,7 +247,8 @@
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         
-        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
+        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
+        window.CONFIG_ESCUDO = { modeloGlb: '#modelo-escudo', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0' };
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, durabilidadeMax: Infinity, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -365,77 +365,7 @@
         });
 
         // ==========================================
-        // PROJÉTEIS FÍSICOS
-        // ==========================================
-        AFRAME.registerComponent('projetil-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () {
-                this.gravidade = new THREE.Vector3(0, -9.8, 0);
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
-            },
-            tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0) return;
-                this.vel.add(this.gravidade.clone().multiplyScalar(dt));
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-                this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel));
-                this.el.object3D.rotateX(Math.PI / 2);
-
-                if (this.el.object3D.position.y < 0) {
-                    this.el.removeAttribute('projetil-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                    return;
-                }
-
-                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
-                for (let i = 0; i < inimigosAtuais.length; i++) {
-                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp) continue;
-                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
-                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
-                    let boxInimigo = new THREE.Box3();
-                    let colisorNode = inimigo.querySelector('.colisao-inimigo');
-                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
-                    else { boxInimigo.setFromObject(inimigo.object3D); }
-
-                    if (boxProj.intersectsBox(boxInimigo)) {
-                        syncComp.receberDano(this.data.dano, 'Arco');
-                        if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                        break;
-                    }
-                }
-            }
-        });
-        
-        AFRAME.registerComponent('projetil-inimigo-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () {
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z);
-                this.camera = document.querySelector('[camera]');
-            },
-            tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return;
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-
-                if (this.el.object3D.position.y < -1) {
-                    this.el.removeAttribute('projetil-inimigo-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                    return;
-                }
-
-                if(!this.camera) return;
-                let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer);
-                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
-
-                if (posProj.distanceTo(posPlayer) < 2.0) {
-                    if (this.el.dataset.defletido === "true") return;
-                    window.receberDanoJogador(this.data.dano);
-                    this.el.removeAttribute('projetil-inimigo-fisico');
-                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el);
-                }
-            }
-        });
-
-        // ==========================================
-        // GERENCIADOR DE RESPAWNS BLINDADO
+        // GERENCIADOR DE RESPAWNS
         // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
@@ -500,7 +430,7 @@
         });
 
         // ==========================================
-        // IA INIMIGOS E DANO PERSONALIZADO
+        // SISTEMA INIMIGO BLINDADO (FANTASMAS CORRIGIDOS)
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -573,7 +503,6 @@
                                 
                                 let alcanceHit = data.attackRange !== undefined ? data.attackRange : 2.0;
                                 if (posPlayer.distanceTo(posInimigo) <= (alcanceHit + 1.0)) { 
-                                    // AQUI! LÊ A FORÇA DO MONSTRO
                                     let forcaMonstro = data.dano !== undefined ? data.dano : 10;
                                     window.receberDanoJogador(forcaMonstro); 
                                 }
@@ -610,7 +539,8 @@
                 this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
-                        if (currentHp === null) return this.data.hpMax - dano; 
+                        // MÁGICA: SE O MONSTRO FOR NULO (FOI DELETADO), ABORTA A TRANSAÇÃO PARA NÃO RESSUSCITAR ELE!
+                        if (currentHp === null) return; 
                         if (currentHp <= 0) return; 
                         return Math.max(0, currentHp - dano); 
                     }, (error, committed, snapshot) => {
@@ -660,9 +590,9 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
+                    // ESCUDO ANTI-ZUMBI EXTREMO (Impede a renderização de fantasmas)
                     if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) {
-                        this.db.ref('cenario_inimigos/' + id).remove(); 
-                        return;
+                        return; // O SERVIDOR VAI DELETAR ISSO SOZINHO! NÃO TENTA RENDERIZAR!
                     }
 
                     if (document.querySelector(`[data-id="${id}"]`)) return;
