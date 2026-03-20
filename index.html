@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Diálogos Interativos e Missões)</title>
+    <title>RPG VR e PC - Versão Definitiva (Motor de Animação com Velocímetro Real)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -75,12 +75,16 @@
             atualizarUI(); 
             
             if (window.playerState.hpAtual <= 0) { 
-                window.playerState.vivo = false; window.playerState.hpAtual = 0; 
+                window.playerState.vivo = false; 
+                window.playerState.hpAtual = 0; 
                 let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 atualizarUI(); 
                 
                 let aviso = document.querySelector('#texto-central'); 
-                if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                if(aviso) { 
+                    aviso.setAttribute('color', '#ff0000'); 
+                    aviso.setAttribute('visible', 'true'); 
+                }
                 
                 let tempoRespawn = 5; 
                 if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
@@ -112,11 +116,7 @@
             }
         };
 
-        // ==========================================
-        // NOVO SISTEMA DE DIÁLOGOS INTERATIVOS
-        // ==========================================
-        window.npcAtivo = null;
-
+        window.dialogoTimeout = null;
         window.abrirDialogoNPC = function(data) {
             window.npcAtivo = data;
             let cx = document.querySelector('#caixa-dialogo');
@@ -128,7 +128,6 @@
             let btnFechar = document.querySelector('#btn-npc-fechar');
 
             if(!cx || !tNome || !tTexto) return;
-
             tNome.setAttribute('value', data.nome || "NPC");
 
             let jaConcluiu = data.chaveConclusao && window.playerState.chaves[data.chaveConclusao];
@@ -136,78 +135,54 @@
 
             if (data.tipo === 'dialogo' || jaConcluiu) {
                 tTexto.setAttribute('value', data.dialogoPadrao || "Olá aventureiro.");
-                entRec.setAttribute('visible', 'false');
-                btnAceitar.setAttribute('visible', 'false');
-                btnFechar.setAttribute('position', '0 -0.4 0.01'); // Centraliza botão fechar
+                entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false');
+                btnFechar.setAttribute('position', '0 -0.4 0.01');
             } else if ((data.tipo === 'secundaria' || data.tipo === 'primaria') && podeFazer) {
                 tTexto.setAttribute('value', data.dialogoMissao || "Preciso de ajuda com esta missão!");
-                
-                // Formata a string de recompensas
                 let recStr = "";
                 if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `;
                 if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `;
                 if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
                 
-                if (recStr.trim() !== "") {
-                    tRec.setAttribute('value', recStr);
-                    entRec.setAttribute('visible', 'true');
-                } else {
-                    entRec.setAttribute('visible', 'false');
-                }
+                if (recStr.trim() !== "") { tRec.setAttribute('value', recStr); entRec.setAttribute('visible', 'true'); } 
+                else { entRec.setAttribute('visible', 'false'); }
 
-                btnAceitar.setAttribute('visible', 'true');
-                btnFechar.setAttribute('position', '0.55 -0.4 0.01'); // Move fechar pra direita
+                btnAceitar.setAttribute('visible', 'true'); btnFechar.setAttribute('position', '0.55 -0.4 0.01');
             } else {
                 tTexto.setAttribute('value', "Você ainda não tem os requisitos para falar comigo.");
-                entRec.setAttribute('visible', 'false');
-                btnAceitar.setAttribute('visible', 'false');
+                entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false');
                 btnFechar.setAttribute('position', '0 -0.4 0.01');
             }
-
             cx.setAttribute('visible', 'true');
+            if (window.GAME_MODE === 'PC') document.exitPointerLock(); 
         };
 
         window.fecharDialogoNPC = function() {
             let cx = document.querySelector('#caixa-dialogo');
             if(cx) cx.setAttribute('visible', 'false');
             window.npcAtivo = null;
+            if (window.GAME_MODE === 'PC') {
+                let canvas = document.querySelector('a-scene');
+                if (canvas) canvas.requestPointerLock();
+            }
         };
 
         window.aceitarMissaoNPC = function() {
-            let data = window.npcAtivo;
-            if (!data) return;
-
-            // Marca Missão como Feita
+            let data = window.npcAtivo; if (!data) return;
             if (data.chaveConclusao) { window.playerState.chaves[data.chaveConclusao] = true; }
-
-            // Dá Recompensas
             if (data.recXP) window.playerState.xp += Number(data.recXP);
             if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
-            if (data.recItem && window.bancoDeArmas[data.recItem]) {
-                window.playerState.armaEquipada = data.recItem; // Equipa o item ganho
-            }
-            
-            // Subir de Nível?
+            if (data.recItem && window.bancoDeArmas[data.recItem]) { window.playerState.armaEquipada = data.recItem; }
             if (window.playerState.xp >= window.playerState.xpProxNivel) {
                 window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
             }
-
-            atualizarUI();
-            window.salvarJogoNuvem();
-            window.tocarSom('snd-magic');
+            atualizarUI(); window.salvarJogoNuvem(); window.tocarSom('snd-magic');
             
             let aviso = document.querySelector('#texto-central'); 
-            if(aviso) {
-                aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); 
-                aviso.setAttribute('color', '#f1c40f'); 
-                aviso.setAttribute('visible', 'true'); 
-                setTimeout(() => aviso.setAttribute('visible', 'false'), 3000);
-            }
-
+            if(aviso) { aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
             window.fecharDialogoNPC();
         };
 
-        // Componentes dos botões
         AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('click', () => { window.fecharDialogoNPC(); }); } });
         AFRAME.registerComponent('btn-dialogo-aceitar', { init: function() { this.el.addEventListener('click', () => { window.aceitarMissaoNPC(); }); } });
 
@@ -279,13 +254,22 @@
         document.addEventListener('DOMContentLoaded', () => { 
             document.body.classList.add('menu-aberto');
             ['mousedown', 'keydown', 'touchstart'].forEach(e => window.addEventListener(e, () => window.lastActionTime = Date.now()));
-            document.getElementById('btn-registrar').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
-            document.getElementById('btn-login').addEventListener('click', () => { window.currentUser = { uid: 'test_user_local' }; iniciarTelaSelecaoModo(); }); 
+            
+            document.getElementById('btn-registrar').addEventListener('click', () => { 
+                let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value;
+                auth.createUserWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); });
+            }); 
+            
+            document.getElementById('btn-login').addEventListener('click', () => { 
+                let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value;
+                auth.signInWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { alert(error.message); });
+            }); 
+            
             document.getElementById('btn-pc').addEventListener('click', () => { iniciarJogo('PC'); }); 
             document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
             
             window.addEventListener('click', () => { 
-                if (window.GAME_MODE === 'PC' && window.GAME_STARTED) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } 
+                if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) { let canvas = document.querySelector('.a-canvas'); if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); } 
             }); 
 
             setInterval(() => {
@@ -308,7 +292,17 @@
             });
         });
         
-        function iniciarTelaSelecaoModo() { document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; }
+        function iniciarTelaSelecaoModo() { 
+            document.getElementById('login-menu').style.display = 'none'; 
+            document.getElementById('start-menu').style.display = 'block'; 
+            
+            // Tenta carregar save da nuvem
+            if (window.currentUser) {
+                firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => {
+                    if (doc.exists) { window.playerState = Object.assign(window.playerState, doc.data()); }
+                }).catch(error => console.error("Erro ao carregar save:", error));
+            }
+        }
         
         function iniciarJogo(modo) { 
             window.GAME_MODE = modo; window.GAME_STARTED = true; 
@@ -330,7 +324,7 @@
             atualizarUI(); 
         }
         
-        window.salvarJogoNuvem = function() { if (!window.currentUser || window.currentUser.uid === 'test_user_local') return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).then(() => console.log("Salvo na nuvem!")).catch(e => console.error(e)); };
+        window.salvarJogoNuvem = function() { if (!window.currentUser) return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).then(() => console.log("Salvo na nuvem!")).catch(e => console.error(e)); };
 
         // ==========================================
         // BANCOS E FÍSICA
@@ -429,10 +423,15 @@
             init: function() {
                 let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); let atribAberto = false; let invAberto = false; let podeAtacarPC = true;
                 window.addEventListener('contextmenu', e => e.preventDefault());
-                window.addEventListener('keydown', (e) => { if (!window.GAME_STARTED) return; if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) atualizarUI(); } if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) atualizarUI(); } if (e.key.toLowerCase() === 'q' && window.GAME_MODE === 'PC') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } });
+                window.addEventListener('keydown', (e) => { 
+                    if (!window.GAME_STARTED || window.GAME_MODE !== 'PC') return; 
+                    if (e.key.toLowerCase() === 'i') { invAberto = !invAberto; if(menuInv) menuInv.setAttribute('scale', invAberto ? '0.65 0.65 0.65' : '0 0 0'); if (invAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock(); atualizarUI(); } 
+                    if (e.key.toLowerCase() === 'c') { atribAberto = !atribAberto; if(menuAtrib) menuAtrib.setAttribute('scale', atribAberto ? '0.7 0.7 0.7' : '0 0 0'); if (atribAberto) document.exitPointerLock(); else document.querySelector('a-scene').requestPointerLock(); atualizarUI(); } 
+                    if (e.key.toLowerCase() === 'q') { window.playerState.escudoEquipado = !window.playerState.escudoEquipado; atualizarUI(); let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } } 
+                });
 
                 window.addEventListener('mousedown', (e) => {
-                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo) return;
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo || window.npcAtivo) return;
                     let cursor = document.querySelector('[cursor]'); if(cursor && cursor.components && cursor.components.raycaster && cursor.components.raycaster.intersectedEls.some(el => el.classList.contains('interativo'))) return;
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
 
@@ -528,6 +527,9 @@
             }
         });
 
+        // ==========================================
+        // GERENCIADOR DE RESPAWNS BLINDADO
+        // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; 
@@ -590,6 +592,9 @@
             }
         });
 
+        // ==========================================
+        // O MOTOR DE ANIMAÇÃO BLINDADO (VELOCÍMETRO)
+        // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
@@ -627,7 +632,6 @@
                 this.isAttacking = false;
                 this.animacaoAtual = "";
                 this.isDead = false;
-                this.lastMoveTime = 0;
 
                 this.el.addEventListener('model-loaded', () => {
                     if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
@@ -672,6 +676,35 @@
                                 }
                             }
                         }
+                    }
+
+                    if (data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
+                        this.ultimoTempoTiro = data.shoot.time;
+                        this.isAttacking = true;
+                        this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+                        
+                        setTimeout(() => { 
+                            this.isAttacking = false;
+                            if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); 
+                        }, 1000);
+
+                        let proj = document.createElement('a-entity');
+                        let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo);
+                        proj.setAttribute('position', `${posInimigo.x} ${posInimigo.y + 1.2} ${posInimigo.z}`);
+                        
+                        let tX = isNaN(data.shoot.tx) ? 0 : data.shoot.tx;
+                        let tY = isNaN(data.shoot.ty) ? 0 : data.shoot.ty;
+                        let tZ = isNaN(data.shoot.tz) ? 0 : data.shoot.tz;
+                        let targetVec = new THREE.Vector3(tX, tY, tZ);
+                        
+                        let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize();
+                        let forcaTiro = data.dano !== undefined ? data.dano : 15;
+                        
+                        proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`);
+                        proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
+                        
+                        let scene = document.querySelector('a-scene');
+                        if(scene) scene.appendChild(proj);
                     }
 
                     let estavaMorto = (this.hpAtual <= 0); 
@@ -730,6 +763,7 @@
                 }; 
             },
 
+            // O NOVO CÉREBRO FÍSICO DO BONECO
             tick: function(time, timeDelta) {
                 if (!this.targetPos || this.hpAtual <= 0 || this.isDead) return;
 
@@ -743,13 +777,12 @@
                 let velocidadeAtual = this.el.object3D.position.distanceTo(posAnterior);
 
                 if (velocidadeAtual > 0.002) {
-                    this.lastMoveTime = time;
                     if (!this.isMoving && !this.isAttacking) {
                         this.isMoving = true;
                         this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat');
                     }
                 } else {
-                    if (this.isMoving && !this.isAttacking && (time - this.lastMoveTime > 200)) {
+                    if (this.isMoving && !this.isAttacking) {
                         this.isMoving = false;
                         this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     }
@@ -838,9 +871,6 @@
             }
         });
 
-        // ==========================================
-        // GERENCIADOR DE NPCs E MIRA GLOW
-        // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
                 this.db = realtimeDB;
@@ -885,7 +915,7 @@
 
                     let nomeTag = document.createElement('a-text'); 
                     el.appendChild(nomeTag);
-                    nomeTag.className = 'npc-nome-tag'; // Para mudar a cor no HOVER
+                    nomeTag.className = 'npc-nome-tag'; 
                     nomeTag.setAttribute('value', data.nome || 'NPC'); nomeTag.setAttribute('align', 'center'); nomeTag.setAttribute('position', '0 2.4 0'); nomeTag.setAttribute('color', '#f1c40f'); nomeTag.setAttribute('scale', '0.6 0.6 0.6'); nomeTag.setAttribute('side', 'double'); 
                 });
 
@@ -928,7 +958,6 @@
                     if(this.el.npcData && this.el.npcData.animParado) this.tocarAnimacao(this.el.npcData.animParado);
                 });
                 
-                // MIRA GLOW! Ao olhar para o NPC, o nome fica Azul
                 this.el.addEventListener('mouseenter', () => {
                     let tag = this.el.parentNode.querySelector('.npc-nome-tag');
                     if(tag) tag.setAttribute('color', '#00ffcc');
@@ -944,7 +973,7 @@
                     let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
                     let posPlayer = new THREE.Vector3(); cameraObj.object3D.getWorldPosition(posPlayer);
                     let posNPC = new THREE.Vector3(); this.el.parentNode.object3D.getWorldPosition(posNPC);
-                    if (posPlayer.distanceTo(posNPC) > 5.0) return; 
+                    if (posPlayer.distanceTo(posNPC) > 4.0) return; 
 
                     let data = this.el.npcData; if (!data) return;
 
@@ -952,7 +981,6 @@
                         this.tocarAnimacao(data.animFalando); setTimeout(() => { if(data.animParado) this.tocarAnimacao(data.animParado); }, 8000);
                     }
 
-                    // CHAMA A NOVA TELA DE DIÁLOGO
                     window.abrirDialogoNPC(data);
                 });
             }
@@ -1002,6 +1030,7 @@
                 <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
 
                 <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
+                
                 <a-text id="texto-central" value="" position="0 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5" align="center"></a-text>
                 
                 <a-entity id="caixa-dialogo" position="0 -0.2 -1.2" visible="false" rotation="-10 0 0">
