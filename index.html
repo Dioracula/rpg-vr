@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (Anti-Travamento)</title>
+    <title>RPG VR e PC - Versão Definitiva (Motor de Animação com Velocímetro Real)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -443,9 +443,6 @@
             }
         });
 
-        // ==========================================
-        // GERENCIADOR DE RESPAWNS
-        // ==========================================
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; 
@@ -509,7 +506,7 @@
         });
 
         // ==========================================
-        // IA INIMIGOS - EXORCISMO E RENDER SEGURO
+        // O MOTOR DE ANIMAÇÃO BLINDADO (VELOCÍMETRO)
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
@@ -543,12 +540,14 @@
                 
                 this.targetPos = new THREE.Vector3();
                 this.targetRotY = 0;
+                
                 this.isMoving = false;
                 this.isAttacking = false;
                 this.animacaoAtual = "";
+                this.isDead = false;
 
                 this.el.addEventListener('model-loaded', () => {
-                    this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                    if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                 });
 
                 this.dbRef = realtimeDB.ref('cenario_inimigos/' + this.data.idBd);
@@ -600,28 +599,33 @@
                     this.hpAtual = data.hp;
 
                     if (morreuAgora) {
+                        this.isDead = true;
                         if(textoHp) textoHp.setAttribute('value', 'MORTO'); 
-                        this.el.classList.remove('interativo'); this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
+                        this.el.classList.remove('interativo'); 
+                        this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                         setTimeout(() => { if(this.hpAtual <= 0 && this.el) this.el.setAttribute('visible', 'false'); }, 3000);
                     } else if (reviveu) {
+                        this.isDead = false;
                         if(textoHp) { textoHp.setAttribute('value', `HP: ${this.hpAtual}`); textoHp.setAttribute('color', '#FFF'); }
-                        this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
+                        this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); 
+                        this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
                     } else if (tomouDano) {
                         if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
                         let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); let obj3D = v ? v.getObject3D('mesh') : null;
                         if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
                         
-                        if(!this.isAttacking) {
+                        if(!this.isAttacking && !this.isDead) {
                             this.tocarAnimacao(window.ANIM_DANO, 'once'); 
                             setTimeout(() => { if (this.hpAtual > 0 && !this.isAttacking) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 600);
                         }
-                    } else if (!estavaMorto && data.hp > 0) { if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); }
+                    } else if (!estavaMorto && data.hp > 0) { 
+                        if(textoHp) textoHp.setAttribute('value', `HP: ${this.hpAtual}`); 
+                    }
                 });
 
                 this.receberDano = (dano, tipoCategoria = '') => { 
                     if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
                     this.dbRef.child('hp').transaction(currentHp => { 
-                        // MÁGICA: SE O MONSTRO FOR NULO (FOI DELETADO), ABORTA A TRANSAÇÃO PARA NÃO RESSUSCITAR ELE!
                         if (currentHp === null) return; 
                         let numHp = Number(currentHp);
                         if (isNaN(numHp) || numHp <= 0) return; 
@@ -643,14 +647,22 @@
                 }; 
             },
 
+            // O NOVO CÉREBRO FÍSICO DO BONECO
             tick: function(time, timeDelta) {
-                if (!this.targetPos || this.hpAtual <= 0) return;
+                if (!this.targetPos || this.hpAtual <= 0 || this.isDead) return;
 
-                let dist = this.el.object3D.position.distanceTo(this.targetPos);
+                let posAnterior = this.el.object3D.position.clone();
+                let distParaAlvo = this.el.object3D.position.distanceTo(this.targetPos);
                 
-                if (dist > 0.05) {
+                // Suaviza a ida até o alvo
+                if (distParaAlvo > 0.01) {
                     this.el.object3D.position.lerp(this.targetPos, 0.2); 
-                    
+                }
+
+                // O Velocímetro Mágico: Só roda a animação de perna se ele fisicamente andou neste frame!
+                let velocidadeAtual = this.el.object3D.position.distanceTo(posAnterior);
+
+                if (velocidadeAtual > 0.002) {
                     if (!this.isMoving && !this.isAttacking) {
                         this.isMoving = true;
                         this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat');
@@ -673,7 +685,7 @@
                 this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
                     let id = snapshot.key; let data = snapshot.val();
                     
-                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) { return; }
+                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) return; 
                     if (document.querySelector(`[data-id="${id}"]`)) return;
 
                     let el = document.createElement('a-entity'); 
@@ -745,6 +757,9 @@
             }
         });
 
+        // ==========================================
+        // GERENCIADOR DINÂMICO DE NPCs
+        // ==========================================
         AFRAME.registerComponent('gerenciador-npcs', {
             init: function() {
                 this.db = realtimeDB;
