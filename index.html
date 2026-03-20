@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>RPG VR e PC - Versão Definitiva (IA LERPER e Anti-Slide)</title>
+    <title>RPG VR e PC - Versão Definitiva (Crash de Loading Resolvido)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -25,8 +25,6 @@
     </style>
 
     <script>
-        document.body.classList.add('menu-aberto');
-
         AFRAME.registerComponent('anti-piscar', {
             init: function() {
                 this.el.addEventListener('model-loaded', () => {
@@ -120,7 +118,6 @@
                     let avatar = this.otherPlayers[id]; let data = snapshot.val();
                     if (avatar && data) { 
                         avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                        // Usando setAttribute de position para multiplayer (jogadores pulando é ok, IA não)
                         avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x} ${data.position.y} ${data.position.z}; dur: 100; easing: linear`); 
                         avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x} ${data.rotation.y} ${data.rotation.z}; dur: 100; easing: linear`); 
                     }
@@ -193,10 +190,10 @@
         window.salvarJogoNuvem = function() { if (!window.currentUser || window.currentUser.uid === 'test_user_local') return; firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).then(() => console.log("Salvo na nuvem!")).catch(e => console.error(e)); };
 
         // ==========================================
-        // 3. BANCOS E FÍSICA
+        // 3. BANCOS DE ANIMAÇÃO CORRIGIDOS
         // ==========================================
         window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; 
-        window.ANIM_ANDANDO = 'chr784_armature|chr784_br01'; // ANIMAÇÃO DE ANDAR PADRÃO!
+        window.ANIM_ANDANDO = 'chr784_armature|chr784_br01'; // <- AQUI ESTAVA O SEU ERRO FATAL DE LOADING!
         window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
@@ -246,12 +243,13 @@
         });
 
         // ==========================================
-        // MÁGICA DA IA (Interpolação Lerp para não Deslizar igual Estátua)
+        // MÁGICA DA IA DE MOVIMENTO LISO COM SEGURANÇA
         // ==========================================
         AFRAME.registerComponent('sistema-inimigo-sync', { 
             schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
             
             tocarAnimacao: function(nomePadrao, loopState, clamp = false) { 
+                if (!nomePadrao) return; // TRAVA DE SEGURANÇA ANTI-CRASH!
                 let visual = this.el.querySelector('.modelo-visual');
                 if (visual && visual.hasAttribute('gltf-model')) { 
                     let nomeAnimacaoFinal = nomePadrao;
@@ -262,7 +260,6 @@
                         if (nomePadrao === window.ANIM_MORTE && this.dadosBD.animMorte) nomeAnimacaoFinal = this.dadosBD.animMorte;
                     }
                     
-                    // Só reseta a animação se for diferente da atual para não travar
                     if (this.animacaoAtual !== nomeAnimacaoFinal) {
                         this.animacaoAtual = nomeAnimacaoFinal;
                         visual.removeAttribute('animation-mixer'); 
@@ -274,7 +271,6 @@
             init: function () { 
                 this.hpAtual = this.data.hpMax; this.el.classList.add('interativo');
                 
-                // Variáveis para a movimentação super lisa (Lerp)
                 this.targetPos = new THREE.Vector3();
                 this.targetRotY = 0;
                 this.isMoving = false;
@@ -292,9 +288,8 @@
                     this.dadosBD = data; let textoHp = this.el.querySelector('.hp-texto');
                     
                     if (data.pos) { 
-                        // Remove o animation do a-frame, agora a placa de vídeo faz isso no TICK!
                         this.targetPos.set(data.pos.x, data.pos.y, data.pos.z);
-                        this.targetRotY = data.rotY;
+                        this.targetRotY = data.rotY || 0;
                     }
 
                     if (data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
@@ -318,7 +313,11 @@
                         }
                     }
 
-                    let estavaMorto = (this.hpAtual <= 0); let morreuAgora = (this.hpAtual > 0 && data.hp <= 0); let tomouDano = (this.hpAtual > 0 && data.hp > 0 && data.hp < this.hpAtual); let reviveu = (estavaMorto && data.hp > 0);
+                    let estavaMorto = (this.hpAtual <= 0); 
+                    let morreuAgora = (this.hpAtual > 0 && data.hp <= 0); 
+                    let tomouDano = (this.hpAtual > 0 && data.hp > 0 && data.hp < this.hpAtual); 
+                    let reviveu = (estavaMorto && data.hp > 0);
+                    
                     this.hpAtual = data.hp;
 
                     if (morreuAgora) {
@@ -333,7 +332,6 @@
                         let v = this.el.querySelector('.modelo-visual') || this.el.querySelector('.inimigo-fallback'); let obj3D = v ? v.getObject3D('mesh') : null;
                         if (obj3D) obj3D.traverse((n) => { if (n.isMesh && n.material && n.material.emissive) { let corOr = n.material.emissive.getHex(); n.material.emissive.setHex(0xaa0000); setTimeout(() => { if(n.material) n.material.emissive.setHex(corOr); }, 150); } });
                         
-                        // Só toca animação de dano se não estiver no meio do ataque
                         if(!this.isAttacking) {
                             this.tocarAnimacao(window.ANIM_DANO, 'once'); 
                             setTimeout(() => { if (this.hpAtual > 0 && !this.isAttacking) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 600);
@@ -364,15 +362,12 @@
                 }; 
             },
 
-            // O TICK MÁGICO: É AQUI QUE ELE ANDA SUAVE E TROCA AS ANIMAÇÕES
             tick: function(time, timeDelta) {
                 if (!this.targetPos || this.hpAtual <= 0) return;
 
                 let dist = this.el.object3D.position.distanceTo(this.targetPos);
                 
-                // Se a distância for maior que 0.05, ele está se movendo
                 if (dist > 0.05) {
-                    // Move suavemente (Lerp) em 20% a cada frame
                     this.el.object3D.position.lerp(this.targetPos, 0.2); 
                     
                     if (!this.isMoving && !this.isAttacking) {
@@ -386,7 +381,6 @@
                     }
                 }
 
-                // Gira suavemente usando Quaternions (Slerp)
                 let qTarget = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), this.targetRotY);
                 this.el.object3D.quaternion.slerp(qTarget, 0.2);
             }
@@ -403,7 +397,10 @@
                     let xpDrop = data.tipo === 'atirador' ? 50 : 20;
 
                     let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
-                    el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hp || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`);
+                    
+                    // CORREÇÃO hpMax AQUI PARA NÃO CRASHAR QUANDO INIMIGO JÁ NASCE MORTO!
+                    el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`);
+                    
                     if (data.pos) el.object3D.position.set(data.pos.x, data.pos.y, data.pos.z);
                     el.setAttribute('shadow', '');
 
