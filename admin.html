@@ -79,7 +79,7 @@
 
     <div class="leitor-glb">
         <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Ferramenta Extrair Animações (.GLB)</label>
-        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações.</span>
+        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair as animações e autocompletar os caminhos GLB nos formulários.</span>
         <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
             <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
             <span id="status-upload">Nenhum arquivo lido.</span>
@@ -130,9 +130,13 @@
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Velocidade</label><input type="number" step="0.1" id="arma-b-vel" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Sorte</label><input type="number" id="arma-b-sorte" value="0"></div>
 
-                <div class="input-group"><label>Escala (X Y Z)</label><input type="text" id="arma-escala" value="1 1 1"></div>
-                <div class="input-group"><label>Rotação (X Y Z)</label><input type="text" id="arma-rot" value="0 0 0"></div>
-                <div class="input-group"><label>Posição (X Y Z)</label><input type="text" id="arma-pos" value="0 0 0"></div>
+                <div class="input-group"><label>Escala (Mão)</label><input type="text" id="arma-escala" value="1 1 1"></div>
+                <div class="input-group"><label>Rotação (Mão)</label><input type="text" id="arma-rot" value="0 0 0"></div>
+                <div class="input-group"><label>Posição (Mão)</label><input type="text" id="arma-pos" value="0 0 0"></div>
+
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Escala (Inventário)</label><input type="text" id="arma-inv-escala" value="0.15 0.15 0.15"></div>
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Rotação (Inventário)</label><input type="text" id="arma-inv-rot" value="0 0 0"></div>
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Posição (Inventário)</label><input type="text" id="arma-inv-pos" value="0 0 0.05"></div>
             </div>
             <button class="btn btn-edit" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="forjarArma()">🔨 FORJAR ITEM NO SERVIDOR</button>
         </div>
@@ -245,19 +249,13 @@
 </div>
 
 <script>
-    // ==========================================
-    // SISTEMA DE ABAS
-    // ==========================================
+    // NAVEGAÇÃO ENTRE ABAS
     function abrirAba(abaId, btnSelecionado) {
         let abas = document.getElementsByClassName("tab-content");
-        for (let i = 0; i < abas.length; i++) { 
-            abas[i].classList.remove("active");
-        }
+        for (let i = 0; i < abas.length; i++) { abas[i].style.display = "none"; }
         let botoes = document.getElementsByClassName("tab-btn");
-        for (let i = 0; i < botoes.length; i++) { 
-            botoes[i].classList.remove("active"); 
-        }
-        document.getElementById(abaId).classList.add("active");
+        for (let i = 0; i < botoes.length; i++) { botoes[i].classList.remove("active"); }
+        document.getElementById(abaId).style.display = "block";
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
     }
 
@@ -274,7 +272,7 @@
     const firestoreDB = firebase.firestore();
 
     // ==========================================
-    // EXTRATOR GLB
+    // EXTRATOR GLB E AUTOCOMPLETAR
     // ==========================================
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
@@ -284,7 +282,9 @@
             if (animations && animations.length > 0) {
                 animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
                 statusText.innerText = `✅ Lidas ${animations.length} animações! Vá no GitHub fazer o upload.`;
-                document.getElementById('npc-glb').value = `Npcs/${file.name}`; document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+                document.getElementById('npc-glb').value = `Npcs/${file.name}`; 
+                document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+                document.getElementById('arma-glb').value = `Armas/${file.name}`; // Autocompleta o GLB da Arma
             } else { statusText.innerText = '⚠️ Arquivo lido, mas não possui animações.'; }
         }, undefined, function(error) { statusText.innerText = '❌ Arquivo GLB inválido.'; });
     });
@@ -346,6 +346,12 @@
             document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
             document.getElementById('arma-rot').value = a.rotMao || '0 0 0';
             document.getElementById('arma-pos').value = a.posMao || '0 0 0';
+            
+            // CARREGA OS STATUS DO INVENTÁRIO
+            document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15';
+            document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
+            document.getElementById('arma-inv-pos').value = a.posInv || '0 0 0.05';
+
             document.getElementById('form-arma').scrollIntoView({ behavior: 'smooth' });
         });
     };
@@ -364,7 +370,11 @@
             escalaMao: document.getElementById('arma-escala').value || '1 1 1',
             rotMao: document.getElementById('arma-rot').value || '0 0 0',
             posMao: document.getElementById('arma-pos').value || '0 0 0',
-            escalaInv: '0.15 0.15 0.15', rotInv: '0 0 0', posInv: '0 0 0.05'
+            
+            // SALVA OS STATUS DO INVENTÁRIO
+            escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', 
+            rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', 
+            posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05'
         }).then(() => alert("Item forjado e enviado para os jogadores!"));
     };
 
