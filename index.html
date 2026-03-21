@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Inventário Seguro e Combate VR</title>
+    <title>RPG MMO - Respawns e Teleporte Corrigidos</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -74,6 +74,7 @@
         window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
+        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -81,11 +82,11 @@
         };
 
         // ==========================================
-        // FUNÇÕES HOISTED GERAIS
+        // FUNÇÕES HOISTED GERAIS E SEGURANÇA
         // ==========================================
         window.salvarJogoNuvem = function() { 
-            if (!window.currentUser) return; 
-            firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
+            if (!window.currentUser || !window.playerState) return; 
+            firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error("Erro ao salvar:", e)); 
         };
 
         window.atualizarArmaVisual = function() { 
@@ -151,65 +152,34 @@
             window.salvarJogoNuvem(); 
         };
 
-        // ==========================================
-        // RENDERIZADOR DE INVENTÁRIO CORRIGIDO PARA A-FRAME
-        // ==========================================
         window.renderizarInventario = function() {
             let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); 
             let gridContainer = document.querySelector('#inv-grid-container'); 
             if(!gridContainer) return;
             
-            // Limpa o inventário de forma segura para os componentes 3D não bugarem
-            while (gridContainer.firstChild) {
-                gridContainer.removeChild(gridContainer.firstChild);
-            }
-            
+            gridContainer.innerHTML = '';
             let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; 
+            let htmlSlots = "";
             
             for (let i = 0; i < 18; i++) { 
                 let col = i % cols; let row = Math.floor(i / cols); 
+                let posX = startX + (col * gap); let posY = startY - (row * gap);
                 
-                let slot = document.createElement('a-box'); 
-                slot.setAttribute('position', `${startX + (col * gap)} ${startY - (row * gap)} 0.02`); 
-                slot.setAttribute('width', '0.25'); 
-                slot.setAttribute('height', '0.25'); 
-                slot.setAttribute('depth', '0.02'); 
-                slot.setAttribute('color', '#2b1b12'); 
-                
-                let borda = document.createElement('a-plane'); 
-                borda.setAttribute('width', '0.23'); borda.setAttribute('height', '0.23'); borda.setAttribute('color', '#f19e20'); borda.setAttribute('position', '0 0 0.011'); 
-                
-                let fundoCentro = document.createElement('a-plane'); 
-                fundoCentro.setAttribute('width', '0.21'); fundoCentro.setAttribute('height', '0.21'); fundoCentro.setAttribute('color', '#1e110b'); fundoCentro.setAttribute('position', '0 0 0.012'); 
-                
-                slot.appendChild(borda); 
-                slot.appendChild(fundoCentro); 
+                htmlSlots += `<a-box class="interativo" position="${posX} ${posY} 0.02" width="0.25" height="0.25" depth="0.02" color="#2b1b12" ${i < listaArmas.length ? `slot-interativo="item: ${listaArmas[i]}"` : ''}>
+                    <a-plane width="0.23" height="0.23" color="#f19e20" position="0 0 0.011"></a-plane>
+                    <a-plane width="0.21" height="0.21" color="#1e110b" position="0 0 0.012"></a-plane>`;
                 
                 if (i < listaArmas.length) { 
-                    let nomeArma = listaArmas[i]; 
-                    let armaStats = window.bancoDeArmas[nomeArma]; 
-                    slot.classList.add('interativo'); 
-                    slot.setAttribute('slot-interativo', `item: ${nomeArma}`); 
-                    
+                    let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; 
                     if(armaStats && armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
-                        let miniatura = document.createElement('a-entity'); 
-                        miniatura.setAttribute('gltf-model', armaStats.modeloGlb); 
-                        miniatura.setAttribute('scale', armaStats.escalaInv || '0.15 0.15 0.15'); 
-                        miniatura.setAttribute('rotation', armaStats.rotInv || '0 0 0'); 
-                        miniatura.setAttribute('position', armaStats.posInv || '0 0 0.05'); 
-                        slot.appendChild(miniatura);
+                        htmlSlots += `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
                     } else { 
-                        let txtNome = document.createElement('a-text'); 
-                        txtNome.setAttribute('value', nomeArma); 
-                        txtNome.setAttribute('align', 'center'); 
-                        txtNome.setAttribute('width', '1'); 
-                        txtNome.setAttribute('position', '0 0 0.02'); 
-                        txtNome.setAttribute('color', '#FFF'); 
-                        slot.appendChild(txtNome); 
+                        htmlSlots += `<a-text value="${nomeArma}" align="center" width="1" position="0 0 0.02" color="#FFF"></a-text>`;
                     } 
                 } 
-                gridContainer.appendChild(slot); 
+                htmlSlots += `</a-box>`;
             } 
+            gridContainer.innerHTML = htmlSlots;
         };
 
         realtimeDB.ref('banco_armas').on('value', snap => {
@@ -376,12 +346,15 @@
             let danoTela = document.querySelector('#dano-tela'); if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); } 
             window.atualizarUI(); 
             
+            // CORREÇÃO FINAL: SISTEMA DE MORTE E RESPAWN (BLINDADO CONTRA UNDEFINED)
             if (window.playerState.hpAtual <= 0) { 
                 window.playerState.vivo = false; window.playerState.hpAtual = 0; 
-                let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
+                let rig = document.querySelector('#rig'); 
+                
                 window.atualizarUI(); 
                 
-                let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                let aviso = document.querySelector('#texto-central'); 
+                if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
                 let tempoRespawn = 5; if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
                 
                 let respawnInterval = setInterval(() => {
@@ -390,11 +363,16 @@
                         if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...'); 
                     } else {
                         clearInterval(respawnInterval); window.playerState.vivo = true; window.playerState.hpAtual = window.playerState.hpMax; window.playerState.invulneravel = true; 
-                        if (rig) { 
-                            let respX = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.x : 0; let respY = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.y : 0; let respZ = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.z : 0;
+                        if (rig && rig.object3D) { 
+                            // Proteção contra Undefined no banco de dados
+                            let respX = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.x !== undefined ? parseFloat(window.playerState.ultimoRespawn.x) : 0; 
+                            let respY = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.y !== undefined ? parseFloat(window.playerState.ultimoRespawn.y) : 0; 
+                            let respZ = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.z !== undefined ? parseFloat(window.playerState.ultimoRespawn.z) : 0;
+                            
                             let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
-                            rig.setAttribute('position', `${respX + Math.cos(anguloRandom)*raioRandom} ${respY} ${respZ + Math.sin(anguloRandom)*raioRandom}`); 
-                            setTimeout(() => { if(rig) { if(window.GAME_MODE === 'PC') rig.setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); } }, 50);
+                            
+                            // Teleporte forçado via Physics Object3D (ignora conflitos do A-frame cache)
+                            rig.object3D.position.set(respX + Math.cos(anguloRandom)*raioRandom, respY, respZ + Math.sin(anguloRandom)*raioRandom);
                         }
                         window.atualizarUI(); if(aviso) { aviso.setAttribute('visible', 'false'); aviso.setAttribute('value', ''); } window.tocarSom('snd-magic'); setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
                     }
@@ -516,7 +494,7 @@
         }
 
         // ==========================================
-        // COMPONENTES A-FRAME GERAIS E MULTIPLAYER
+        // COMPONENTES A-FRAME GERAIS
         // ==========================================
         AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
         AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('mousedown', () => { window.fecharDialogoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.fecharDialogoNPC(); }, {passive: false}); } });
@@ -589,64 +567,164 @@
             }
         });
 
-        AFRAME.registerComponent('vr-controles-hud', { init: function () { this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); } });
-
-        AFRAME.registerComponent('firebase-multiplayer', {
+        AFRAME.registerComponent('vr-controles-gatilho', {
             init: function() {
-                this.db = realtimeDB; this.playersRef = this.db.ref('players'); this.myId = 'player_' + Math.random().toString(36).substr(2, 9); this.myRef = this.db.ref('players/' + this.myId); this.myRef.onDisconnect().remove(); this.otherPlayers = {}; this.cena = document.querySelector('a-scene'); this.lastPosRot = "";
-                this.lastIAHeartbeat = 0; this.db.ref('servidor_ia_status').on('value', snap => { this.lastIAHeartbeat = snap.val() || 0; });
-
-                this.playersRef.on('child_added', (snapshot) => {
-                    let id = snapshot.key; if (id === this.myId) return; let data = snapshot.val(); let avatar = document.createElement('a-entity'); this.cena.appendChild(avatar); 
-                    let pX = data.position ? data.position.x || 0 : 0; let pY = data.position ? data.position.y || 0 : 0; let pZ = data.position ? data.position.z || 0 : 0;
-                    avatar.setAttribute('position', `${pX} ${pY} ${pZ}`); 
-                    let rX = data.rotation ? data.rotation.x || 0 : 0; let rY = data.rotation ? data.rotation.y || 0 : 0; let rZ = data.rotation ? data.rotation.z || 0 : 0;
-                    avatar.setAttribute('rotation', `${rX} ${rY} ${rZ}`);
-                    avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                    let conteudoAvatar = '<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>';
-                    avatar.innerHTML = conteudoAvatar; this.otherPlayers[id] = avatar;
-                });
-
-                this.playersRef.on('child_changed', (snapshot) => {
-                    let id = snapshot.key; if (id === this.myId) return; let avatar = this.otherPlayers[id]; let data = snapshot.val();
-                    if (avatar && data && data.position) { avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false'); avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x || 0} ${data.position.y || 0} ${data.position.z || 0}; dur: 100; easing: linear`); avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x || 0} ${data.rotation.y || 0} ${data.rotation.z || 0}; dur: 100; easing: linear`); }
-                });
-
-                this.playersRef.on('child_removed', (snapshot) => { let id = snapshot.key; let avatar = this.otherPlayers[id]; if (avatar && avatar.parentNode) { avatar.parentNode.removeChild(avatar); delete this.otherPlayers[id]; } });
-                this.lastSyncTime = 0; this.cameraObj = document.querySelector('[camera]');
-                
-                setInterval(() => {
-                    let textEl = document.querySelector('#contador-online');
-                    if (textEl) {
-                        let totalPlayers = Object.keys(this.otherPlayers).length + 1; let iaAcordada = (Date.now() - this.lastIAHeartbeat) < 5000;
-                        if (iaAcordada) { textEl.setAttribute('value', `Jogadores: ${totalPlayers} | IA: ONLINE`); textEl.setAttribute('color', '#00FF00'); } 
-                        else { textEl.setAttribute('value', `Jogadores: ${totalPlayers} | IA: LIGANDO...`); textEl.setAttribute('color', '#f1c40f'); }
-                    }
-                }, 1000);
-            },
-            tick: function(time) {
-                if (!window.GAME_STARTED || !window.playerState.vivo || !this.cameraObj) return; 
-                if (time - this.lastSyncTime > 100) { 
-                    this.lastSyncTime = time; let pos = this.el.object3D.position; 
-                    let euler = new THREE.Euler(0, 0, 0, 'YXZ'); euler.setFromQuaternion(this.cameraObj.object3D.quaternion); let rotY = euler.y * 180 / Math.PI;
-                    let currentPosRot = pos.x.toFixed(2) + pos.y.toFixed(2) + pos.z.toFixed(2) + rotY.toFixed(2);
-                    if (this.lastPosRot !== currentPosRot) { window.lastActionTime = Date.now(); this.lastPosRot = currentPosRot; }
-                    this.myRef.set({ position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 }, vivo: window.playerState.vivo }); 
-                }
+                let podeAtacarVR = true;
+                this.el.addEventListener('triggerdown', () => { window.lastActionTime = Date.now(); if(!window.GAME_STARTED || window.GAME_MODE === 'PC' || window.GAME_MODE === 'ANDROID' || !window.playerState.vivo || window.npcAtivo) return; if (!podeAtacarVR) return; podeAtacarVR = false; setTimeout(() => podeAtacarVR = true, 800); window.realizarAtaque(); });
             }
         });
 
+        AFRAME.registerComponent('vr-controles-hud', { init: function () { this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); } });
+
+        AFRAME.registerComponent('projetil-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0) return;
+                this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2);
+                if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+                let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
+                for (let i = 0; i < inimigosAtuais.length; i++) {
+                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp || syncComp.hpAtual <= 0) continue;
+                    this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
+                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo');
+                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); }
+                    if (boxProj.intersectsBox(boxInimigo)) { syncComp.receberDano(this.data.dano, 'Arco'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; }
+                }
+            }
+        });
+        
+        AFRAME.registerComponent('projetil-inimigo-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+                if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+                
+                // SISTEMA DE INTERCEPTAÇÃO VR USANDO AS MESHES
+                if (window.GAME_MODE === 'VR') {
+                    let rightHand = document.querySelector('#mao-direita');
+                    let leftHand = document.querySelector('#mao-esquerda');
+                    
+                    if(rightHand && leftHand) {
+                        this.el.object3D.updateMatrixWorld(true);
+                        let projBox = new THREE.Box3().setFromObject(this.el.object3D);
+                        
+                        let rVisual = rightHand.querySelector('#arma-visual-dir');
+                        let lVisual = leftHand.querySelector('#arma-visual-esq');
+                        
+                        let rBox = new THREE.Box3();
+                        if (rVisual && rVisual.object3D.children.length > 0) { rVisual.object3D.updateMatrixWorld(true); rBox.setFromObject(rVisual.object3D); }
+                        if (rBox.isEmpty()) { rightHand.object3D.updateMatrixWorld(true); rBox.setFromObject(rightHand.object3D); }
+
+                        let lBox = new THREE.Box3();
+                        if (lVisual && lVisual.object3D.children.length > 0) { lVisual.object3D.updateMatrixWorld(true); lBox.setFromObject(lVisual.object3D); }
+                        if (lBox.isEmpty()) { leftHand.object3D.updateMatrixWorld(true); lBox.setFromObject(leftHand.object3D); }
+                        
+                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado'];
+                        
+                        if(projBox.intersectsBox(rBox)) {
+                            if(armaStats.categoria === 'Espada') {
+                                if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return;
+                            } else if (armaStats.categoria === 'Luva') {
+                                let rTracker = rightHand.components['vr-hand-tracker'];
+                                if(rTracker) {
+                                    this.el.removeAttribute('projetil-inimigo-fisico');
+                                    let pushVel = rTracker.velocity.clone().multiplyScalar(2.5);
+                                    if(pushVel.length() < 5) pushVel.set(0, 5, -10); 
+                                    this.el.setAttribute('projetil-fisico-player', `velocidade: ${pushVel.x} ${pushVel.y} ${pushVel.z}; dano: ${this.data.dano * 2}`);
+                                    if(this.el.children[0]) { this.el.children[0].setAttribute('color', '#3498db'); this.el.children[0].setAttribute('material', 'emissive: #3498db'); }
+                                    return;
+                                }
+                            }
+                        }
+
+                        if(projBox.intersectsBox(lBox)) {
+                            let lTracker = leftHand.components['vr-hand-tracker'];
+                            if(window.playerState.escudoEquipado) {
+                                if(lTracker && lTracker.velocity.length() > 0.5) { 
+                                    this.el.removeAttribute('projetil-inimigo-fisico');
+                                    let pushVel = lTracker.velocity.clone().multiplyScalar(3.0);
+                                    this.el.setAttribute('projetil-fisico-player', `velocidade: ${pushVel.x} ${pushVel.y} ${pushVel.z}; dano: ${this.data.dano * 2}`);
+                                    if(this.el.children[0]) { this.el.children[0].setAttribute('color', '#3498db'); this.el.children[0].setAttribute('material', 'emissive: #3498db'); }
+                                    return;
+                                } else { 
+                                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return;
+                                }
+                            } else if (armaStats.categoria === 'Luva') {
+                                if(lTracker) {
+                                    this.el.removeAttribute('projetil-inimigo-fisico');
+                                    let pushVel = lTracker.velocity.clone().multiplyScalar(2.5);
+                                    if(pushVel.length() < 5) pushVel.set(0, 5, -10);
+                                    this.el.setAttribute('projetil-fisico-player', `velocidade: ${pushVel.x} ${pushVel.y} ${pushVel.z}; dano: ${this.data.dano * 2}`);
+                                    if(this.el.children[0]) { this.el.children[0].setAttribute('color', '#3498db'); this.el.children[0].setAttribute('material', 'emissive: #3498db'); }
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if(!this.camera) return; let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+                if (posProj.distanceTo(posPlayer) < 2.0) { window.receberDanoJogador(this.data.dano); this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }
+            }
+        });
+
+        // CORREÇÃO CRÍTICA DO SISTEMA DE RESPAWN E TELEPORTE 
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; this.respawns = {};
-                this.db.ref('cenario_respawns').on('child_added', (snap) => { let id = snap.key; let r = snap.val(); this.respawns[id] = r; let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.respId = id; el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let rRaio = r.raio || 3; el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`; });
-                this.db.ref('cenario_respawns').on('child_changed', (snap) => { let id = snap.key; let r = snap.val(); this.respawns[id] = r; let el = document.querySelector(`[data-resp-id="${id}"]`); if(el) { el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let cyl = el.querySelector('a-cylinder'); if(cyl) cyl.setAttribute('radius', r.raio || 3); } });
-                this.db.ref('cenario_respawns').on('child_removed', (snap) => { delete this.respawns[snap.key]; let el = document.querySelector(`[data-resp-id="${snap.key}"]`); if(el && el.parentNode) el.parentNode.removeChild(el); });
+                this.db.ref('cenario_respawns').on('child_added', (snap) => { 
+                    let id = snap.key; let r = snap.val(); 
+                    if (!r || !r.pos) return; // Segurança caso o banco de dados venha sujo
+                    this.respawns[id] = r; 
+                    let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.respId = id; 
+                    el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); 
+                    let rRaio = r.raio || 3; 
+                    el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`; 
+                });
+                this.db.ref('cenario_respawns').on('child_changed', (snap) => { 
+                    let id = snap.key; let r = snap.val(); 
+                    if (!r || !r.pos) return;
+                    this.respawns[id] = r; 
+                    let el = document.querySelector(`[data-resp-id="${id}"]`); 
+                    if(el) { el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let cyl = el.querySelector('a-cylinder'); if(cyl) cyl.setAttribute('radius', r.raio || 3); } 
+                });
+                this.db.ref('cenario_respawns').on('child_removed', (snap) => { 
+                    delete this.respawns[snap.key]; 
+                    let el = document.querySelector(`[data-resp-id="${snap.key}"]`); 
+                    if(el && el.parentNode) el.parentNode.removeChild(el); 
+                });
             },
             tick: function() {
-                if (!window.GAME_STARTED || !window.playerState.vivo) return; let camObj = document.querySelector('[camera]'); if (!camObj) return; let pPos = new THREE.Vector3(); camObj.object3D.getWorldPosition(pPos);
-                for (let id in this.respawns) { let r = this.respawns[id]; let raio = r.raio || 3; let dist = Math.hypot(pPos.x - r.pos.x, pPos.z - r.pos.z);
-                    if (dist <= raio) { if (!window.playerState.ultimoRespawn || window.playerState.ultimoRespawn.id !== id) { window.playerState.ultimoRespawn = { id: id, x: r.pos.x, y: r.pos.y, z: r.pos.z }; window.salvarJogoNuvem(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'CHECKPOINT SALVO!'); aviso.setAttribute('color', '#00ffcc'); aviso.setAttribute('visible', 'true'); window.tocarSom('snd-magic'); setTimeout(() => { if (aviso) aviso.setAttribute('visible', 'false'); }, 2500); } } }
+                if (!window.GAME_STARTED || !window.playerState.vivo) return; 
+                let camObj = document.querySelector('[camera]'); 
+                if (!camObj) return; 
+                let pPos = new THREE.Vector3(); 
+                camObj.object3D.getWorldPosition(pPos);
+                
+                for (let id in this.respawns) { 
+                    let r = this.respawns[id]; 
+                    if (!r || !r.pos) continue; // Prevenção de travamento (Math.hypot crash)
+                    
+                    let raio = r.raio || 3; 
+                    // Convertemos para float para garantir que a matemática nunca exploda
+                    let dist = Math.hypot(pPos.x - parseFloat(r.pos.x), pPos.z - parseFloat(r.pos.z));
+                    
+                    if (dist <= raio) { 
+                        if (!window.playerState.ultimoRespawn || window.playerState.ultimoRespawn.id !== id) { 
+                            window.playerState.ultimoRespawn = { id: id, x: parseFloat(r.pos.x) || 0, y: parseFloat(r.pos.y) || 0, z: parseFloat(r.pos.z) || 0 }; 
+                            window.salvarJogoNuvem(); 
+                            let aviso = document.querySelector('#texto-central'); 
+                            if(aviso) { 
+                                aviso.setAttribute('value', 'CHECKPOINT SALVO!'); 
+                                aviso.setAttribute('color', '#00ffcc'); 
+                                aviso.setAttribute('visible', 'true'); 
+                                window.tocarSom('snd-magic'); 
+                                setTimeout(() => { if (aviso) aviso.setAttribute('visible', 'false'); }, 2500); 
+                            } 
+                        } 
+                    }
                 }
             }
         });
@@ -726,6 +804,53 @@
                 if (velocidadeAtual > 0.002) { this.lastMoveTime = time; if (!this.isMoving && !this.isAttacking) { this.isMoving = true; this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat'); } } 
                 else { if (this.isMoving && !this.isAttacking && (time - this.lastMoveTime > 200)) { this.isMoving = false; this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); } }
                 let qTarget = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), this.targetRotY); this.el.object3D.quaternion.slerp(qTarget, 0.2);
+            }
+        });
+
+        AFRAME.registerComponent('gerenciador-inimigos', {
+            init: function() {
+                this.db = realtimeDB;
+                this.db.ref('cenario_inimigos').on('child_added', (snapshot) => {
+                    let id = snapshot.key; let data = snapshot.val();
+                    if (!data || data.hp === undefined || data.hpMax === undefined || !data.modeloGlb) { return; }
+                    if (document.querySelector(`[data-id="${id}"]`)) return;
+
+                    let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.id = id;
+                    let pX = data.pos && !isNaN(data.pos.x) ? data.pos.x : 0; let pY = data.pos && !isNaN(data.pos.y) ? data.pos.y : 0; let pZ = data.pos && !isNaN(data.pos.z) ? data.pos.z : 0;
+                    el.setAttribute('position', `${pX} ${pY} ${pZ}`);
+                    
+                    let xpDrop = data.tipo === 'atirador' ? 50 : 20; let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
+                    el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`); el.setAttribute('shadow', '');
+
+                    let holograma = document.createElement('a-box'); el.appendChild(holograma); holograma.setAttribute('color', '#f1c40f'); holograma.setAttribute('opacity', '0.5'); holograma.setAttribute('scale', '0.6 1.8 0.6'); holograma.setAttribute('position', '0 0.9 0'); 
+                    let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad'; let fallback = document.createElement('a-entity'); el.appendChild(fallback); fallback.innerHTML = `<a-box class="inimigo-fallback" color="${fallbackColor}" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; fallback.setAttribute('visible', 'false'); 
+
+                    let visual = document.createElement('a-entity'); el.appendChild(visual); visual.classList.add('modelo-visual'); visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                    let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2'); visual.dataset.currentModel = modelSrc;
+
+                    if (modelSrc && modelSrc.trim() !== '') {
+                        visual.setAttribute('gltf-model', modelSrc); visual.setAttribute('anti-piscar', '');
+                        visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
+                        visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.setAttribute('visible', 'true'); });
+                    }
+
+                    let infos = document.createElement('a-entity'); el.appendChild(infos); infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0"></a-cylinder>`;
+                });
+
+                this.db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
+                    let id = snapshot.key; let data = snapshot.val(); if (!data || data.hp === undefined) return;
+                    let el = document.querySelector(`[data-id="${id}"]`);
+                    if (el) {
+                        let visual = el.querySelector('.modelo-visual');
+                        if (visual) {
+                            let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
+                            if (visual.dataset.currentModel !== newModel) { visual.dataset.currentModel = newModel; visual.setAttribute('gltf-model', newModel); let holograma = el.querySelector('a-box[color="#f1c40f"], a-box[color="#e74c3c"]'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } }
+                        }
+                    }
+                });
+
+                this.db.ref('cenario_inimigos').on('child_removed', (snapshot) => { let el = document.querySelector(`[data-id="${snapshot.key}"]`); if (el && el.parentNode) { el.removeAttribute('sistema-inimigo-sync'); el.parentNode.removeChild(el); } });
             }
         });
 
