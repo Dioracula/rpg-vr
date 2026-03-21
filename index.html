@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Respawns e Teleporte Corrigidos</title>
+    <title>RPG MMO - Físicas VR e Inventário Definitivos</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -74,7 +74,6 @@
         window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
         window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
-        window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -152,45 +151,25 @@
             window.salvarJogoNuvem(); 
         };
 
-        window.renderizarInventario = function() {
-            let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); 
-            let gridContainer = document.querySelector('#inv-grid-container'); 
-            if(!gridContainer) return;
-            
-            gridContainer.innerHTML = '';
-            let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; 
-            let htmlSlots = "";
-            
-            for (let i = 0; i < 18; i++) { 
-                let col = i % cols; let row = Math.floor(i / cols); 
-                let posX = startX + (col * gap); let posY = startY - (row * gap);
-                
-                htmlSlots += `<a-box class="interativo" position="${posX} ${posY} 0.02" width="0.25" height="0.25" depth="0.02" color="#2b1b12" ${i < listaArmas.length ? `slot-interativo="item: ${listaArmas[i]}"` : ''}>
-                    <a-plane width="0.23" height="0.23" color="#f19e20" position="0 0 0.011"></a-plane>
-                    <a-plane width="0.21" height="0.21" color="#1e110b" position="0 0 0.012"></a-plane>`;
-                
-                if (i < listaArmas.length) { 
-                    let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; 
-                    if(armaStats && armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
-                        htmlSlots += `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
-                    } else { 
-                        htmlSlots += `<a-text value="${nomeArma}" align="center" width="1" position="0 0 0.02" color="#FFF"></a-text>`;
-                    } 
-                } 
-                htmlSlots += `</a-box>`;
-            } 
-            gridContainer.innerHTML = htmlSlots;
-        };
-
+        // ==========================================
+        // FIREBASE SYNC DE ARMAS E IA
+        // ==========================================
         realtimeDB.ref('banco_armas').on('value', snap => {
             let dados = snap.val();
-            if(dados) { window.bancoDeArmas = Object.assign(window.bancoDeArmas, dados); }
-            if(window.renderizarInventario) window.renderizarInventario();
+            if(dados) {
+                // Preserva o Desarmado e carrega as armas novas
+                window.bancoDeArmas = Object.assign(window.bancoDeArmas, dados);
+            }
+            // Força a UI a atualizar com os itens que acabaram de chegar da nuvem
+            let grid = document.querySelector('#inv-grid-container');
+            if(grid && grid.components['gerador-inventario']) grid.components['gerador-inventario'].renderizar();
             if(window.GAME_STARTED) window.atualizarUI();
         });
 
         const URL_DO_SERVIDOR_IA = "https://SEU_PROJETO_AQUI.onrender.com"; 
-        function acordarServidorRender() { if (URL_DO_SERVIDOR_IA.startsWith("http")) { fetch(URL_DO_SERVIDOR_IA, { mode: 'no-cors' }).catch(() => {}); } }
+        function acordarServidorRender() { 
+            if (URL_DO_SERVIDOR_IA.startsWith("http")) { fetch(URL_DO_SERVIDOR_IA, { mode: 'no-cors' }).catch(() => {}); } 
+        }
         acordarServidorRender(); setInterval(acordarServidorRender, 10 * 60 * 1000);
 
         // ==========================================
@@ -200,8 +179,10 @@
             if (window.GAME_MODE !== 'PC') return;
             let canvas = document.querySelector('.a-canvas');
             if (canvas) canvas.requestPointerLock();
+            
             let reticle = document.querySelector('#cursor-centro');
             if (reticle) { reticle.setAttribute('raycaster', 'objects: .interativo; far: 20'); reticle.setAttribute('visible', 'true'); }
+            
             let mouseCursor = document.querySelector('#mouse-cursor');
             if (mouseCursor) mouseCursor.setAttribute('raycaster', 'objects: none');
         };
@@ -209,8 +190,10 @@
         window.destravarMousePC = function() {
             if (window.GAME_MODE !== 'PC') return;
             document.exitPointerLock();
+            
             let reticle = document.querySelector('#cursor-centro');
             if (reticle) { reticle.setAttribute('raycaster', 'objects: none'); reticle.setAttribute('visible', 'false'); }
+            
             let mouseCursor = document.querySelector('#mouse-cursor');
             if (mouseCursor) mouseCursor.setAttribute('raycaster', 'objects: .interativo; far: 20');
         };
@@ -219,12 +202,20 @@
         // MENUS FLUTUANTES GERAIS
         // ==========================================
         window.posicionarMenuDeFrente = function(menuId) {
-            let menu = document.querySelector(menuId); let camera = document.querySelector('[camera]'); let cena = document.querySelector('a-scene');
+            let menu = document.querySelector(menuId);
+            let camera = document.querySelector('[camera]');
+            let cena = document.querySelector('a-scene');
             if(!menu || !camera || !cena) return;
 
-            if(menu.parentNode !== cena) { cena.appendChild(menu); }
-            let camPos = new THREE.Vector3(); camera.object3D.getWorldPosition(camPos); 
-            let camQuat = new THREE.Quaternion(); camera.object3D.getWorldQuaternion(camQuat);
+            if(menu.parentNode !== cena) {
+                cena.appendChild(menu);
+            }
+
+            let camPos = new THREE.Vector3(); 
+            camera.object3D.getWorldPosition(camPos); 
+            
+            let camQuat = new THREE.Quaternion();
+            camera.object3D.getWorldQuaternion(camQuat);
             let camRotY = new THREE.Euler().setFromQuaternion(camQuat, 'YXZ').y;
             
             let distancia = 1.5; 
@@ -234,23 +225,36 @@
             menu.object3D.position.set(spawnX, camPos.y - 0.2, spawnZ);
             menu.object3D.rotation.set(0, camRotY, 0);
             
-            if(menuId === '#caixa-dialogo') menu.setAttribute('scale', '1 1 1'); else menu.setAttribute('scale', '0.65 0.65 0.65');
+            if(menuId === '#caixa-dialogo') menu.setAttribute('scale', '1 1 1');
+            else menu.setAttribute('scale', '0.65 0.65 0.65');
         };
 
         window.toggleMenu = function(tipo) {
-            let menuInv = document.querySelector('#menu-inventario-novo'); let menuAtrib = document.querySelector('#menu-atributos');
+            let menuInv = document.querySelector('#menu-inventario-novo'); 
+            let menuAtrib = document.querySelector('#menu-atributos');
+            
             if (tipo === 'inv') {
                 window.invAberto = !window.invAberto;
                 if (window.invAberto) {
-                    window.atribAberto = false; if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0');
-                    window.posicionarMenuDeFrente('#menu-inventario-novo'); window.destravarMousePC();
-                } else { if(menuInv) menuInv.setAttribute('scale', '0 0 0'); if(!window.npcAtivo) window.travarMousePC(); }
+                    window.atribAberto = false; 
+                    if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0');
+                    window.posicionarMenuDeFrente('#menu-inventario-novo');
+                    window.destravarMousePC();
+                } else {
+                    if(menuInv) menuInv.setAttribute('scale', '0 0 0');
+                    if(!window.npcAtivo) window.travarMousePC();
+                }
             } else if (tipo === 'atrib') {
                 window.atribAberto = !window.atribAberto;
                 if (window.atribAberto) {
-                    window.invAberto = false; if(menuInv) menuInv.setAttribute('scale', '0 0 0');
-                    window.posicionarMenuDeFrente('#menu-atributos'); window.destravarMousePC();
-                } else { if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0'); if(!window.npcAtivo) window.travarMousePC(); }
+                    window.invAberto = false; 
+                    if(menuInv) menuInv.setAttribute('scale', '0 0 0');
+                    window.posicionarMenuDeFrente('#menu-atributos');
+                    window.destravarMousePC();
+                } else {
+                    if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0');
+                    if(!window.npcAtivo) window.travarMousePC();
+                }
             }
             window.atualizarUI();
         };
@@ -268,20 +272,30 @@
                 entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false');
             } else if ((data.tipo === 'secundaria' || data.tipo === 'primaria') && podeFazer) {
                 tTexto.setAttribute('value', data.dialogoMissao || "Preciso de ajuda com esta missão!");
-                let recStr = ""; if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `; if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `; if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
-                if (recStr.trim() !== "") { tRec.setAttribute('value', recStr); entRec.setAttribute('visible', 'true'); } else { entRec.setAttribute('visible', 'false'); }
+                let recStr = ""; 
+                if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `; 
+                if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `; 
+                if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
+                
+                if (recStr.trim() !== "") { tRec.setAttribute('value', recStr); entRec.setAttribute('visible', 'true'); } 
+                else { entRec.setAttribute('visible', 'false'); }
                 btnAceitar.setAttribute('visible', 'true'); 
             } else {
                 tTexto.setAttribute('value', "Você ainda não tem os requisitos para falar comigo.");
                 entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false'); 
             }
             
-            window.posicionarMenuDeFrente('#caixa-dialogo'); window.destravarMousePC(); 
+            window.posicionarMenuDeFrente('#caixa-dialogo');
+            window.destravarMousePC(); 
         };
 
         window.fecharDialogoNPC = function() {
-            let cx = document.querySelector('#caixa-dialogo'); if(cx) cx.setAttribute('scale', '0 0 0'); window.npcAtivo = null;
-            if (!window.invAberto && !window.atribAberto) { window.travarMousePC(); }
+            let cx = document.querySelector('#caixa-dialogo'); 
+            if(cx) cx.setAttribute('scale', '0 0 0'); 
+            window.npcAtivo = null;
+            if (!window.invAberto && !window.atribAberto) {
+                window.travarMousePC();
+            }
         };
 
         window.aceitarMissaoNPC = function() {
@@ -290,7 +304,11 @@
             if (data.recXP) window.playerState.xp += Number(data.recXP);
             if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
             if (data.recItem && window.bancoDeArmas[data.recItem]) { window.playerState.armaEquipada = data.recItem; }
-            if (window.playerState.xp >= window.playerState.xpProxNivel) { window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); }
+            
+            if (window.playerState.xp >= window.playerState.xpProxNivel) { 
+                window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
+            }
+            
             window.atualizarUI(); window.salvarJogoNuvem(); window.tocarSom('snd-magic');
             let aviso = document.querySelector('#texto-central'); 
             if(aviso) { aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
@@ -298,7 +316,8 @@
         };
 
         // ==========================================
-        // ATAQUE E DANO (PC e Mobile)
+        // ATAQUE E DANO (Focado para PC/Mobile)
+        // VR USA O MOTOR FÍSICO EXCLUSIVO NAS MÃOS
         // ==========================================
         window.realizarAtaque = function() {
             if(!window.GAME_STARTED || window.GAME_MODE === 'VR' || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
@@ -329,7 +348,7 @@
                 if (dist2D <= alcanceArma) { 
                     let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
                     let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                    if (anguloAcerto > 0.0) { 
+                    if (anguloAcerto > 0.0) { // 180 graus de raio frontal
                         if(syncComp) { syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); }
                     }
                 } 
@@ -346,15 +365,12 @@
             let danoTela = document.querySelector('#dano-tela'); if(danoTela) { danoTela.setAttribute('visible', 'true'); setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); } 
             window.atualizarUI(); 
             
-            // CORREÇÃO FINAL: SISTEMA DE MORTE E RESPAWN (BLINDADO CONTRA UNDEFINED)
             if (window.playerState.hpAtual <= 0) { 
                 window.playerState.vivo = false; window.playerState.hpAtual = 0; 
-                let rig = document.querySelector('#rig'); 
-                
+                let rig = document.querySelector('#rig'); if (rig) rig.setAttribute('movement-controls', 'speed', 0);
                 window.atualizarUI(); 
                 
-                let aviso = document.querySelector('#texto-central'); 
-                if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
                 let tempoRespawn = 5; if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
                 
                 let respawnInterval = setInterval(() => {
@@ -364,14 +380,10 @@
                     } else {
                         clearInterval(respawnInterval); window.playerState.vivo = true; window.playerState.hpAtual = window.playerState.hpMax; window.playerState.invulneravel = true; 
                         if (rig && rig.object3D) { 
-                            // Proteção contra Undefined no banco de dados
                             let respX = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.x !== undefined ? parseFloat(window.playerState.ultimoRespawn.x) : 0; 
                             let respY = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.y !== undefined ? parseFloat(window.playerState.ultimoRespawn.y) : 0; 
                             let respZ = window.playerState.ultimoRespawn && window.playerState.ultimoRespawn.z !== undefined ? parseFloat(window.playerState.ultimoRespawn.z) : 0;
-                            
                             let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
-                            
-                            // Teleporte forçado via Physics Object3D (ignora conflitos do A-frame cache)
                             rig.object3D.position.set(respX + Math.cos(anguloRandom)*raioRandom, respY, respZ + Math.sin(anguloRandom)*raioRandom);
                         }
                         window.atualizarUI(); if(aviso) { aviso.setAttribute('visible', 'false'); aviso.setAttribute('value', ''); } window.tocarSom('snd-magic'); setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
@@ -469,7 +481,9 @@
             let cursor = document.querySelector('#cursor-centro'); let wpPc = document.querySelector('#arma-visual-pc'); let scPc = document.querySelector('#escudo-visual-pc');
             let cam = document.querySelector('[camera]'); let rig = document.querySelector('#rig');
 
-            window.renderizarInventario(); 
+            // Aciona o Componente do Inventário após o mundo carregar!
+            let grid = document.querySelector('#inv-grid-container');
+            if(grid && grid.components['gerador-inventario']) grid.components['gerador-inventario'].renderizar(); 
 
             if (modo === 'PC') { 
                 if(maoEsq) { maoEsq.setAttribute('visible', 'false'); maoEsq.setAttribute('raycaster', 'far', 0); }
@@ -494,22 +508,100 @@
         }
 
         // ==========================================
-        // COMPONENTES A-FRAME GERAIS
+        // COMPONENTE DO INVENTÁRIO (CORRIGE BUG INVISÍVEL)
+        // ==========================================
+        AFRAME.registerComponent('gerador-inventario', {
+            init: function() {
+                this.renderizar = () => {
+                    let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); 
+                    let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; 
+                    let htmlSlots = "";
+                    for (let i = 0; i < 18; i++) { 
+                        let col = i % cols; let row = Math.floor(i / cols); 
+                        let posX = startX + (col * gap); let posY = startY - (row * gap);
+                        htmlSlots += `<a-box class="interativo" position="${posX} ${posY} 0.02" width="0.25" height="0.25" depth="0.02" color="#2b1b12" ${i < listaArmas.length ? `slot-interativo="item: ${listaArmas[i]}"` : ''}>
+                            <a-plane width="0.23" height="0.23" color="#f19e20" position="0 0 0.011"></a-plane>
+                            <a-plane width="0.21" height="0.21" color="#1e110b" position="0 0 0.012"></a-plane>`;
+                        if (i < listaArmas.length) { 
+                            let nomeArma = listaArmas[i]; let armaStats = window.bancoDeArmas[nomeArma]; 
+                            if(armaStats && armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
+                                htmlSlots += `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
+                            } else { 
+                                htmlSlots += `<a-text value="${nomeArma}" align="center" width="1" position="0 0 0.02" color="#FFF" scale="0.8 0.8 0.8"></a-text>`;
+                            } 
+                        } 
+                        htmlSlots += `</a-box>`;
+                    } 
+                    this.el.innerHTML = htmlSlots;
+                };
+                this.renderizar(); // Roda assim que o A-Frame monta o mundo!
+            }
+        });
+
+        // ==========================================
+        // COMPONENTES GERAIS
         // ==========================================
         AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
         AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('mousedown', () => { window.fecharDialogoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.fecharDialogoNPC(); }, {passive: false}); } });
         AFRAME.registerComponent('btn-dialogo-aceitar', { init: function() { this.el.addEventListener('mousedown', () => { window.aceitarMissaoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.aceitarMissaoNPC(); }, {passive: false}); } });
 
+        AFRAME.registerComponent('firebase-multiplayer', {
+            init: function() {
+                this.db = realtimeDB; this.playersRef = this.db.ref('players'); this.myId = 'player_' + Math.random().toString(36).substr(2, 9); this.myRef = this.db.ref('players/' + this.myId); this.myRef.onDisconnect().remove(); this.otherPlayers = {}; this.cena = document.querySelector('a-scene'); this.lastPosRot = "";
+                this.lastIAHeartbeat = 0; this.db.ref('servidor_ia_status').on('value', snap => { this.lastIAHeartbeat = snap.val() || 0; });
+
+                this.playersRef.on('child_added', (snapshot) => {
+                    let id = snapshot.key; if (id === this.myId) return; let data = snapshot.val(); let avatar = document.createElement('a-entity'); this.cena.appendChild(avatar); 
+                    let pX = data.position ? data.position.x || 0 : 0; let pY = data.position ? data.position.y || 0 : 0; let pZ = data.position ? data.position.z || 0 : 0;
+                    avatar.setAttribute('position', `${pX} ${pY} ${pZ}`); 
+                    let rX = data.rotation ? data.rotation.x || 0 : 0; let rY = data.rotation ? data.rotation.y || 0 : 0; let rZ = data.rotation ? data.rotation.z || 0 : 0;
+                    avatar.setAttribute('rotation', `${rX} ${rY} ${rZ}`);
+                    avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
+                    let conteudoAvatar = '<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>';
+                    avatar.innerHTML = conteudoAvatar; this.otherPlayers[id] = avatar;
+                });
+
+                this.playersRef.on('child_changed', (snapshot) => {
+                    let id = snapshot.key; if (id === this.myId) return; let avatar = this.otherPlayers[id]; let data = snapshot.val();
+                    if (avatar && data && data.position) { avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false'); avatar.setAttribute('animation__pos', `property: position; to: ${data.position.x || 0} ${data.position.y || 0} ${data.position.z || 0}; dur: 100; easing: linear`); avatar.setAttribute('animation__rot', `property: rotation; to: ${data.rotation.x || 0} ${data.rotation.y || 0} ${data.rotation.z || 0}; dur: 100; easing: linear`); }
+                });
+
+                this.playersRef.on('child_removed', (snapshot) => { let id = snapshot.key; let avatar = this.otherPlayers[id]; if (avatar && avatar.parentNode) { avatar.parentNode.removeChild(avatar); delete this.otherPlayers[id]; } });
+                this.lastSyncTime = 0; this.cameraObj = document.querySelector('[camera]');
+                
+                setInterval(() => {
+                    let textEl = document.querySelector('#contador-online');
+                    if (textEl) {
+                        let totalPlayers = Object.keys(this.otherPlayers).length + 1; let iaAcordada = (Date.now() - this.lastIAHeartbeat) < 5000;
+                        if (iaAcordada) { textEl.setAttribute('value', `Jogadores: ${totalPlayers} | IA: ONLINE`); textEl.setAttribute('color', '#00FF00'); } 
+                        else { textEl.setAttribute('value', `Jogadores: ${totalPlayers} | IA: LIGANDO...`); textEl.setAttribute('color', '#f1c40f'); }
+                    }
+                }, 1000);
+            },
+            tick: function(time) {
+                if (!window.GAME_STARTED || !window.playerState.vivo || !this.cameraObj) return; 
+                if (time - this.lastSyncTime > 100) { 
+                    this.lastSyncTime = time; let pos = this.el.object3D.position; 
+                    let euler = new THREE.Euler(0, 0, 0, 'YXZ'); euler.setFromQuaternion(this.cameraObj.object3D.quaternion); let rotY = euler.y * 180 / Math.PI;
+                    let currentPosRot = pos.x.toFixed(2) + pos.y.toFixed(2) + pos.z.toFixed(2) + rotY.toFixed(2);
+                    if (this.lastPosRot !== currentPosRot) { window.lastActionTime = Date.now(); this.lastPosRot = currentPosRot; }
+                    this.myRef.set({ position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 }, vivo: window.playerState.vivo }); 
+                }
+            }
+        });
+
         AFRAME.registerComponent('mobile-look', {
             schema: { sensitivity: { default: 0.004 } },
             init: function () {
                 this.pitch = 0; this.yaw = 0; this.isDraggingCam = false; this.touchId = null; this.previousX = 0; this.previousY = 0;
+
                 this.onTouchStart = (e) => {
                     if (window.GAME_MODE !== 'ANDROID' || this.isDraggingCam) return;
                     for (let i = 0; i < e.changedTouches.length; i++) {
                         if (e.changedTouches[i].target.tagName === 'CANVAS') { this.isDraggingCam = true; this.touchId = e.changedTouches[i].identifier; this.previousX = e.changedTouches[i].screenX; this.previousY = e.changedTouches[i].screenY; break; }
                     }
                 };
+
                 this.onTouchMove = (e) => {
                     if (!this.isDraggingCam || window.GAME_MODE !== 'ANDROID') return;
                     let touch = null; for (let i = 0; i < e.touches.length; i++) { if (e.touches[i].identifier === this.touchId) { touch = e.touches[i]; break; } } if (!touch) return;
@@ -517,10 +609,12 @@
                     this.yaw -= deltaX * this.data.sensitivity; this.pitch -= deltaY * this.data.sensitivity; this.pitch = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, this.pitch));
                     this.el.object3D.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
                 };
+
                 this.onTouchEnd = (e) => {
                     if (!this.isDraggingCam) return;
                     for (let i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === this.touchId) { this.isDraggingCam = false; this.touchId = null; break; } }
                 };
+
                 window.addEventListener('touchstart', this.onTouchStart, {passive: false}); window.addEventListener('touchmove', this.onTouchMove, {passive: false}); window.addEventListener('touchend', this.onTouchEnd); window.addEventListener('touchcancel', this.onTouchEnd);
             }
         });
@@ -567,59 +661,178 @@
             }
         });
 
-        AFRAME.registerComponent('vr-controles-gatilho', {
+        AFRAME.registerComponent('vr-controles-hud', { init: function () { this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); } });
+
+        // MOTOR FÍSICO DAS MÃOS
+        AFRAME.registerComponent('vr-hand-tracker', {
             init: function() {
-                let podeAtacarVR = true;
-                this.el.addEventListener('triggerdown', () => { window.lastActionTime = Date.now(); if(!window.GAME_STARTED || window.GAME_MODE === 'PC' || window.GAME_MODE === 'ANDROID' || !window.playerState.vivo || window.npcAtivo) return; if (!podeAtacarVR) return; podeAtacarVR = false; setTimeout(() => podeAtacarVR = true, 800); window.realizarAtaque(); });
+                this.velocity = new THREE.Vector3(); this.lastPos = new THREE.Vector3(); this.triggerDown = false; this.triggerJustReleased = false;
+                this.el.addEventListener('triggerdown', () => { this.triggerDown = true; });
+                this.el.addEventListener('triggerup', () => { this.triggerDown = false; this.triggerJustReleased = true; });
+            },
+            tick: function(time, timeDelta) {
+                let dt = timeDelta / 1000; if(dt === 0) return;
+                let currentPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currentPos);
+                this.velocity.subVectors(currentPos, this.lastPos).divideScalar(dt); this.lastPos.copy(currentPos);
             }
         });
 
-        AFRAME.registerComponent('vr-controles-hud', { init: function () { this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); } });
+        // MOTOR DE COMBATE VR REALISTA E COLISÕES
+        AFRAME.registerComponent('vr-combat-system', {
+            init: function() {
+                this.bowPullStartPos = new THREE.Vector3(); this.isPullingBow = false;
+            },
+            tick: function() {
+                if(window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
 
-        AFRAME.registerComponent('projetil-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () { this.gravidade = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); },
+                let leftHand = document.querySelector('#mao-esquerda'); let rightHand = document.querySelector('#mao-direita');
+                if(!leftHand || !rightHand) return;
+
+                let leftTracker = leftHand.components['vr-hand-tracker']; let rightTracker = rightHand.components['vr-hand-tracker'];
+                if(!leftTracker || !rightTracker) return;
+
+                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; let time = Date.now();
+
+                let rVisual = rightHand.querySelector('#arma-visual-dir'); let lVisual = leftHand.querySelector('#arma-visual-esq');
+                
+                let rBox = new THREE.Box3();
+                if (rVisual && rVisual.object3D.children.length > 0) { rVisual.object3D.updateMatrixWorld(true); rBox.setFromObject(rVisual.object3D); }
+                if (rBox.isEmpty()) { 
+                    let pos = new THREE.Vector3(); rightHand.object3D.getWorldPosition(pos);
+                    rBox.setFromCenterAndSize(pos, new THREE.Vector3(0.4, 0.4, 0.4)); // Caixa de 40cm se o modelo falhar
+                }
+
+                let lBox = new THREE.Box3();
+                if (lVisual && lVisual.object3D.children.length > 0) { lVisual.object3D.updateMatrixWorld(true); lBox.setFromObject(lVisual.object3D); }
+                if (lBox.isEmpty()) { 
+                    let pos = new THREE.Vector3(); leftHand.object3D.getWorldPosition(pos);
+                    lBox.setFromCenterAndSize(pos, new THREE.Vector3(0.4, 0.4, 0.4)); 
+                }
+
+                // DANO CORPO-A-CORPO (Espada / Luvas)
+                if(armaStats.categoria === 'Espada' || armaStats.categoria === 'Luva') {
+                    let enemies = document.querySelectorAll('[sistema-inimigo-sync]');
+                    enemies.forEach(enemy => {
+                        let sync = enemy.components['sistema-inimigo-sync']; if(!sync || sync.hpAtual <= 0) return;
+                        
+                        let eBox = new THREE.Box3(); let colisor = enemy.querySelector('.colisao-inimigo');
+                        if(colisor) { colisor.object3D.updateMatrixWorld(true); eBox.setFromObject(colisor.object3D); } else { enemy.object3D.updateMatrixWorld(true); eBox.setFromObject(enemy.object3D); }
+
+                        let canHitR = !enemy.dataset.lastHitR || (time - enemy.dataset.lastHitR > 800);
+                        let canHitL = !enemy.dataset.lastHitL || (time - enemy.dataset.lastHitL > 800);
+
+                        if(canHitR && rBox.intersectsBox(eBox)) {
+                            enemy.dataset.lastHitR = time; window.tocarSom('snd-sword'); sync.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria);
+                        }
+                        if(armaStats.categoria === 'Luva' && canHitL && lBox.intersectsBox(eBox)) {
+                            enemy.dataset.lastHitL = time; window.tocarSom('snd-sword'); sync.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria);
+                        }
+                    });
+                }
+
+                // MAGIA
+                if(armaStats.categoria === 'Varinha') {
+                    if(rightTracker.triggerDown && rightTracker.velocity.length() > 2.0 && window.playerState.mpAtual >= 10) {
+                        let lastCast = this.el.dataset.lastCast || 0;
+                        if(time - lastCast > 500) { 
+                            this.el.dataset.lastCast = time; window.playerState.mpAtual -= 10; window.atualizarUI();
+                            let proj = document.createElement('a-entity'); let pos = new THREE.Vector3(); rightHand.object3D.getWorldPosition(pos); proj.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+                            let dir = rightTracker.velocity.clone().normalize(); if(dir.lengthSq() === 0) dir.set(0,0,-1);
+                            let dano = Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5);
+                            proj.setAttribute('projetil-fisico-player', `velocidade: ${dir.x * 12} ${dir.y * 12} ${dir.z * 12}; dano: ${dano}`);
+                            proj.innerHTML = '<a-sphere radius="0.1" color="#00FFFF" material="emissive: #00FFFF; emissiveIntensity: 1"></a-sphere>'; document.querySelector('a-scene').appendChild(proj);
+                        }
+                    }
+                }
+
+                // ARREMESSO
+                if(armaStats.categoria === 'Shuriken') {
+                    if(rightTracker.triggerJustReleased && window.playerState.shurikens > 0) {
+                        rightTracker.triggerJustReleased = false; window.playerState.shurikens -= 1; window.atualizarUI();
+                        let proj = document.createElement('a-entity'); let pos = new THREE.Vector3(); rightHand.object3D.getWorldPosition(pos); proj.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+                        let vel = rightTracker.velocity.clone(); if(vel.length() < 2) vel.add(new THREE.Vector3(0,2,-5)); 
+                        let dano = Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5);
+                        proj.setAttribute('projetil-fisico-player', `velocidade: ${vel.x * 1.5} ${vel.y * 1.5} ${vel.z * 1.5}; dano: ${dano}; gravidade: true`);
+                        proj.innerHTML = '<a-box color="#555" width="0.15" height="0.01" depth="0.15" rotation="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 200; easing: linear"></a-box>'; document.querySelector('a-scene').appendChild(proj);
+                    }
+                }
+
+                // ARCO E FLECHA
+                if(armaStats.categoria === 'Arco') {
+                    let lPos = new THREE.Vector3(); leftHand.object3D.getWorldPosition(lPos); let rPos = new THREE.Vector3(); rightHand.object3D.getWorldPosition(rPos);
+                    if(rightTracker.triggerDown && !this.isPullingBow) { this.isPullingBow = true; this.bowPullStartPos.copy(rPos); }
+                    if(this.isPullingBow && rightTracker.triggerJustReleased) {
+                        this.isPullingBow = false; rightTracker.triggerJustReleased = false; let pullDist = lPos.distanceTo(rPos);
+                        if(pullDist > 0.2 && window.playerState.flechas > 0) { 
+                            window.playerState.flechas -= 1; window.atualizarUI();
+                            let proj = document.createElement('a-entity'); proj.setAttribute('position', `${lPos.x} ${lPos.y} ${lPos.z}`);
+                            let dir = new THREE.Vector3().subVectors(lPos, rPos).normalize(); let forcaTiro = Math.min(pullDist * 30, 40); 
+                            let dano = Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5);
+                            proj.setAttribute('projetil-fisico-player', `velocidade: ${dir.x * forcaTiro} ${dir.y * forcaTiro} ${dir.z * forcaTiro}; dano: ${dano}; gravidade: true`);
+                            proj.innerHTML = '<a-cylinder color="#DDDDDD" radius="0.02" height="0.6" rotation="90 0 0"></a-cylinder>'; document.querySelector('a-scene').appendChild(proj);
+                        }
+                    }
+                }
+
+                rightTracker.triggerJustReleased = false; leftTracker.triggerJustReleased = false;
+            }
+        });
+
+        // PROJÉTIL DO JOGADOR
+        AFRAME.registerComponent('projetil-fisico-player', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10}, gravidade: {type: 'boolean', default: false} },
+            init: function () { this.gravidadeVec = new THREE.Vector3(0, -9.8, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); },
             tick: function (time, timeDelta) {
                 let dt = timeDelta / 1000; if (dt === 0) return;
-                this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); this.el.object3D.rotateX(Math.PI / 2);
-                if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+                if (this.data.gravidade) { this.vel.add(this.gravidadeVec.clone().multiplyScalar(dt)); }
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); 
+                if(this.vel.lengthSq() > 0.01) { this.el.object3D.lookAt(this.el.object3D.position.clone().add(this.vel)); }
+
+                if (this.el.object3D.position.y < 0) { this.el.removeAttribute('projetil-fisico-player'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+
                 let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
                 for (let i = 0; i < inimigosAtuais.length; i++) {
-                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp || syncComp.hpAtual <= 0) continue;
+                    let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; 
+                    if (!syncComp || syncComp.hpAtual <= 0) continue;
+                    
                     this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
-                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo');
+                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D); 
+                    let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo');
                     if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); }
-                    if (boxProj.intersectsBox(boxInimigo)) { syncComp.receberDano(this.data.dano, 'Arco'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; }
+
+                    if (boxProj.intersectsBox(boxInimigo)) { 
+                        syncComp.receberDano(this.data.dano, 'Arco/Magia'); 
+                        if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; 
+                    }
                 }
             }
         });
-        
+
+        // PROJÉTIL DO INIMIGO E SISTEMA DE BLOQUEIO/RICOCHETE VR COM MESHES REAIS
         AFRAME.registerComponent('projetil-inimigo-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
             init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); },
             tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; 
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
                 if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
-                
-                // SISTEMA DE INTERCEPTAÇÃO VR USANDO AS MESHES
+
+                // SISTEMA DE INTERCEPTAÇÃO VR USANDO AS MESHES E FALLBACKS
                 if (window.GAME_MODE === 'VR') {
-                    let rightHand = document.querySelector('#mao-direita');
-                    let leftHand = document.querySelector('#mao-esquerda');
+                    let rightHand = document.querySelector('#mao-direita'); let leftHand = document.querySelector('#mao-esquerda');
                     
                     if(rightHand && leftHand) {
                         this.el.object3D.updateMatrixWorld(true);
                         let projBox = new THREE.Box3().setFromObject(this.el.object3D);
                         
-                        let rVisual = rightHand.querySelector('#arma-visual-dir');
-                        let lVisual = leftHand.querySelector('#arma-visual-esq');
-                        
+                        let rVisual = rightHand.querySelector('#arma-visual-dir'); let lVisual = leftHand.querySelector('#arma-visual-esq');
                         let rBox = new THREE.Box3();
                         if (rVisual && rVisual.object3D.children.length > 0) { rVisual.object3D.updateMatrixWorld(true); rBox.setFromObject(rVisual.object3D); }
-                        if (rBox.isEmpty()) { rightHand.object3D.updateMatrixWorld(true); rBox.setFromObject(rightHand.object3D); }
+                        if (rBox.isEmpty()) { let pos = new THREE.Vector3(); rightHand.object3D.getWorldPosition(pos); rBox.setFromCenterAndSize(pos, new THREE.Vector3(0.4, 0.4, 0.4)); }
 
                         let lBox = new THREE.Box3();
                         if (lVisual && lVisual.object3D.children.length > 0) { lVisual.object3D.updateMatrixWorld(true); lBox.setFromObject(lVisual.object3D); }
-                        if (lBox.isEmpty()) { leftHand.object3D.updateMatrixWorld(true); lBox.setFromObject(leftHand.object3D); }
+                        if (lBox.isEmpty()) { let pos = new THREE.Vector3(); leftHand.object3D.getWorldPosition(pos); lBox.setFromCenterAndSize(pos, new THREE.Vector3(0.4, 0.4, 0.4)); }
                         
                         let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado'];
                         
@@ -670,59 +883,29 @@
             }
         });
 
-        // CORREÇÃO CRÍTICA DO SISTEMA DE RESPAWN E TELEPORTE 
         AFRAME.registerComponent('gerenciador-respawns', {
             init: function() {
                 this.db = realtimeDB; this.respawns = {};
                 this.db.ref('cenario_respawns').on('child_added', (snap) => { 
-                    let id = snap.key; let r = snap.val(); 
-                    if (!r || !r.pos) return; // Segurança caso o banco de dados venha sujo
-                    this.respawns[id] = r; 
-                    let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.respId = id; 
-                    el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); 
-                    let rRaio = r.raio || 3; 
+                    let id = snap.key; let r = snap.val(); if (!r || !r.pos) return; 
+                    this.respawns[id] = r; let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.respId = id; 
+                    el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let rRaio = r.raio || 3; 
                     el.innerHTML = `<a-octahedron color="#00ffcc" radius="0.3" position="0 1 0" material="emissive: #00ffcc; emissiveIntensity: 0.5" animation="property: rotation; to: 0 360 0; loop: true; dur: 4000; easing: linear" animation__up="property: position; to: 0 1.2 0; loop: true; dir: alternate; dur: 2000"></a-octahedron><a-cylinder color="#00ffcc" radius="${rRaio}" height="0.05" position="0 0.02 0" opacity="0.2" material="transparent: true"></a-cylinder>`; 
                 });
                 this.db.ref('cenario_respawns').on('child_changed', (snap) => { 
-                    let id = snap.key; let r = snap.val(); 
-                    if (!r || !r.pos) return;
-                    this.respawns[id] = r; 
-                    let el = document.querySelector(`[data-resp-id="${id}"]`); 
-                    if(el) { el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let cyl = el.querySelector('a-cylinder'); if(cyl) cyl.setAttribute('radius', r.raio || 3); } 
+                    let id = snap.key; let r = snap.val(); if (!r || !r.pos) return; this.respawns[id] = r; 
+                    let el = document.querySelector(`[data-resp-id="${id}"]`); if(el) { el.setAttribute('position', `${r.pos.x} ${r.pos.y} ${r.pos.z}`); let cyl = el.querySelector('a-cylinder'); if(cyl) cyl.setAttribute('radius', r.raio || 3); } 
                 });
-                this.db.ref('cenario_respawns').on('child_removed', (snap) => { 
-                    delete this.respawns[snap.key]; 
-                    let el = document.querySelector(`[data-resp-id="${snap.key}"]`); 
-                    if(el && el.parentNode) el.parentNode.removeChild(el); 
-                });
+                this.db.ref('cenario_respawns').on('child_removed', (snap) => { delete this.respawns[snap.key]; let el = document.querySelector(`[data-resp-id="${snap.key}"]`); if(el && el.parentNode) el.parentNode.removeChild(el); });
             },
             tick: function() {
-                if (!window.GAME_STARTED || !window.playerState.vivo) return; 
-                let camObj = document.querySelector('[camera]'); 
-                if (!camObj) return; 
-                let pPos = new THREE.Vector3(); 
-                camObj.object3D.getWorldPosition(pPos);
-                
+                if (!window.GAME_STARTED || !window.playerState.vivo) return; let camObj = document.querySelector('[camera]'); if (!camObj) return; let pPos = new THREE.Vector3(); camObj.object3D.getWorldPosition(pPos);
                 for (let id in this.respawns) { 
-                    let r = this.respawns[id]; 
-                    if (!r || !r.pos) continue; // Prevenção de travamento (Math.hypot crash)
-                    
-                    let raio = r.raio || 3; 
-                    // Convertemos para float para garantir que a matemática nunca exploda
-                    let dist = Math.hypot(pPos.x - parseFloat(r.pos.x), pPos.z - parseFloat(r.pos.z));
-                    
+                    let r = this.respawns[id]; if (!r || !r.pos) continue; let raio = r.raio || 3; let dist = Math.hypot(pPos.x - parseFloat(r.pos.x), pPos.z - parseFloat(r.pos.z));
                     if (dist <= raio) { 
                         if (!window.playerState.ultimoRespawn || window.playerState.ultimoRespawn.id !== id) { 
-                            window.playerState.ultimoRespawn = { id: id, x: parseFloat(r.pos.x) || 0, y: parseFloat(r.pos.y) || 0, z: parseFloat(r.pos.z) || 0 }; 
-                            window.salvarJogoNuvem(); 
-                            let aviso = document.querySelector('#texto-central'); 
-                            if(aviso) { 
-                                aviso.setAttribute('value', 'CHECKPOINT SALVO!'); 
-                                aviso.setAttribute('color', '#00ffcc'); 
-                                aviso.setAttribute('visible', 'true'); 
-                                window.tocarSom('snd-magic'); 
-                                setTimeout(() => { if (aviso) aviso.setAttribute('visible', 'false'); }, 2500); 
-                            } 
+                            window.playerState.ultimoRespawn = { id: id, x: parseFloat(r.pos.x) || 0, y: parseFloat(r.pos.y) || 0, z: parseFloat(r.pos.z) || 0 }; window.salvarJogoNuvem(); 
+                            let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'CHECKPOINT SALVO!'); aviso.setAttribute('color', '#00ffcc'); aviso.setAttribute('visible', 'true'); window.tocarSom('snd-magic'); setTimeout(() => { if (aviso) aviso.setAttribute('visible', 'false'); }, 2500); } 
                         } 
                     }
                 }
@@ -823,7 +1006,10 @@
                     el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`); el.setAttribute('shadow', '');
 
                     let holograma = document.createElement('a-box'); el.appendChild(holograma); holograma.setAttribute('color', '#f1c40f'); holograma.setAttribute('opacity', '0.5'); holograma.setAttribute('scale', '0.6 1.8 0.6'); holograma.setAttribute('position', '0 0.9 0'); 
-                    let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad'; let fallback = document.createElement('a-entity'); el.appendChild(fallback); fallback.innerHTML = `<a-box class="inimigo-fallback" color="${fallbackColor}" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; fallback.setAttribute('visible', 'false'); 
+                    
+                    let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad'; let fallback = document.createElement('a-entity'); el.appendChild(fallback); 
+                    fallback.innerHTML = `<a-box class="inimigo-fallback" color="${fallbackColor}" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; 
+                    fallback.setAttribute('visible', 'true'); // IMPORTANTE: Começa visível para não bugar!
 
                     let visual = document.createElement('a-entity'); el.appendChild(visual); visual.classList.add('modelo-visual'); visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2'); visual.dataset.currentModel = modelSrc;
@@ -1099,7 +1285,9 @@
             </a-entity>
             <a-plane width="2.0" height="1.2" color="#f1c40f" position="0.35 0.15 0.02"></a-plane>
             <a-plane width="1.95" height="1.15" color="#5a371c" position="0.35 0.15 0.021"></a-plane>
-            <a-entity id="inv-grid-container" position="0.35 0.15 0.022"></a-entity>
+            
+            <a-entity id="inv-grid-container" gerador-inventario position="0.35 0.15 0.022"></a-entity>
+            
             <a-entity id="inv-tooltip" position="0.35 -0.6 0.03" visible="false">
                 <a-plane width="1.8" height="0.25" color="#111" opacity="0.9"></a-plane>
                 <a-text id="tt-nome" value="Nome do Item" position="-0.85 0.06 0.01" color="#FFD700" scale="0.4 0.4 0.4"></a-text>
