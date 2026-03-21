@@ -199,7 +199,7 @@
 
     <div id="tab-inimigos" class="tab-content">
         <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
-        <div id="lista-inimigos"></div>
+        <div id="lista-inimigos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px;"></div>
 
         <div class="painel-spawn ini-spawn" id="form-inimigo">
             <h2>🪄 Invocar ou Editar Inimigo</h2>
@@ -276,17 +276,32 @@
     // ==========================================
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
-        const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); const statusText = document.getElementById('status-upload');
+        const urlTemporaria = URL.createObjectURL(file); 
+        const loader = new THREE.GLTFLoader(); 
+        const statusText = document.getElementById('status-upload');
+        
         loader.load(urlTemporaria, function(gltf) {
-            const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); datalist.innerHTML = '';
+            const animations = gltf.animations; 
+            const datalist = document.getElementById('lista-animacoes'); 
+            datalist.innerHTML = '';
+            
+            // INDEPENDENTE SE TEM ANIMAÇÃO OU NÃO, ELE AUTO-PREENCHE OS CAMINHOS!
+            document.getElementById('npc-glb').value = `Npcs/${file.name}`; 
+            document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+            document.getElementById('arma-glb').value = `Armas/${file.name}`;
+
             if (animations && animations.length > 0) {
                 animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
-                statusText.innerText = `✅ Lidas ${animations.length} animações! Vá no GitHub fazer o upload.`;
-                document.getElementById('npc-glb').value = `Npcs/${file.name}`; 
-                document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
-                document.getElementById('arma-glb').value = `Armas/${file.name}`; // Autocompleta o GLB da Arma
-            } else { statusText.innerText = '⚠️ Arquivo lido, mas não possui animações.'; }
-        }, undefined, function(error) { statusText.innerText = '❌ Arquivo GLB inválido.'; });
+                statusText.innerText = `✅ Lidas ${animations.length} animações! Caminhos de Arquivo Preenchidos.`;
+                statusText.style.color = "#2ecc71";
+            } else { 
+                statusText.innerText = `⚠️ Lido sem animações (Ideal para Itens). Caminhos de Arquivo Preenchidos!`; 
+                statusText.style.color = "#f39c12";
+            }
+        }, undefined, function(error) { 
+            statusText.innerText = '❌ Arquivo GLB inválido ou corrompido.'; 
+            statusText.style.color = "#e74c3c";
+        });
     });
 
     // ==========================================
@@ -439,16 +454,52 @@
     };
 
     // ==========================================
-    // INIMIGOS
+    // INIMIGOS (COM NOVO RADAR DE HP E POSIÇÃO)
     // ==========================================
     const listaInimigosDiv = document.getElementById('lista-inimigos');
+    
     db.ref('cenario_inimigos').on('child_added', (snapshot) => {
         let id = snapshot.key; let ini = snapshot.val();
-        let card = document.createElement('div'); card.className = 'card'; card.id = `card-ini-${id}`;
-        card.innerHTML = `<h3>👾 ${id}</h3><div class="action-buttons"><button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar</button><button class="btn btn-dark" onclick="db.ref('cenario_inimigos/${id}').remove()">🗑️ Excluir</button></div>`;
+        let card = document.createElement('div'); 
+        card.className = 'card'; 
+        card.id = `card-ini-${id}`;
+        
+        let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
+        let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; 
+        let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; 
+        let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
+        
+        card.innerHTML = `
+            <h3>👾 ${id} <span style="font-size:0.8rem; color:#ccc;">[${ini.tipo || 'meelee'}]</span></h3>
+            <div id="stats-ini-${id}" style="width: 100%; font-size: 0.95rem; margin-bottom: 10px; color: #bdc3c7;">
+                ❤️ HP: <b style="color: ${hpAtual > 0 ? '#2ecc71' : '#e74c3c'}">${hpAtual} / ${ini.hpMax}</b> | 📍 Pos Atual: <b>X: ${pX} | Y: ${pY} | Z: ${pZ}</b>
+            </div>
+            <div class="action-buttons" style="width: 100%;">
+                <button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar</button>
+                <button class="btn btn-dark" onclick="db.ref('cenario_inimigos/${id}').remove()">🗑️ Excluir</button>
+            </div>
+        `;
         listaInimigosDiv.appendChild(card);
     });
-    db.ref('cenario_inimigos').on('child_removed', (snapshot) => { let card = document.getElementById(`card-ini-${snapshot.key}`); if(card) card.remove(); });
+
+    db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
+        let id = snapshot.key; let ini = snapshot.val();
+        let statsDiv = document.getElementById(`stats-ini-${id}`);
+        
+        if (statsDiv) {
+            let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
+            let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; 
+            let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; 
+            let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
+            
+            statsDiv.innerHTML = `❤️ HP: <b style="color: ${hpAtual > 0 ? '#2ecc71' : '#e74c3c'}">${hpAtual} / ${ini.hpMax}</b> | 📍 Pos Atual: <b>X: ${pX} | Y: ${pY} | Z: ${pZ}</b>`;
+        }
+    });
+
+    db.ref('cenario_inimigos').on('child_removed', (snapshot) => { 
+        let card = document.getElementById(`card-ini-${snapshot.key}`); 
+        if(card) card.remove(); 
+    });
 
     window.carregarEdicaoInimigo = function(id) {
         db.ref('cenario_inimigos/' + id).once('value').then(snap => {
