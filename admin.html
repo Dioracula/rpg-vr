@@ -43,8 +43,6 @@
         .input-group textarea { width: 250px; resize: vertical; height: 35px;}
         .input-group input:focus, .input-group textarea:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
-        .input-file-mini { margin-top: 5px; font-size: 0.75rem; color: #f1c40f; }
-
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; } .btn-green:hover { background: #2ecc71; }
         .btn-blue { background: #2980b9; color: white; } .btn-blue:hover { background: #3498db; }
@@ -67,9 +65,40 @@
         .grupo-especial { background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(52, 152, 219, 0.3); }
         .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
         .status-extracao { font-size: 0.75rem; font-weight: bold; margin-left: 5px; }
+
+        /* Estilos do Navegador GitHub */
+        .gh-item { padding: 10px; margin-bottom: 5px; background: #2c3e50; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .gh-item:hover { background: #34495e; transform: translateX(5px); }
+        .gh-icon { font-size: 1.2rem; }
     </style>
 </head>
 <body>
+
+<div id="github-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
+    <div style="background:#1a1a1a; padding:25px; border-radius:10px; width:600px; max-width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.8); border: 1px solid #333;">
+        <h2 style="color:#f1c40f; margin-top:0; display:flex; align-items:center; gap:10px;">🐙 Navegador GitHub</h2>
+        <p style="color:#bdc3c7; font-size:0.9rem; margin-top:-10px;">Conecte seu repositório para ler os arquivos GLB diretamente.</p>
+        
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <input type="text" id="gh-user" placeholder="Usuário (Ex: seunome)" value="SeuUsuario" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
+            <input type="text" id="gh-repo" placeholder="Repositório (Ex: mmo-assets)" value="SeuRepositorio" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
+            <button class="btn btn-blue" style="margin:0; width:auto;" onclick="carregarPastaGitHub('')">🔄 Conectar</button>
+        </div>
+        
+        <div style="background:#000; padding:12px; border-radius:5px; margin-bottom:15px; font-family:monospace; color:#2ecc71; border: 1px solid #333;">
+            Caminho Atual: <span id="gh-current-path" style="color: #fff;">/</span>
+        </div>
+        
+        <div id="gh-file-list" style="background:#111; height:350px; overflow-y:auto; border-radius:5px; padding:10px; border: 1px inset #222;">
+            <p style="color:#7f8c8d; text-align:center; margin-top:150px;">Aperte Conectar para listar os arquivos do Repositório.</p>
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; margin-top:20px; gap: 10px;">
+            <span id="gh-loading-status" style="color:#f39c12; align-self:center; font-weight:bold; margin-right:auto;"></span>
+            <button class="btn btn-red" style="width:auto; margin:0;" onclick="document.getElementById('github-modal').style.display='none'">Cancelar / Fechar</button>
+        </div>
+    </div>
+</div>
 
 <div class="container">
     <h1>👑 PAINEL DO MESTRE</h1>
@@ -117,7 +146,10 @@
                 <div class="input-group">
                     <label>Caminho GLB <span id="status-arma-glb" class="status-extracao"></span></label>
                     <input type="text" id="arma-glb" placeholder="Ex: Armas/Espadas/espada.glb">
-                    <input type="file" id="file-arma-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="file" id="file-arma-glb" accept=".glb,.gltf" style="width: 130px; font-size:0.75rem;">
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat')">🐙 GitHub</button>
+                    </div>
                 </div>
                 
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Dano (Força)</label><input type="number" id="arma-dano" value="10"></div>
@@ -176,7 +208,10 @@
                 <div class="input-group">
                     <label>Caminho GLB <span id="status-npc-glb" class="status-extracao"></span></label>
                     <input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb">
-                    <input type="file" id="file-npc-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="file" id="file-npc-glb" accept=".glb,.gltf" style="width: 130px; font-size:0.75rem;">
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('npc-glb', 'Npcs/', 'status-npc-glb')">🐙 GitHub</button>
+                    </div>
                 </div>
 
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
@@ -233,7 +268,10 @@
                 <div class="input-group">
                     <label>Caminho GLB (Inimigo) <span id="status-ini-glb" class="status-extracao"></span></label>
                     <input type="text" id="novo-glb-caminho" value="#modelo-inimigo">
-                    <input type="file" id="file-ini-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="file" id="file-ini-glb" accept=".glb,.gltf" style="width: 130px; font-size:0.75rem;">
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('novo-glb-caminho', 'Inimigos/', 'status-ini-glb')">🐙 GitHub</button>
+                    </div>
                 </div>
 
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
@@ -244,7 +282,10 @@
                 <div class="input-group">
                     <label style="color: #9b59b6;">GLB do Tiro <span id="status-tiro-glb" class="status-extracao"></span></label>
                     <input type="text" id="novo-glb-tiro" placeholder="Ex: Magias/fogo.glb">
-                    <input type="file" id="file-tiro-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="file" id="file-tiro-glb" accept=".glb,.gltf" style="width: 130px; font-size:0.75rem;">
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('novo-glb-tiro', 'Magias/', 'status-tiro-glb')">🐙 GitHub</button>
+                    </div>
                 </div>
 
                 <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
@@ -274,6 +315,135 @@
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
     };
 
+    // ==========================================
+    // SISTEMA DE NAVEGAÇÃO DO GITHUB
+    // ==========================================
+    let ghTargetInput = "";
+    let ghPastaBase = "";
+    let ghStatusId = "";
+    let ghSelectCatId = null;
+
+    window.abrirGitHubModal = function(targetInputId, pastaBase, statusId, selectCatId = null) {
+        ghTargetInput = targetInputId;
+        ghPastaBase = pastaBase;
+        ghStatusId = statusId;
+        ghSelectCatId = selectCatId;
+        document.getElementById('github-modal').style.display = 'flex';
+    };
+
+    window.carregarPastaGitHub = async function(path = '') {
+        const user = document.getElementById('gh-user').value.trim();
+        const repo = document.getElementById('gh-repo').value.trim();
+        const fileList = document.getElementById('gh-file-list');
+        const statusSpan = document.getElementById('gh-loading-status');
+        
+        if(!user || !repo || user === "SeuUsuario" || repo === "SeuRepositorio") {
+            alert("⚠️ Por favor, digite seu Usuário e Repositório do GitHub primeiro!");
+            return;
+        }
+
+        statusSpan.innerText = "Carregando pastas...";
+        fileList.innerHTML = '';
+        document.getElementById('gh-current-path').innerText = '/' + path;
+
+        try {
+            const response = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${path}`);
+            if (!response.ok) throw new Error("Repositório ou pasta não encontrada.");
+            
+            const data = await response.json();
+            statusSpan.innerText = "";
+            
+            // Botão de voltar (se não estiver na raiz)
+            if (path !== '') {
+                let parentPath = path.substring(0, path.lastIndexOf('/'));
+                fileList.innerHTML += `
+                    <div class="gh-item" onclick="carregarPastaGitHub('${parentPath}')">
+                        <span class="gh-icon">🔙</span> <b>[Voltar uma pasta]</b>
+                    </div>
+                `;
+            }
+
+            // Renderiza pastas primeiro, depois arquivos
+            const pastas = data.filter(item => item.type === 'dir');
+            const arquivos = data.filter(item => item.type === 'file' && (item.name.endsWith('.glb') || item.name.endsWith('.gltf')));
+
+            if (pastas.length === 0 && arquivos.length === 0) {
+                fileList.innerHTML += `<p style="color:#7f8c8d; text-align:center;">Nenhum arquivo GLB ou pasta encontrado aqui.</p>`;
+            }
+
+            pastas.forEach(pasta => {
+                fileList.innerHTML += `
+                    <div class="gh-item" onclick="carregarPastaGitHub('${pasta.path}')">
+                        <span class="gh-icon">📁</span> <b>${pasta.name}</b>
+                    </div>
+                `;
+            });
+
+            arquivos.forEach(arquivo => {
+                fileList.innerHTML += `
+                    <div class="gh-item" onclick="selecionarArquivoGitHub('${arquivo.download_url}', '${arquivo.name}')">
+                        <span class="gh-icon" style="color:#f1c40f;">📦</span> 
+                        <span style="color:#ecf0f1;">${arquivo.name}</span>
+                    </div>
+                `;
+            });
+
+        } catch (error) {
+            statusSpan.innerText = "❌ Erro ao conectar.";
+            fileList.innerHTML = `<p style="color:#e74c3c; text-align:center;">Erro: Verifique se o repositório é Público e o nome está correto.</p>`;
+        }
+    };
+
+    window.selecionarArquivoGitHub = async function(downloadUrl, fileName) {
+        document.getElementById('github-modal').style.display = 'none';
+        
+        let subPasta = "";
+        if (ghSelectCatId) {
+            let cat = document.getElementById(ghSelectCatId).value;
+            if(cat === "Espada") subPasta = "Espadas/";
+            else if(cat === "Luva") subPasta = "Luvas/";
+            else if(cat === "Arco") subPasta = "Arcos/";
+            else if(cat === "Varinha") subPasta = "Varinhas/";
+            else if(cat === "Shuriken") subPasta = "Shurikens/";
+            else if(cat === "Escudo") subPasta = "Escudos/";
+            else subPasta = "Outros/";
+        }
+
+        // 1. Preenche o input visual no admin
+        let targetInput = document.getElementById(ghTargetInput);
+        if (targetInput) targetInput.value = `${ghPastaBase}${subPasta}${fileName}`;
+
+        // 2. Extrai as animações do arquivo RAW do GitHub
+        let statusText = document.getElementById(ghStatusId);
+        if (statusText) { statusText.innerText = "(⏳ Baixando do GitHub...)"; statusText.style.color = "#f39c12"; }
+        
+        try {
+            const res = await fetch(downloadUrl);
+            const blob = await res.blob();
+            const urlTemporaria = URL.createObjectURL(blob);
+            
+            const loader = new THREE.GLTFLoader(); 
+            loader.load(urlTemporaria, function(gltf) {
+                const animations = gltf.animations; 
+                const datalist = document.getElementById('lista-animacoes'); 
+                
+                if (animations && animations.length > 0) {
+                    datalist.innerHTML = ''; 
+                    animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
+                    if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações extraídas)`; statusText.style.color = "#2ecc71"; }
+                } else { 
+                    if(statusText) { statusText.innerText = `(⚠️ Carregado sem animações)`; statusText.style.color = "#f39c12"; }
+                }
+                setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
+            }, undefined, function(error) { 
+                if(statusText) { statusText.innerText = '(❌ Erro ao ler GLB do GitHub)'; statusText.style.color = "#e74c3c"; }
+            });
+        } catch (e) {
+            if(statusText) { statusText.innerText = '(❌ Falha no Download)'; statusText.style.color = "#e74c3c"; }
+        }
+    };
+
+
     // INICIALIZAÇÃO SEGURA DO JAVASCRIPT
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -291,11 +461,11 @@
         const firestoreDB = firebase.firestore();
 
         // ==========================================
-        // EXTRATOR GLB E AUTOCOMPLETAR INTELIGENTE
+        // EXTRATOR GLB E AUTOCOMPLETAR INTELIGENTE (ARQUIVO LOCAL)
         // ==========================================
-        function processarGLB(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
+        function processarGLBLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
             let fileInput = document.getElementById(fileInputId);
-            if (!fileInput) return; // Proteção contra erros se o elemento não existir
+            if (!fileInput) return;
             
             fileInput.addEventListener('change', function(e) {
                 const file = e.target.files[0]; if (!file) return;
@@ -330,19 +500,17 @@
                     } else { 
                         if(statusText) { statusText.innerText = `(⚠️ Sem animações)`; statusText.style.color = "#f39c12"; }
                     }
-                    
                     setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
-
                 }, undefined, function(error) { 
-                    if(statusText) { statusText.innerText = '(❌ Erro no arquivo)'; statusText.style.color = "#e74c3c"; }
+                    if(statusText) { statusText.innerText = '(❌ Erro no arquivo local)'; statusText.style.color = "#e74c3c"; }
                 });
             });
         }
 
-        processarGLB('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
-        processarGLB('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
-        processarGLB('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
-        processarGLB('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
+        processarGLBLocal('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
+        processarGLBLocal('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
+        processarGLBLocal('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
+        processarGLBLocal('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
 
         // ==========================================
         // JOGADORES (FIRESTORE)
@@ -355,12 +523,6 @@
                 if(listaJogadores) listaJogadores.innerHTML += `<div class="card player-card"><h3>👤 Usuário: ${doc.id}</h3><div style="width: 100%;"><span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br><b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'}</div></div>`;
             });
         });
-
-        window.kickarTodos = function() {
-            if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
-                db.ref('players').remove(); db.ref('server_commands/kick_all').set(Date.now()); alert("Sinal de KICK enviado!");
-            }
-        };
 
         // ==========================================
         // ARSENAL (REALTIME DB)
