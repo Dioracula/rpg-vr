@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Login e Crash Corrigidos</title>
+    <title>RPG MMO - Mouse Livre e Inventário Corrigido</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -76,8 +76,10 @@
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
 
+        // Adicionada Espada Inicial de backup para o inventário não abrir vazio.
         window.bancoDeArmas = {
-            'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' }
+            'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
+            'Espada Inicial': { categoria: 'Espada', danoBonus: 5, defesaBonus: 0, distancia: 3.0, modeloGlb: '', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' }
         };
 
         // ==========================================
@@ -162,7 +164,8 @@
             for (let i = 0; i < 18; i++) { 
                 let col = i % cols; let row = Math.floor(i / cols); 
                 let slot = document.createElement('a-box'); 
-                slot.setAttribute('position', `${startX + (col * gap)} ${startY - (row * gap)} 0.02`); slot.setAttribute('width', '0.25'); slot.setAttribute('height', '0.25'); slot.setAttribute('depth', '0.02'); slot.setAttribute('color', '#2b1b12'); 
+                slot.setAttribute('position', `${startX + (col * gap)} ${startY - (row * gap)} 0.02`); 
+                slot.setAttribute('width', '0.25'); slot.setAttribute('height', '0.25'); slot.setAttribute('depth', '0.02'); slot.setAttribute('color', '#2b1b12'); 
                 
                 let borda = document.createElement('a-plane'); borda.setAttribute('width', '0.23'); borda.setAttribute('height', '0.23'); borda.setAttribute('color', '#f19e20'); borda.setAttribute('position', '0 0 0.011'); 
                 let fundoCentro = document.createElement('a-plane'); fundoCentro.setAttribute('width', '0.21'); fundoCentro.setAttribute('height', '0.21'); fundoCentro.setAttribute('color', '#1e110b'); fundoCentro.setAttribute('position', '0 0 0.012'); 
@@ -204,6 +207,261 @@
         }
         acordarServidorRender(); 
         setInterval(acordarServidorRender, 10 * 60 * 1000);
+
+        // ==========================================
+        // CONTROLES DE MOUSE LIVRE PARA PC
+        // ==========================================
+        window.travarMousePC = function() {
+            if(window.GAME_MODE !== 'PC') return;
+            let canvas = document.querySelector('.a-canvas');
+            if (canvas) canvas.requestPointerLock();
+            let reticle = document.querySelector('#cursor-centro');
+            if(reticle) { reticle.setAttribute('raycaster', 'objects', '.interativo'); reticle.setAttribute('visible', 'true'); }
+            let mouseCursor = document.querySelector('#mouse-cursor');
+            if(mouseCursor) mouseCursor.setAttribute('raycaster', 'objects', 'none');
+        };
+
+        window.destravarMousePC = function() {
+            if(window.GAME_MODE !== 'PC') return;
+            document.exitPointerLock();
+            let reticle = document.querySelector('#cursor-centro');
+            if(reticle) { reticle.setAttribute('raycaster', 'objects', 'none'); reticle.setAttribute('visible', 'false'); }
+            let mouseCursor = document.querySelector('#mouse-cursor');
+            if(mouseCursor) mouseCursor.setAttribute('raycaster', 'objects', '.interativo');
+        };
+
+        // ==========================================
+        // GERENCIADOR DE MENUS FLUTUANTES (UNIFICADO)
+        // ==========================================
+        window.posicionarMenuDeFrente = function(menuId) {
+            let menu = document.querySelector(menuId);
+            let rig = document.querySelector('#rig');
+            let camera = document.querySelector('[camera]');
+            if(!menu || !camera || !rig) return;
+
+            if (window.GAME_MODE === 'PC') {
+                // NO PC: Os menus ficam 100% colados na câmera (centralizados) para o mouse clicar
+                if(menu.parentNode !== camera) camera.appendChild(menu);
+                menu.object3D.position.set(0, 0, -1.2);
+                menu.object3D.rotation.set(0, 0, 0);
+            } else {
+                // NO VR E ANDROID: Os menus flutuam no mundo (filhos do rig)
+                if(menu.parentNode !== rig) { rig.appendChild(menu); }
+                let camRotY = new THREE.Euler().setFromQuaternion(camera.object3D.quaternion, 'YXZ').y;
+                let camPos = new THREE.Vector3(); 
+                camera.object3D.getWorldPosition(camPos); 
+                let distancia = 1.6; 
+                let spawnX = camPos.x - Math.sin(camRotY) * distancia;
+                let spawnZ = camPos.z - Math.cos(camRotY) * distancia;
+                menu.object3D.position.set(spawnX, 1.4, spawnZ);
+                menu.object3D.rotation.set(0, camRotY, 0);
+            }
+            
+            if(menuId === '#caixa-dialogo') menu.setAttribute('scale', '1 1 1');
+            else menu.setAttribute('scale', '0.65 0.65 0.65');
+        };
+
+        window.toggleMenu = function(tipo) {
+            let menuInv = document.querySelector('#menu-inventario-novo'); 
+            let menuAtrib = document.querySelector('#menu-atributos');
+            
+            if (tipo === 'inv') {
+                window.invAberto = !window.invAberto;
+                if (window.invAberto) {
+                    window.atribAberto = false; 
+                    if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0');
+                    window.posicionarMenuDeFrente('#menu-inventario-novo');
+                    window.destravarMousePC();
+                } else {
+                    if(menuInv) menuInv.setAttribute('scale', '0 0 0');
+                    if(!window.npcAtivo) window.travarMousePC();
+                }
+            } else if (tipo === 'atrib') {
+                window.atribAberto = !window.atribAberto;
+                if (window.atribAberto) {
+                    window.invAberto = false; 
+                    if(menuInv) menuInv.setAttribute('scale', '0 0 0');
+                    window.posicionarMenuDeFrente('#menu-atributos');
+                    window.destravarMousePC();
+                } else {
+                    if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0');
+                    if(!window.npcAtivo) window.travarMousePC();
+                }
+            }
+            window.atualizarUI();
+        };
+
+        window.realizarAtaque = function() {
+            if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo) return;
+            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; 
+            if(!armaStats) return;
+
+            window.tocarSom('snd-sword');
+            let pcWeapon = document.querySelector('#arma-visual-pc'); 
+            if(pcWeapon) { 
+                pcWeapon.removeAttribute('animation'); 
+                pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); 
+                setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); 
+            }
+            
+            let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
+            let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
+            cameraObj.object3D.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.object3D.quaternion);
+            
+            let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
+            if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
+            
+            let alcanceArma = armaStats.distancia || 3.0; 
+
+            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+            inimigosEls.forEach(inimigoEl => { 
+                if(!inimigoEl.object3D) return; 
+                let syncComp = inimigoEl.components['sistema-inimigo-sync']; 
+                if(syncComp && syncComp.hpAtual <= 0) return;
+
+                let posInimigo = new THREE.Vector3(); 
+                inimigoEl.object3D.getWorldPosition(posInimigo); 
+                
+                let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z;
+                let dist2D = Math.hypot(dx, dz);
+                
+                if (dist2D <= alcanceArma) { 
+                    let dirInimigo2D = new THREE.Vector2(dx, dz); 
+                    if (dist2D > 0.001) dirInimigo2D.normalize();
+                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
+                    
+                    if (anguloAcerto > 0.5) { 
+                        if(syncComp) { syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); }
+                    }
+                } 
+            });
+        };
+
+        window.receberDanoJogador = function(danoBase) {
+            if (!window.playerState.vivo || window.playerState.invulneravel) return;
+            
+            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || {defesaBonus: 0}; 
+            let escudoStats = window.bancoDeArmas[window.playerState.nomeEscudo] || {defesaBonus: 0}; 
+            let defesaTotal = window.playerState.defesa + armaStats.defesaBonus + (window.playerState.escudoEquipado ? escudoStats.defesaBonus : 0);
+            
+            window.playerState.hpAtual -= Math.max(1, danoBase - defesaTotal); 
+            let danoTela = document.querySelector('#dano-tela'); 
+            
+            if(danoTela) { 
+                danoTela.setAttribute('visible', 'true'); 
+                setTimeout(() => { if(danoTela) danoTela.setAttribute('visible', 'false'); }, 200); 
+            } 
+            window.atualizarUI(); 
+            
+            if (window.playerState.hpAtual <= 0) { 
+                window.playerState.vivo = false; 
+                window.playerState.hpAtual = 0; 
+                
+                let rig = document.querySelector('#rig'); 
+                if (rig) rig.setAttribute('movement-controls', 'speed', 0);
+                window.atualizarUI(); 
+                
+                let aviso = document.querySelector('#texto-central'); 
+                if(aviso) { aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
+                
+                let tempoRespawn = 5; 
+                if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...');
+                
+                let respawnInterval = setInterval(() => {
+                    tempoRespawn--;
+                    if (tempoRespawn > 0) { 
+                        if(aviso) aviso.setAttribute('value', 'VOCE MORREU!\nRespawn em ' + tempoRespawn + '...'); 
+                    } else {
+                        clearInterval(respawnInterval); 
+                        window.playerState.vivo = true; 
+                        window.playerState.hpAtual = window.playerState.hpMax; 
+                        window.playerState.invulneravel = true; 
+                        
+                        if (rig) { 
+                            let respX = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.x : 0; 
+                            let respY = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.y : 0; 
+                            let respZ = window.playerState.ultimoRespawn ? window.playerState.ultimoRespawn.z : 0;
+                            let anguloRandom = Math.random() * Math.PI * 2; let raioRandom = 1 + Math.random(); 
+                            rig.setAttribute('position', `${respX + Math.cos(anguloRandom)*raioRandom} ${respY} ${respZ + Math.sin(anguloRandom)*raioRandom}`); 
+                            setTimeout(() => { if(rig) { if(window.GAME_MODE === 'PC') rig.setAttribute('movement-controls', 'speed', 0.1 + (window.playerState.velocidade * 0.01)); } }, 50);
+                        }
+                        
+                        window.atualizarUI(); 
+                        if(aviso) { aviso.setAttribute('visible', 'false'); aviso.setAttribute('value', ''); } 
+                        window.tocarSom('snd-magic'); 
+                        setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
+                    }
+                }, 1000);
+            }
+        };
+
+        window.abrirDialogoNPC = function(data) {
+            window.npcAtivo = data;
+            let cx = document.querySelector('#caixa-dialogo'); 
+            let tNome = document.querySelector('#npc-nome-ui'); 
+            let tTexto = document.querySelector('#npc-texto-ui'); 
+            let entRec = document.querySelector('#npc-recompensa-ui'); 
+            let tRec = document.querySelector('#npc-rec-texto'); 
+            let btnAceitar = document.querySelector('#btn-npc-aceitar');
+            
+            if(!cx || !tNome || !tTexto) return;
+
+            tNome.setAttribute('value', data.nome || "NPC");
+            let jaConcluiu = data.chaveConclusao && window.playerState.chaves[data.chaveConclusao]; 
+            let podeFazer = !data.requisito || window.playerState.chaves[data.requisito];
+
+            if (data.tipo === 'dialogo' || jaConcluiu) {
+                tTexto.setAttribute('value', data.dialogoPadrao || "Olá aventureiro.");
+                entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false');
+            } else if ((data.tipo === 'secundaria' || data.tipo === 'primaria') && podeFazer) {
+                tTexto.setAttribute('value', data.dialogoMissao || "Preciso de ajuda com esta missão!");
+                let recStr = ""; 
+                if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `; 
+                if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `; 
+                if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
+                
+                if (recStr.trim() !== "") { tRec.setAttribute('value', recStr); entRec.setAttribute('visible', 'true'); } 
+                else { entRec.setAttribute('visible', 'false'); }
+                btnAceitar.setAttribute('visible', 'true'); 
+            } else {
+                tTexto.setAttribute('value', "Você ainda não tem os requisitos para falar comigo.");
+                entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false'); 
+            }
+            
+            window.posicionarMenuDeFrente('#caixa-dialogo');
+            window.destravarMousePC(); 
+        };
+
+        window.fecharDialogoNPC = function() {
+            let cx = document.querySelector('#caixa-dialogo'); 
+            if(cx) cx.setAttribute('scale', '0 0 0'); 
+            window.npcAtivo = null;
+            if (!window.invAberto && !window.atribAberto) {
+                window.travarMousePC();
+            }
+        };
+
+        window.aceitarMissaoNPC = function() {
+            let data = window.npcAtivo; 
+            if (!data) return;
+            
+            if (data.chaveConclusao) { window.playerState.chaves[data.chaveConclusao] = true; }
+            if (data.recXP) window.playerState.xp += Number(data.recXP);
+            if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
+            if (data.recItem && window.bancoDeArmas[data.recItem]) { window.playerState.armaEquipada = data.recItem; }
+            
+            if (window.playerState.xp >= window.playerState.xpProxNivel) { 
+                window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
+            }
+            
+            window.atualizarUI(); 
+            window.salvarJogoNuvem(); 
+            window.tocarSom('snd-magic');
+            
+            let aviso = document.querySelector('#texto-central'); 
+            if(aviso) { aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
+            window.fecharDialogoNPC();
+        };
 
         // ==========================================
         // CÓDIGO DA INTERFACE E LOGIN GERAL
@@ -257,14 +515,13 @@
             document.getElementById('btn-android').addEventListener('click', () => { iniciarJogo('ANDROID'); }); 
             
             window.addEventListener('click', () => { 
-                if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) { 
+                if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.invAberto && !window.atribAberto && !window.npcAtivo) { 
                     let canvas = document.querySelector('.a-canvas'); 
                     if (canvas && document.pointerLockElement !== canvas) canvas.requestPointerLock(); 
                 } 
             }); 
 
             // EVENTOS DOS BOTÕES MOBILE
-            let menuAtrib = document.querySelector('#menu-atributos'); let menuInv = document.querySelector('#menu-inventario-novo'); 
             let podeAtacarMobile = true;
 
             document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('inv'); }, {passive: false});
@@ -318,8 +575,10 @@
             window.playerState.invulneravel = true; setTimeout(() => { window.playerState.invulneravel = false; }, 3000);
 
             let maoEsq = document.querySelector('#mao-esquerda'); let maoDir = document.querySelector('#mao-direita');
-            let cursor = document.querySelector('[cursor]'); let wpPc = document.querySelector('#arma-visual-pc'); let scPc = document.querySelector('#escudo-visual-pc');
+            let cursor = document.querySelector('#cursor-centro'); let wpPc = document.querySelector('#arma-visual-pc'); let scPc = document.querySelector('#escudo-visual-pc');
             let cam = document.querySelector('[camera]'); let rig = document.querySelector('#rig');
+
+            window.renderizarInventario(); // Força a primeira renderização do inventário!
 
             if (modo === 'PC') { 
                 if(maoEsq) { maoEsq.setAttribute('visible', 'false'); maoEsq.setAttribute('raycaster', 'far', 0); }
@@ -344,100 +603,7 @@
         }
 
         // ==========================================
-        // DEMAIS FUNÇÕES DE COMBATE
-        // ==========================================
-        window.posicionarMenuDeFrente = function(menuId) {
-            let menu = document.querySelector(menuId); let rig = document.querySelector('#rig'); let camera = document.querySelector('[camera]');
-            if(!menu || !camera || !rig) return;
-            if(menu.parentNode !== rig) { rig.appendChild(menu); }
-            let camRotY = new THREE.Euler().setFromQuaternion(camera.object3D.quaternion, 'YXZ').y;
-            let camPos = new THREE.Vector3(); camera.object3D.getWorldPosition(camPos); 
-            let distancia = 1.6; let spawnX = camPos.x - Math.sin(camRotY) * distancia; let spawnZ = camPos.z - Math.cos(camRotY) * distancia;
-            menu.object3D.position.set(spawnX, 1.4, spawnZ); menu.object3D.rotation.set(0, camRotY, 0);
-            if(menuId === '#caixa-dialogo') { menu.setAttribute('scale', '1 1 1'); } else { menu.setAttribute('scale', '0.65 0.65 0.65'); }
-        };
-
-        window.toggleMenu = function(tipo) {
-            let menuInv = document.querySelector('#menu-inventario-novo'); let menuAtrib = document.querySelector('#menu-atributos');
-            if (tipo === 'inv') {
-                window.invAberto = !window.invAberto;
-                if (window.invAberto) { window.atribAberto = false; if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0'); window.posicionarMenuDeFrente('#menu-inventario-novo'); if(window.GAME_MODE === 'PC') document.exitPointerLock();
-                } else { if(menuInv) menuInv.setAttribute('scale', '0 0 0'); if(window.GAME_MODE === 'PC') document.querySelector('a-scene').requestPointerLock(); }
-            } else if (tipo === 'atrib') {
-                window.atribAberto = !window.atribAberto;
-                if (window.atribAberto) { window.invAberto = false; if(menuInv) menuInv.setAttribute('scale', '0 0 0'); window.posicionarMenuDeFrente('#menu-atributos'); if(window.GAME_MODE === 'PC') document.exitPointerLock();
-                } else { if(menuAtrib) menuAtrib.setAttribute('scale', '0 0 0'); if(window.GAME_MODE === 'PC') document.querySelector('a-scene').requestPointerLock(); }
-            }
-            window.atualizarUI();
-        };
-
-        window.realizarAtaque = function() {
-            if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo) return;
-            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; if(!armaStats) return;
-
-            window.tocarSom('snd-sword');
-            let pcWeapon = document.querySelector('#arma-visual-pc'); 
-            if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
-            
-            let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
-            let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); cameraObj.object3D.getWorldPosition(posCamera); direcao.applyQuaternion(cameraObj.object3D.quaternion);
-            let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
-            
-            let alcanceArma = armaStats.distancia || 3.0; 
-
-            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-            inimigosEls.forEach(inimigoEl => { 
-                if(!inimigoEl.object3D) return; 
-                let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp && syncComp.hpAtual <= 0) return;
-                let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
-                let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z; let dist2D = Math.hypot(dx, dz);
-                
-                if (dist2D <= alcanceArma) { 
-                    let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
-                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                    if (anguloAcerto > 0.5) { if(syncComp) { syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); } }
-                } 
-            });
-        };
-
-        window.abrirDialogoNPC = function(data) {
-            window.npcAtivo = data;
-            let cx = document.querySelector('#caixa-dialogo'); let tNome = document.querySelector('#npc-nome-ui'); let tTexto = document.querySelector('#npc-texto-ui'); let entRec = document.querySelector('#npc-recompensa-ui'); let tRec = document.querySelector('#npc-rec-texto'); let btnAceitar = document.querySelector('#btn-npc-aceitar');
-            if(!cx || !tNome || !tTexto) return;
-
-            tNome.setAttribute('value', data.nome || "NPC");
-            let jaConcluiu = data.chaveConclusao && window.playerState.chaves[data.chaveConclusao]; let podeFazer = !data.requisito || window.playerState.chaves[data.requisito];
-
-            if (data.tipo === 'dialogo' || jaConcluiu) {
-                tTexto.setAttribute('value', data.dialogoPadrao || "Olá aventureiro."); entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false');
-            } else if ((data.tipo === 'secundaria' || data.tipo === 'primaria') && podeFazer) {
-                tTexto.setAttribute('value', data.dialogoMissao || "Preciso de ajuda com esta missão!");
-                let recStr = ""; if (data.recXP && data.recXP > 0) recStr += `+${data.recXP} XP   `; if (data.recOuro && data.recOuro > 0) recStr += `+${data.recOuro} Ouro   `; if (data.recItem && data.recItem !== "") recStr += `Item: ${data.recItem}`;
-                if (recStr.trim() !== "") { tRec.setAttribute('value', recStr); entRec.setAttribute('visible', 'true'); } else { entRec.setAttribute('visible', 'false'); }
-                btnAceitar.setAttribute('visible', 'true'); 
-            } else {
-                tTexto.setAttribute('value', "Você ainda não tem os requisitos para falar comigo."); entRec.setAttribute('visible', 'false'); btnAceitar.setAttribute('visible', 'false'); 
-            }
-            window.posicionarMenuDeFrente('#caixa-dialogo');
-            if (window.GAME_MODE === 'PC') document.exitPointerLock(); 
-        };
-
-        window.fecharDialogoNPC = function() { let cx = document.querySelector('#caixa-dialogo'); if(cx) cx.setAttribute('scale', '0 0 0'); window.npcAtivo = null; if (window.GAME_MODE === 'PC') { let canvas = document.querySelector('a-scene'); if (canvas) canvas.requestPointerLock(); } };
-        
-        window.aceitarMissaoNPC = function() {
-            let data = window.npcAtivo; if (!data) return;
-            if (data.chaveConclusao) { window.playerState.chaves[data.chaveConclusao] = true; }
-            if (data.recXP) window.playerState.xp += Number(data.recXP);
-            if (data.recOuro) window.playerState.ouro += Number(data.recOuro);
-            if (data.recItem && window.bancoDeArmas[data.recItem]) { window.playerState.armaEquipada = data.recItem; }
-            if (window.playerState.xp >= window.playerState.xpProxNivel) { window.playerState.nivel++; window.playerState.pontos += 3; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); }
-            window.atualizarUI(); window.salvarJogoNuvem(); window.tocarSom('snd-magic');
-            let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'MISSÃO CONCLUÍDA!'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => aviso.setAttribute('visible', 'false'), 3000); }
-            window.fecharDialogoNPC();
-        };
-
-        // ==========================================
-        // COMPONENTES A-FRAME GERAIS
+        // COMPONENTES A-FRAME
         // ==========================================
         AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
         AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('mousedown', () => { window.fecharDialogoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.fecharDialogoNPC(); }, {passive: false}); } });
@@ -548,8 +714,8 @@
 
                 let podeAtacarPC = true;
                 window.addEventListener('mousedown', (e) => {
-                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo || window.npcAtivo) return;
-                    let cursor = document.querySelector('[cursor]'); 
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
+                    let cursor = document.querySelector('#cursor-centro'); 
                     if(cursor && cursor.components && cursor.components.raycaster) {
                         let acertoUI = cursor.components.raycaster.intersectedEls.some(el => el.classList.contains('interativo') && !el.hasAttribute('sistema-inimigo-sync'));
                         if(acertoUI) return; 
@@ -890,6 +1056,9 @@
     </div>
 
     <a-scene pc-controles sistema-jogo gerenciador-inimigos gerenciador-npcs gerenciador-respawns renderer="colorManagement: true;">
+        
+        <a-entity id="mouse-cursor" cursor="rayOrigin: mouse" raycaster="objects: none"></a-entity>
+
         <a-assets timeout="3000">
             <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
             <a-asset-item id="modelo-espada-grande" src="Armas/Espadas/espada_grande.glb"></a-asset-item>
@@ -908,7 +1077,8 @@
         <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" mobile-movement position="0 0 0">
             
             <a-entity camera mobile-look position="0 1.6 0" look-controls="pointerLockEnabled: true;">
-                <a-entity cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
+                
+                <a-entity id="cursor-centro" cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
                 
                 <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
                 <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
@@ -1036,7 +1206,6 @@
             <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho>
                 <a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity>
             </a-entity>
-
         </a-entity>
     </a-scene>
 </body>
