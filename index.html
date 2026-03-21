@@ -110,7 +110,6 @@
             if (armaStats) {
                 let htmlArma = '';
                 if (armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
-                    // Garante que usa url() se não for um ID local
                     let glbPath = armaStats.modeloGlb.startsWith('#') ? armaStats.modeloGlb : `url(${armaStats.modeloGlb})`;
                     htmlArma = `<a-entity gltf-model="${glbPath}" scale="${armaStats.escalaMao || '1 1 1'}" rotation="${armaStats.rotMao || '0 0 0'}" position="${armaStats.posMao || '0 0 0'}" anti-piscar></a-entity>`; 
                 } 
@@ -752,7 +751,6 @@
                 let dt = timeDelta / 1000; 
                 if (dt === 0 || !window.GAME_STARTED) return; 
 
-                // Se o jogador morrer, o tiro apenas some
                 if (!window.playerState.vivo) {
                     this.el.remove();
                     return;
@@ -830,11 +828,14 @@
                         let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize(); let forcaTiro = data.dano !== undefined ? data.dano : 15;
                         proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`); 
                         
+                        let escalaTiro = data.escalaTiro || '0.5 0.5 0.5';
+                        let rotTiro = data.rotacaoTiro || '0 0 0';
+
                         if (data.modeloTiroGlb && data.modeloTiroGlb.trim() !== '') {
                             let glbPath = data.modeloTiroGlb.startsWith('#') ? data.modeloTiroGlb : `url(${data.modeloTiroGlb})`;
-                            proj.innerHTML = `<a-entity gltf-model="${glbPath}" scale="0.5 0.5 0.5" anti-piscar animation="property: rotation; to: 0 360 0; loop: true; dur: 1000"></a-entity>`;
+                            proj.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${escalaTiro}" rotation="${rotTiro}" anti-piscar></a-entity>`;
                         } else {
-                            proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
+                            proj.innerHTML = `<a-entity scale="${escalaTiro}" rotation="${rotTiro}"><a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere></a-entity>`;
                         }
 
                         let scene = document.querySelector('a-scene'); if(scene) scene.appendChild(proj);
