@@ -109,7 +109,11 @@
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; 
             if (armaStats) {
                 let htmlArma = '';
-                if (armaStats.modeloGlb && armaStats.modeloGlb !== '') { htmlArma = `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaMao || '1 1 1'}" rotation="${armaStats.rotMao || '0 0 0'}" position="${armaStats.posMao || '0 0 0'}" anti-piscar></a-entity>`; } 
+                if (armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
+                    // Garante que usa url() se não for um ID local
+                    let glbPath = armaStats.modeloGlb.startsWith('#') ? armaStats.modeloGlb : `url(${armaStats.modeloGlb})`;
+                    htmlArma = `<a-entity gltf-model="${glbPath}" scale="${armaStats.escalaMao || '1 1 1'}" rotation="${armaStats.rotMao || '0 0 0'}" position="${armaStats.posMao || '0 0 0'}" anti-piscar></a-entity>`; 
+                } 
                 else if (armaStats.visualDir) { htmlArma = armaStats.visualDir; }
                 containerDir.innerHTML = htmlArma; containerPC.innerHTML = htmlArma;
             }
@@ -117,7 +121,10 @@
             let escudoStats = window.bancoDeArmas[window.playerState.nomeEscudo];
             if (window.playerState.escudoEquipado && escudoStats && (!armaStats || armaStats.categoria !== 'Arco')) { 
                 let htmlEscudo = '';
-                if(escudoStats.modeloGlb && escudoStats.modeloGlb !== '') { htmlEscudo = `<a-entity gltf-model="${escudoStats.modeloGlb}" scale="${escudoStats.escalaMao || '1 1 1'}" rotation="${escudoStats.rotMao || '0 0 0'}" position="${escudoStats.posMao || '0 0 0'}" anti-piscar></a-entity>`; } 
+                if(escudoStats.modeloGlb && escudoStats.modeloGlb !== '') { 
+                    let glbPath = escudoStats.modeloGlb.startsWith('#') ? escudoStats.modeloGlb : `url(${escudoStats.modeloGlb})`;
+                    htmlEscudo = `<a-entity gltf-model="${glbPath}" scale="${escudoStats.escalaMao || '1 1 1'}" rotation="${escudoStats.rotMao || '0 0 0'}" position="${escudoStats.posMao || '0 0 0'}" anti-piscar></a-entity>`; 
+                } 
                 else { htmlEscudo = `<a-box color="#4169E1" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#C0C0C0" width="0.42" height="0.52" depth="0.02" position="0 0 -0.01"></a-box></a-box>`; }
                 containerEsq.innerHTML = htmlEscudo; escudoPC.innerHTML = htmlEscudo;
             } else if (armaStats && armaStats.categoria === 'Arco') {
@@ -128,7 +135,7 @@
         };
 
         // ==========================================
-        // SISTEMA DE DANO E ÁUDIO (CORRIGIDO)
+        // SISTEMA DE DANO E ÁUDIO
         // ==========================================
         window.tocarSom = function(idSom) {
             let som = document.getElementById(idSom);
@@ -243,7 +250,8 @@
                     let nomeArma = listaArmas[i]; 
                     let armaStats = window.bancoDeArmas[nomeArma]; 
                     if(armaStats && armaStats.modeloGlb && armaStats.modeloGlb !== '') { 
-                        htmlSlots += `<a-entity gltf-model="${armaStats.modeloGlb}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
+                        let glbPath = armaStats.modeloGlb.startsWith('#') ? armaStats.modeloGlb : `url(${armaStats.modeloGlb})`;
+                        htmlSlots += `<a-entity gltf-model="${glbPath}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
                     } else { 
                         htmlSlots += `<a-text value="${nomeArma}" align="center" width="1" position="0 0 0.02" color="#FFF"></a-text>`;
                     } 
@@ -736,14 +744,38 @@
         
         AFRAME.registerComponent('projetil-inimigo-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () { this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.camera = document.querySelector('[camera]'); },
+            init: function () { 
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
+                this.camera = document.querySelector('[camera]'); 
+            },
             tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-                if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
-                if(!this.camera) return; let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+                let dt = timeDelta / 1000; 
+                if (dt === 0 || !window.GAME_STARTED) return; 
+
+                // Se o jogador morrer, o tiro apenas some
+                if (!window.playerState.vivo) {
+                    this.el.remove();
+                    return;
+                }
+
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
                 
-                // Área de acerto reduzida de 2.0 para 0.8
-                if (posProj.distanceTo(posPlayer) < 0.8) { if (this.el.dataset.defletido === "true") return; window.receberDanoJogador(this.data.dano); this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }
+                if (this.el.object3D.position.y < -1) { 
+                    this.el.remove(); 
+                    return; 
+                }
+                
+                if(!this.camera) return; 
+                let posPlayer = new THREE.Vector3(); 
+                this.camera.object3D.getWorldPosition(posPlayer); 
+                let posProj = new THREE.Vector3(); 
+                this.el.object3D.getWorldPosition(posProj);
+                
+                if (posProj.distanceTo(posPlayer) < 0.8) { 
+                    if (this.el.dataset.defletido === "true") return; 
+                    window.receberDanoJogador(this.data.dano); 
+                    this.el.remove(); 
+                }
             }
         });
 
@@ -798,9 +830,9 @@
                         let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize(); let forcaTiro = data.dano !== undefined ? data.dano : 15;
                         proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`); 
                         
-                        // Sistema de GLB do Tiro (Usa o customizado se houver)
                         if (data.modeloTiroGlb && data.modeloTiroGlb.trim() !== '') {
-                            proj.innerHTML = `<a-entity gltf-model="${data.modeloTiroGlb}" scale="0.5 0.5 0.5" anti-piscar animation="property: rotation; to: 0 360 0; loop: true; dur: 1000"></a-entity>`;
+                            let glbPath = data.modeloTiroGlb.startsWith('#') ? data.modeloTiroGlb : `url(${data.modeloTiroGlb})`;
+                            proj.innerHTML = `<a-entity gltf-model="${glbPath}" scale="0.5 0.5 0.5" anti-piscar animation="property: rotation; to: 0 360 0; loop: true; dur: 1000"></a-entity>`;
                         } else {
                             proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
                         }
@@ -883,7 +915,8 @@
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2'); visual.dataset.currentModel = modelSrc;
 
                     if (modelSrc && modelSrc.trim() !== '') {
-                        visual.setAttribute('gltf-model', modelSrc); visual.setAttribute('anti-piscar', '');
+                        let glbPath = modelSrc.startsWith('#') ? modelSrc : `url(${modelSrc})`;
+                        visual.setAttribute('gltf-model', glbPath); visual.setAttribute('anti-piscar', '');
                         visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
                         visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.setAttribute('visible', 'true'); });
                     }
@@ -899,7 +932,12 @@
                         if (visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
-                            if (visual.dataset.currentModel !== newModel) { visual.dataset.currentModel = newModel; visual.setAttribute('gltf-model', newModel); let holograma = el.querySelector('a-box[color="#f1c40f"], a-box[color="#e74c3c"]'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } }
+                            if (visual.dataset.currentModel !== newModel) { 
+                                visual.dataset.currentModel = newModel; 
+                                let glbPath = newModel.startsWith('#') ? newModel : `url(${newModel})`;
+                                visual.setAttribute('gltf-model', glbPath); 
+                                let holograma = el.querySelector('a-box[color="#f1c40f"], a-box[color="#e74c3c"]'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } 
+                            }
                         }
                     }
                 });
@@ -930,7 +968,8 @@
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : ''; visual.dataset.currentModel = modelSrc;
 
                     if (modelSrc !== '') {
-                        visual.setAttribute('gltf-model', modelSrc); visual.setAttribute('anti-piscar', '');
+                        let glbPath = modelSrc.startsWith('#') ? modelSrc : `url(${modelSrc})`;
+                        visual.setAttribute('gltf-model', glbPath); visual.setAttribute('anti-piscar', '');
                         visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
                         visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.innerHTML = `<a-cylinder color="#e74c3c" radius="0.4" height="1.8" position="0 0.9 0" opacity="0.8"></a-cylinder>`; fallback.setAttribute('visible', 'true'); });
                     }
@@ -946,7 +985,12 @@
                         if(visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '';
-                            if (visual.dataset.currentModel !== newModel) { visual.dataset.currentModel = newModel; visual.setAttribute('gltf-model', newModel); let holograma = el.querySelector('.npc-holograma'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } }
+                            if (visual.dataset.currentModel !== newModel) { 
+                                visual.dataset.currentModel = newModel; 
+                                let glbPath = newModel.startsWith('#') ? newModel : `url(${newModel})`;
+                                visual.setAttribute('gltf-model', glbPath); 
+                                let holograma = el.querySelector('.npc-holograma'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } 
+                            }
                         }
                         let colisor = el.querySelector('a-cylinder.interativo'); if (colisor) colisor.npcData = data; 
                         let nomeTag = el.querySelector('.npc-nome-tag'); if (nomeTag) nomeTag.setAttribute('value', data.nome || 'NPC');
