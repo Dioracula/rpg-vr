@@ -128,7 +128,7 @@
         };
 
         // ==========================================
-        // SISTEMA DE DANO E ÁUDIO (NOVO/CORRIGIDO)
+        // SISTEMA DE DANO E ÁUDIO (CORRIGIDO)
         // ==========================================
         window.tocarSom = function(idSom) {
             let som = document.getElementById(idSom);
@@ -741,7 +741,9 @@
                 let dt = timeDelta / 1000; if (dt === 0 || !window.playerState.vivo) return; this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
                 if (this.el.object3D.position.y < -1) { this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
                 if(!this.camera) return; let posPlayer = new THREE.Vector3(); this.camera.object3D.getWorldPosition(posPlayer); let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
-                if (posProj.distanceTo(posPlayer) < 2.0) { if (this.el.dataset.defletido === "true") return; window.receberDanoJogador(this.data.dano); this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }
+                
+                // Área de acerto reduzida de 2.0 para 0.8
+                if (posProj.distanceTo(posPlayer) < 0.8) { if (this.el.dataset.defletido === "true") return; window.receberDanoJogador(this.data.dano); this.el.removeAttribute('projetil-inimigo-fisico'); if(this.el.parentNode) this.el.parentNode.removeChild(this.el); }
             }
         });
 
@@ -794,7 +796,15 @@
                         let proj = document.createElement('a-entity'); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo); proj.setAttribute('position', `${posInimigo.x} ${posInimigo.y + 1.2} ${posInimigo.z}`);
                         let tX = isNaN(data.shoot.tx) ? 0 : data.shoot.tx; let tY = isNaN(data.shoot.ty) ? 0 : data.shoot.ty; let tZ = isNaN(data.shoot.tz) ? 0 : data.shoot.tz; let targetVec = new THREE.Vector3(tX, tY, tZ);
                         let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize(); let forcaTiro = data.dano !== undefined ? data.dano : 15;
-                        proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`); proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
+                        proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * 6} ${dir.y * 6} ${dir.z * 6}; dano: ${forcaTiro}`); 
+                        
+                        // Sistema de GLB do Tiro (Usa o customizado se houver)
+                        if (data.modeloTiroGlb && data.modeloTiroGlb.trim() !== '') {
+                            proj.innerHTML = `<a-entity gltf-model="${data.modeloTiroGlb}" scale="0.5 0.5 0.5" anti-piscar animation="property: rotation; to: 0 360 0; loop: true; dur: 1000"></a-entity>`;
+                        } else {
+                            proj.innerHTML = '<a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere>';
+                        }
+
                         let scene = document.querySelector('a-scene'); if(scene) scene.appendChild(proj);
                     }
 
