@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a1a; color: #ecf0f1; margin: 0; padding: 20px; }
@@ -56,9 +58,11 @@
         .grid-spawn .input-group { margin: 0; }
         .grid-spawn .input-group input, .grid-spawn .input-group select, .grid-spawn .input-group textarea { width: 100%; box-sizing: border-box; }
         
+        .leitor-glb { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; border: 1px dashed #f1c40f; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         .grupo-destaque { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); }
         .grupo-especial { background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(52, 152, 219, 0.3); }
         .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
+        #status-upload { color: #2ecc71; font-weight: bold; font-size: 0.95rem; }
     </style>
 </head>
 <body>
@@ -67,6 +71,16 @@
     <h1>👑 PAINEL DO MESTRE</h1>
     
     <div class="header-controls"><button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos)</button></div>
+
+    <div class="leitor-glb">
+        <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Ferramenta Extrair Animações (.GLB)</label>
+        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair os nomes das animações.</span>
+        <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+            <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
+            <span id="status-upload">Nenhum arquivo lido.</span>
+        </div>
+    </div>
+    <datalist id="lista-animacoes"></datalist>
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
@@ -78,9 +92,7 @@
 
     <div id="tab-jogadores" class="tab-content" style="display: block;">
         <h2 class="section-title">🎒 INVENTÁRIO E STATUS DOS JOGADORES</h2>
-        <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
-            <p style="color: #7f8c8d;">Carregando banco de dados...</p>
-        </div>
+        <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;"></div>
     </div>
 
     <div id="tab-armas" class="tab-content">
@@ -90,7 +102,7 @@
         <div class="painel-spawn arma-spawn" id="form-arma">
             <h2>⚒️ Forjar / Editar Item</h2>
             <div class="grid-spawn">
-                <div class="input-group"><label>Nome da Arma/Escudo</label><input type="text" id="arma-id" placeholder="Ex: Espada de Fogo"></div>
+                <div class="input-group"><label>Nome do Item</label><input type="text" id="arma-id" placeholder="Ex: Espada de Fogo"></div>
                 <div class="input-group"><label>Categoria</label>
                     <select id="arma-cat">
                         <option value="Espada">Espada (Corpo a Corpo)</option>
@@ -98,22 +110,22 @@
                         <option value="Arco">Arco (Projétil)</option>
                         <option value="Varinha">Varinha (Magia)</option>
                         <option value="Shuriken">Shuriken (Arremesso)</option>
-                        <option value="Escudo">Escudo (Defesa Mão Esq)</option>
+                        <option value="Escudo">Escudo (Mão Esquerda)</option>
                     </select>
                 </div>
                 <div class="input-group"><label>Caminho GLB</label><input type="text" id="arma-glb" placeholder="Ex: Armas/espada.glb"></div>
                 
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Dano (Força)</label><input type="number" id="arma-dano" value="10"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Defesa (+Armadura)</label><input type="number" id="arma-defesa" value="0"></div>
-                <div class="input-group grupo-especial"><label style="color:#f1c40f">Distância de Acerto</label><input type="number" step="0.1" id="arma-dist" value="3.0" title="Para espadas: 3.0, Para Varinhas/Arcos: 15.0"></div>
+                <div class="input-group grupo-especial"><label style="color:#f1c40f">Alcance (Metros)</label><input type="number" step="0.1" id="arma-dist" value="3.0" title="Para espadas: 3.0, Para Varinhas/Arcos: 15.0"></div>
 
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de HP Máx</label><input type="number" id="arma-b-hp" value="0"></div>
-                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Velocidade</label><input type="number" id="arma-b-vel" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Velocidade</label><input type="number" step="0.1" id="arma-b-vel" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Sorte</label><input type="number" id="arma-b-sorte" value="0"></div>
 
                 <div class="input-group"><label>Escala (X Y Z)</label><input type="text" id="arma-escala" value="1 1 1"></div>
-                <div class="input-group"><label>Rotação na Mão</label><input type="text" id="arma-rot" value="0 0 0"></div>
-                <div class="input-group"><label>Posição na Mão</label><input type="text" id="arma-pos" value="0 0 0"></div>
+                <div class="input-group"><label>Rotação (X Y Z)</label><input type="text" id="arma-rot" value="0 0 0"></div>
+                <div class="input-group"><label>Posição (X Y Z)</label><input type="text" id="arma-pos" value="0 0 0"></div>
             </div>
             <button class="btn btn-edit" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="forjarArma()">🔨 FORJAR ITEM NO SERVIDOR</button>
         </div>
@@ -141,25 +153,63 @@
         <div class="painel-spawn npc-spawn" id="form-npc">
             <h2>📜 Criar ou Editar NPC</h2>
             <div class="grid-spawn">
-                <div class="input-group"><label>ID Único</label><input type="text" id="npc-id"></div>
-                <div class="input-group"><label>Nome</label><input type="text" id="npc-nome"></div>
-                <div class="input-group"><label>Tipo</label><select id="npc-tipo" onchange="atualizarCamposNPC()"><option value="dialogo">Diálogo</option><option value="secundaria">Missão</option></select></div>
+                <div class="input-group"><label>ID Único</label><input type="text" id="npc-id" placeholder="ex: ferreiro"></div>
+                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="npc-nome" placeholder="ex: João"></div>
+                <div class="input-group"><label>Tipo de NPC</label><select id="npc-tipo"><option value="dialogo">Apenas Diálogo</option><option value="secundaria">Missão</option></select></div>
+                <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb"></div>
+                <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
+                <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
                 <div class="input-group"><label>Pos X</label><input type="number" id="npc-x" value="0"></div>
                 <div class="input-group"><label>Pos Y</label><input type="number" id="npc-y" value="0"></div>
                 <div class="input-group"><label>Pos Z</label><input type="number" id="npc-z" value="-5"></div>
-                <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo"></textarea></div>
-                <div class="input-group campo-missao" style="grid-column: span 3;"><label>Diálogo Missão</label><textarea id="npc-dialogo-missao"></textarea></div>
-                <div class="input-group campo-missao"><label>ID Missão</label><input type="text" id="npc-missao-id"></div>
-                <div class="input-group campo-missao"><label>Rec. Ouro</label><input type="number" id="npc-rec-ouro" value="0"></div>
-                <div class="input-group campo-missao"><label>Rec. Item</label><input type="text" id="npc-rec-item"></div>
+                
+                <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
+                <div class="input-group" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
+                
+                <div class="input-group"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
+                <div class="input-group"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
+
+                <div class="input-group"><label style="color:#2ecc71">Recompensa (XP)</label><input type="number" id="npc-rec-xp" value="0"></div>
+                <div class="input-group"><label style="color:#2ecc71">Recompensa (Ouro)</label><input type="number" id="npc-rec-ouro" value="0"></div>
+                <div class="input-group"><label style="color:#2ecc71">Recompensa (Nome Item)</label><input type="text" id="npc-rec-item" placeholder="Ex: Espada Curva"></div>
             </div>
-            <button class="btn btn-blue" style="width: 100%; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ SALVAR NPC</button>
+            <button class="btn btn-blue" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoNpc()">⚡ INVOCAR / SALVAR EDIÇÃO DO NPC</button>
         </div>
     </div>
 
     <div id="tab-inimigos" class="tab-content">
         <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
         <div id="lista-inimigos"></div>
+
+        <div class="painel-spawn ini-spawn" id="form-inimigo">
+            <h2>🪄 Invocar ou Editar Inimigo</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label><select id="novo-comportamento"><option value="hostil">Hostil (Ataca ao ver)</option><option value="pacifico">Pacífico (Só revida)</option></select></div>
+                <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label><select id="novo-movimento"><option value="estatico">Estático (Parado)</option><option value="livre">Patrulha Livre</option></select></div>
+                <div class="input-group"><label>Tipo (IA)</label><select id="novo-tipo"><option value="meelee">Corpo a Corpo</option><option value="atirador">Atirador (Magia)</option></select></div>
+                
+                <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
+                
+                <div class="input-group"><label>Caminho GLB</label><input type="text" id="novo-glb-caminho" value="#modelo-inimigo"></div>
+                <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
+                <div class="input-group"><label>Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
+                <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
+                <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
+
+                <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
+                <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
+                <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Seg.)</label><input type="number" id="novo-respawn-time" value="60"></div>
+
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" step="0.1" id="novo-spawn-y" value="0"></div>
+                <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Z</label><input type="number" step="0.1" id="novo-spawn-z" value="-5"></div>
+            </div>
+            <button class="btn btn-green" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="spawnarNovoInimigo()">⚡ INVOCAR INIMIGO</button>
+        </div>
     </div>
 </div>
 
@@ -180,12 +230,27 @@
     const db = firebase.database(); const firestoreDB = firebase.firestore();
 
     // ==========================================
-    // LÓGICA DO ARSENAL (ARMAS E ESCUDOS)
+    // EXTRATOR GLB
+    // ==========================================
+    document.getElementById('file-glb').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); const statusText = document.getElementById('status-upload');
+        loader.load(urlTemporaria, function(gltf) {
+            const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); datalist.innerHTML = '';
+            if (animations && animations.length > 0) {
+                animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
+                statusText.innerText = `✅ Lidas ${animations.length} animações! Vá no GitHub fazer o upload.`;
+                document.getElementById('npc-glb').value = `Npcs/${file.name}`; document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+            } else { statusText.innerText = '⚠️ Arquivo lido, mas não possui animações.'; }
+        }, undefined, function(error) { statusText.innerText = '❌ Arquivo GLB inválido.'; });
+    });
+
+    // ==========================================
+    // ARSENAL
     // ==========================================
     const listaArmasDiv = document.getElementById('lista-armas');
     db.ref('banco_armas').on('value', snap => {
-        listaArmasDiv.innerHTML = '';
-        let armas = snap.val(); if(!armas) return;
+        listaArmasDiv.innerHTML = ''; let armas = snap.val(); if(!armas) return;
         for(let id in armas) {
             let a = armas[id];
             let corCard = a.categoria === 'Escudo' ? '#3498db' : (a.categoria === 'Varinha' || a.categoria === 'Arco' ? '#9b59b6' : '#e74c3c');
@@ -227,24 +292,21 @@
     window.forjarArma = function() {
         let id = document.getElementById('arma-id').value; if(!id) { alert("Dê um nome para a arma!"); return; }
         db.ref('banco_armas/' + id).set({
-            categoria: document.getElementById('arma-cat').value,
-            modeloGlb: document.getElementById('arma-glb').value,
-            danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0,
-            defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
+            categoria: document.getElementById('arma-cat').value, modeloGlb: document.getElementById('arma-glb').value,
+            danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0, defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
             distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0,
-            bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
-            bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0,
+            bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0, bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0,
             bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
-            escalaMao: document.getElementById('arma-escala').value || '1 1 1',
-            rotMao: document.getElementById('arma-rot').value || '0 0 0',
-            posMao: document.getElementById('arma-pos').value || '0 0 0',
-            escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05'
+            escalaMao: document.getElementById('arma-escala').value || '1 1 1', rotMao: document.getElementById('arma-rot').value || '0 0 0', posMao: document.getElementById('arma-pos').value || '0 0 0',
+            escalaInv: '0.15 0.15 0.15', rotInv: '0 0 0', posInv: '0 0 0.05'
         }).then(() => alert("Item forjado e enviado para os jogadores!"));
     };
 
     window.excluirArma = function(id) { if(confirm(`DESTRUIR o item ${id}? Ele sumirá do inventário de todos!`)) db.ref('banco_armas/' + id).remove(); };
 
-    // CARREGA OS OUTROS SISTEMAS ORIGINAIS (MANTIDOS INTACTOS)
+    // ==========================================
+    // JOGADORES
+    // ==========================================
     firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
         const listaJogadores = document.getElementById('lista-jogadores'); listaJogadores.innerHTML = '';
         querySnapshot.forEach((doc) => {
@@ -257,6 +319,102 @@
         if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
             db.ref('players').remove(); db.ref('server_commands/kick_all').set(Date.now()); alert("Sinal de KICK enviado!");
         }
+    };
+
+    // ==========================================
+    // RESPAWNS, NPCS, INIMIGOS (CRUD BÁSICO)
+    // ==========================================
+    const listaRespawnsDiv = document.getElementById('lista-respawns');
+    db.ref('cenario_respawns').on('child_added', (snapshot) => {
+        let id = snapshot.key; let r = snapshot.val();
+        let card = document.createElement('div'); card.className = 'card respawn-card'; card.id = `card-resp-${id}`;
+        card.innerHTML = `<h3>🔮 ${id}</h3><div class="action-buttons"><button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button></div>`;
+        listaRespawnsDiv.appendChild(card);
+    });
+    db.ref('cenario_respawns').on('child_removed', (snapshot) => { let card = document.getElementById(`card-resp-${snapshot.key}`); if(card) card.remove(); });
+
+    window.spawnarRespawn = function() {
+        let id = document.getElementById('resp-id').value; if(!id) return;
+        db.ref('cenario_respawns/' + id).set({ pos: { x: parseFloat(document.getElementById('resp-x').value)||0, y: parseFloat(document.getElementById('resp-y').value)||0, z: parseFloat(document.getElementById('resp-z').value)||0 }, raio: parseFloat(document.getElementById('resp-raio').value) || 3 });
+    };
+
+    const listaNpcsDiv = document.getElementById('lista-npcs');
+    db.ref('cenario_npcs').on('child_added', (snapshot) => {
+        let id = snapshot.key; let npc = snapshot.val();
+        let card = document.createElement('div'); card.className = 'card npc-card'; card.id = `card-npc-${id}`;
+        card.innerHTML = `<h3>🧑‍🌾 ${npc.nome || id}</h3><div class="action-buttons"><button class="btn btn-edit" onclick="carregarEdicaoNpc('${id}')">✏️ Editar</button><button class="btn btn-dark" onclick="db.ref('cenario_npcs/${id}').remove()">🗑️ Excluir</button></div>`;
+        listaNpcsDiv.appendChild(card);
+    });
+    db.ref('cenario_npcs').on('child_removed', (snapshot) => { let card = document.getElementById(`card-npc-${snapshot.key}`); if(card) card.remove(); });
+
+    window.carregarEdicaoNpc = function(id) {
+        db.ref('cenario_npcs/' + id).once('value').then(snap => {
+            let data = snap.val(); if(!data) return; abrirAba('tab-npcs', null);
+            document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
+            document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; document.getElementById('npc-glb').value = data.modeloGlb || '';
+            document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
+            document.getElementById('npc-x').value = data.pos ? data.pos.x : 0; document.getElementById('npc-y').value = data.pos ? data.pos.y : 0; document.getElementById('npc-z').value = data.pos ? data.pos.z : 0;
+            document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; 
+            document.getElementById('npc-missao-id').value = data.idMissao || ''; document.getElementById('npc-chave-conclusao').value = data.chaveConclusao || ''; 
+            document.getElementById('npc-requisito').value = data.requisito || ''; document.getElementById('npc-rec-xp').value = data.recXP || 0;
+            document.getElementById('npc-rec-ouro').value = data.recOuro || 0; document.getElementById('npc-rec-item').value = data.recItem || '';
+            document.getElementById('form-npc').scrollIntoView({ behavior: 'smooth' });
+        });
+    };
+
+    window.spawnarNovoNpc = function() {
+        let id = document.getElementById('npc-id').value; if(!id) return;
+        let tipo = document.getElementById('npc-tipo').value;
+        db.ref('cenario_npcs/' + id).update({
+            nome: document.getElementById('npc-nome').value, tipo: tipo,
+            pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
+            modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
+            dialogoPadrao: document.getElementById('npc-dialogo').value, dialogoMissao: document.getElementById('npc-dialogo-missao').value,
+            idMissao: document.getElementById('npc-missao-id').value, chaveConclusao: document.getElementById('npc-chave-conclusao').value,
+            requisito: document.getElementById('npc-requisito').value, recXP: parseFloat(document.getElementById('npc-rec-xp').value) || 0,
+            recOuro: parseFloat(document.getElementById('npc-rec-ouro').value) || 0, recItem: document.getElementById('npc-rec-item').value
+        }).then(() => alert(`NPC atualizado!`));
+    };
+
+    const listaInimigosDiv = document.getElementById('lista-inimigos');
+    db.ref('cenario_inimigos').on('child_added', (snapshot) => {
+        let id = snapshot.key; let ini = snapshot.val();
+        let card = document.createElement('div'); card.className = 'card'; card.id = `card-ini-${id}`;
+        card.innerHTML = `<h3>👾 ${id}</h3><div class="action-buttons"><button class="btn btn-edit" onclick="carregarEdicaoInimigo('${id}')">✏️ Editar</button><button class="btn btn-dark" onclick="db.ref('cenario_inimigos/${id}').remove()">🗑️ Excluir</button></div>`;
+        listaInimigosDiv.appendChild(card);
+    });
+    db.ref('cenario_inimigos').on('child_removed', (snapshot) => { let card = document.getElementById(`card-ini-${snapshot.key}`); if(card) card.remove(); });
+
+    window.carregarEdicaoInimigo = function(id) {
+        db.ref('cenario_inimigos/' + id).once('value').then(snap => {
+            let data = snap.val(); if(!data) return; abrirAba('tab-inimigos', null);
+            document.getElementById('novo-id').value = id; document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
+            document.getElementById('novo-movimento').value = data.movimento || 'estatico'; document.getElementById('novo-tipo').value = data.tipo || 'meelee';
+            document.getElementById('novo-hp').value = data.hpMax || 50; document.getElementById('novo-dano').value = data.dano || 10;
+            document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; document.getElementById('novo-anim-parado').value = data.animParado || '';
+            document.getElementById('novo-anim-andando').value = data.animAndando || ''; document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
+            document.getElementById('novo-anim-morte').value = data.animMorte || ''; document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0;
+            document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0;
+            document.getElementById('novo-aggro-range').value = data.aggroRange || 15; document.getElementById('novo-attack-range').value = data.attackRange || 1.8;
+            document.getElementById('novo-speed').value = data.speed || 0.08; document.getElementById('novo-cooldown').value = data.cooldown || 2000;
+            document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
+            document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth' });
+        });
+    };
+
+    window.spawnarNovoInimigo = function() {
+        let id = document.getElementById('novo-id').value; if(!id) return;
+        db.ref('cenario_inimigos/' + id).update({
+            hpMax: parseFloat(document.getElementById('novo-hp').value) || 50, hp: parseFloat(document.getElementById('novo-hp').value) || 50, dano: parseFloat(document.getElementById('novo-dano').value) || 10,
+            spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
+            pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
+            comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, 
+            aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15, attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
+            speed: parseFloat(document.getElementById('novo-speed').value) || 0.08, cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
+            respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
+            modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
+            animAtaque: document.getElementById('novo-anim-ataque').value, animMorte: document.getElementById('novo-anim-morte').value
+        }).then(() => alert(`Monstro atualizado!`));
     };
 </script>
 </body>
