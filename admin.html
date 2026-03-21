@@ -43,6 +43,8 @@
         .input-group textarea { width: 250px; resize: vertical; height: 35px;}
         .input-group input:focus, .input-group textarea:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
+        .input-file-mini { margin-top: 5px; font-size: 0.75rem; color: #f1c40f; }
+
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; } .btn-green:hover { background: #2ecc71; }
         .btn-blue { background: #2980b9; color: white; } .btn-blue:hover { background: #3498db; }
@@ -80,8 +82,8 @@
         <p style="color:#bdc3c7; font-size:0.9rem; margin-top:-10px;">Conecte seu repositório para ler os arquivos GLB diretamente.</p>
         
         <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="text" id="gh-user" placeholder="Usuário (Ex: seunome)" value="SeuUsuario" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
-            <input type="text" id="gh-repo" placeholder="Repositório (Ex: mmo-assets)" value="SeuRepositorio" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
+            <input type="text" id="gh-user" placeholder="Usuário (Ex: seunome)" value="Dioracula" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
+            <input type="text" id="gh-repo" placeholder="Repositório (Ex: mmo-assets)" value="rpg-vr" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
             <button class="btn btn-blue" style="margin:0; width:auto;" onclick="carregarPastaGitHub('')">🔄 Conectar</button>
         </div>
         
@@ -337,7 +339,7 @@
         const fileList = document.getElementById('gh-file-list');
         const statusSpan = document.getElementById('gh-loading-status');
         
-        if(!user || !repo || user === "SeuUsuario" || repo === "SeuRepositorio") {
+        if(!user || !repo) {
             alert("⚠️ Por favor, digite seu Usuário e Repositório do GitHub primeiro!");
             return;
         }
