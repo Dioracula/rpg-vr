@@ -43,6 +43,8 @@
         .input-group textarea { width: 250px; resize: vertical; height: 35px;}
         .input-group input:focus, .input-group textarea:focus { border-color: #f1c40f; background: #2c3e50; outline: none; }
         
+        .input-file-mini { margin-top: 5px; font-size: 0.75rem; color: #f1c40f; }
+
         .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-right: 5px; margin-top: 10px;}
         .btn-green { background: #27ae60; color: white; } .btn-green:hover { background: #2ecc71; }
         .btn-blue { background: #2980b9; color: white; } .btn-blue:hover { background: #3498db; }
@@ -61,11 +63,10 @@
         .grid-spawn .input-group { margin: 0; }
         .grid-spawn .input-group input, .grid-spawn .input-group select, .grid-spawn .input-group textarea { width: 100%; box-sizing: border-box; }
         
-        .leitor-glb { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 5px; border: 1px dashed #f1c40f; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
         .grupo-destaque { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); }
         .grupo-especial { background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(52, 152, 219, 0.3); }
         .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
-        #status-upload { color: #2ecc71; font-weight: bold; font-size: 0.95rem; }
+        .status-extracao { font-size: 0.75rem; font-weight: bold; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -77,14 +78,6 @@
         <button class="btn btn-dark" onclick="kickarTodos()">🥾 KICK ALL (Derrubar Todos)</button>
     </div>
 
-    <div class="leitor-glb">
-        <label style="color: #f1c40f; font-size: 1.2rem;">🔍 Ferramenta Extrair Animações (.GLB)</label>
-        <span style="font-size: 0.85rem; color: #ccc;">Selecione o arquivo aqui para extrair as animações e autocompletar os caminhos GLB nos formulários.</span>
-        <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
-            <input type="file" id="file-glb" accept=".glb,.gltf" style="background: transparent; border: none; color: white;">
-            <span id="status-upload">Nenhum arquivo lido.</span>
-        </div>
-    </div>
     <datalist id="lista-animacoes"></datalist>
 
     <div class="admin-tabs">
@@ -120,7 +113,12 @@
                         <option value="Escudo">Escudo (Mão Esquerda)</option>
                     </select>
                 </div>
-                <div class="input-group"><label>Caminho GLB</label><input type="text" id="arma-glb" placeholder="Ex: Armas/Espadas/espada.glb"></div>
+                
+                <div class="input-group">
+                    <label>Caminho GLB <span id="status-arma-glb" class="status-extracao"></span></label>
+                    <input type="text" id="arma-glb" placeholder="Ex: Armas/Espadas/espada.glb">
+                    <input type="file" id="file-arma-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                </div>
                 
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Dano (Força)</label><input type="number" id="arma-dano" value="10"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Defesa (+Armadura)</label><input type="number" id="arma-defesa" value="0"></div>
@@ -175,7 +173,12 @@
                     </select>
                 </div>
                 
-                <div class="input-group"><label>Caminho no GitHub</label><input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb"></div>
+                <div class="input-group">
+                    <label>Caminho GLB <span id="status-npc-glb" class="status-extracao"></span></label>
+                    <input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb">
+                    <input type="file" id="file-npc-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                </div>
+
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
                 <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
                 
@@ -227,12 +230,22 @@
                 <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
                 
-                <div class="input-group"><label>Caminho GLB</label><input type="text" id="novo-glb-caminho" value="#modelo-inimigo"></div>
+                <div class="input-group">
+                    <label>Caminho GLB (Inimigo) <span id="status-ini-glb" class="status-extracao"></span></label>
+                    <input type="text" id="novo-glb-caminho" value="#modelo-inimigo">
+                    <input type="file" id="file-ini-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                </div>
+
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
                 <div class="input-group"><label>Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
                 <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
                 <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
-                <div class="input-group"><label style="color: #9b59b6;">GLB do Tiro</label><input type="text" id="novo-glb-tiro" placeholder="Ex: Magias/fogo.glb"></div>
+                
+                <div class="input-group">
+                    <label style="color: #9b59b6;">GLB do Tiro <span id="status-tiro-glb" class="status-extracao"></span></label>
+                    <input type="text" id="novo-glb-tiro" placeholder="Ex: Magias/fogo.glb">
+                    <input type="file" id="file-tiro-glb" accept=".glb,.gltf" class="input-file-mini" title="Escolher arquivo GLB">
+                </div>
 
                 <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
@@ -273,47 +286,60 @@
     const firestoreDB = firebase.firestore();
 
     // ==========================================
-    // EXTRATOR GLB E AUTOCOMPLETAR INTELIGENTE
+    // EXTRATOR GLB E AUTOCOMPLETAR INTELIGENTE (AGORA INTEGRADO NOS CAMPOS)
     // ==========================================
-    document.getElementById('file-glb').addEventListener('change', function(e) {
-        const file = e.target.files[0]; if (!file) return;
-        const urlTemporaria = URL.createObjectURL(file); 
-        const loader = new THREE.GLTFLoader(); 
-        const statusText = document.getElementById('status-upload');
-        
-        loader.load(urlTemporaria, function(gltf) {
-            const animations = gltf.animations; 
-            const datalist = document.getElementById('lista-animacoes'); 
-            datalist.innerHTML = '';
+    function processarGLB(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
+        document.getElementById(fileInputId).addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const urlTemporaria = URL.createObjectURL(file); 
+            const loader = new THREE.GLTFLoader(); 
+            const statusText = document.getElementById(statusId);
             
-            // Lógica Inteligente para descobrir a Subpasta da Arma
-            let catArma = document.getElementById('arma-cat').value;
-            let subPastaArma = "Outros";
-            if(catArma === "Espada") subPastaArma = "Espadas";
-            else if(catArma === "Luva") subPastaArma = "Luvas";
-            else if(catArma === "Arco") subPastaArma = "Arcos";
-            else if(catArma === "Varinha") subPastaArma = "Varinhas";
-            else if(catArma === "Shuriken") subPastaArma = "Shurikens";
-            else if(catArma === "Escudo") subPastaArma = "Escudos";
-
-            // Preenche os caminhos
-            document.getElementById('npc-glb').value = `Npcs/${file.name}`; 
-            document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
-            document.getElementById('arma-glb').value = `Armas/${subPastaArma}/${file.name}`;
-
-            if (animations && animations.length > 0) {
-                animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
-                statusText.innerText = `✅ Lidas ${animations.length} animações! Caminhos Preenchidos.`;
-                statusText.style.color = "#2ecc71";
-            } else { 
-                statusText.innerText = `⚠️ Lido sem animações (Ideal para Itens). Caminhos Preenchidos!`; 
-                statusText.style.color = "#f39c12";
+            let subPasta = "";
+            if (selectCatId) {
+                let cat = document.getElementById(selectCatId).value;
+                if(cat === "Espada") subPasta = "Espadas/";
+                else if(cat === "Luva") subPasta = "Luvas/";
+                else if(cat === "Arco") subPasta = "Arcos/";
+                else if(cat === "Varinha") subPasta = "Varinhas/";
+                else if(cat === "Shuriken") subPasta = "Shurikens/";
+                else if(cat === "Escudo") subPasta = "Escudos/";
+                else subPasta = "Outros/";
             }
-        }, undefined, function(error) { 
-            statusText.innerText = '❌ Arquivo GLB inválido ou corrompido.'; 
-            statusText.style.color = "#e74c3c";
+
+            // Preenche o campo de texto automaticamente
+            document.getElementById(targetInputId).value = `${pastaBase}${subPasta}${file.name}`;
+            
+            loader.load(urlTemporaria, function(gltf) {
+                const animations = gltf.animations; 
+                const datalist = document.getElementById('lista-animacoes'); 
+                
+                if (animations && animations.length > 0) {
+                    datalist.innerHTML = ''; // Limpa as antigas e poe as novas
+                    animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
+                    statusText.innerText = `(✅ ${animations.length} Animações)`;
+                    statusText.style.color = "#2ecc71";
+                } else { 
+                    statusText.innerText = `(⚠️ Sem animações)`; 
+                    statusText.style.color = "#f39c12";
+                }
+                
+                // Limpa o status depois de 5 segundos
+                setTimeout(() => { statusText.innerText = ""; }, 5000);
+
+            }, undefined, function(error) { 
+                statusText.innerText = '(❌ Erro no arquivo)'; 
+                statusText.style.color = "#e74c3c";
+            });
         });
-    });
+    }
+
+    // Inicializa os botões de upload em seus respectivos campos
+    processarGLB('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
+    processarGLB('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
+    processarGLB('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
+    processarGLB('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
+
 
     // ==========================================
     // JOGADORES (FIRESTORE)
@@ -462,7 +488,7 @@
     };
 
     // ==========================================
-    // INIMIGOS (COM NOVO RADAR DE HP E POSIÇÃO)
+    // INIMIGOS
     // ==========================================
     const listaInimigosDiv = document.getElementById('lista-inimigos');
     
@@ -522,8 +548,6 @@
             document.getElementById('novo-aggro-range').value = data.aggroRange || 15; document.getElementById('novo-attack-range').value = data.attackRange || 1.8;
             document.getElementById('novo-speed').value = data.speed || 0.08; document.getElementById('novo-cooldown').value = data.cooldown || 2000;
             document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
-            
-            // Carrega o modelo de tiro caso ele exista
             document.getElementById('novo-glb-tiro').value = data.modeloTiroGlb || '';
 
             document.getElementById('form-inimigo').scrollIntoView({ behavior: 'smooth' });
@@ -542,8 +566,6 @@
             respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
             modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
             animAtaque: document.getElementById('novo-anim-ataque').value, animMorte: document.getElementById('novo-anim-morte').value,
-            
-            // Salva o modelo do tiro
             modeloTiroGlb: document.getElementById('novo-glb-tiro').value
         }).then(() => alert(`Monstro atualizado!`));
     };
