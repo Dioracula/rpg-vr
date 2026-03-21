@@ -289,6 +289,8 @@
                         <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('novo-glb-tiro', 'Magias/', 'status-tiro-glb')">🐙 GitHub</button>
                     </div>
                 </div>
+                <div class="input-group"><label style="color: #9b59b6;">Escala do Tiro</label><input type="text" id="novo-escala-tiro" placeholder="Ex: 0.5 0.5 0.5" value="0.5 0.5 0.5"></div>
+                <div class="input-group"><label style="color: #9b59b6;">Rotação do Tiro</label><input type="text" id="novo-rotacao-tiro" placeholder="Ex: 0 0 0" value="0 0 0"></div>
 
                 <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Alcance Ataque (m)</label><input type="number" step="0.1" id="novo-attack-range" value="1.8"></div>
@@ -717,7 +719,10 @@
                 document.getElementById('novo-aggro-range').value = data.aggroRange || 15; document.getElementById('novo-attack-range').value = data.attackRange || 1.8;
                 document.getElementById('novo-speed').value = data.speed || 0.08; document.getElementById('novo-cooldown').value = data.cooldown || 2000;
                 document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
+                
                 document.getElementById('novo-glb-tiro').value = data.modeloTiroGlb || '';
+                document.getElementById('novo-escala-tiro').value = data.escalaTiro || '0.5 0.5 0.5';
+                document.getElementById('novo-rotacao-tiro').value = data.rotacaoTiro || '0 0 0';
 
                 let formInimigo = document.getElementById('form-inimigo');
                 if(formInimigo) formInimigo.scrollIntoView({ behavior: 'smooth' });
@@ -736,7 +741,10 @@
                 respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
                 modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
                 animAtaque: document.getElementById('novo-anim-ataque').value, animMorte: document.getElementById('novo-anim-morte').value,
-                modeloTiroGlb: document.getElementById('novo-glb-tiro').value
+                
+                modeloTiroGlb: document.getElementById('novo-glb-tiro').value,
+                escalaTiro: document.getElementById('novo-escala-tiro').value || '0.5 0.5 0.5',
+                rotacaoTiro: document.getElementById('novo-rotacao-tiro').value || '0 0 0'
             }).then(() => alert(`Monstro atualizado!`));
         };
 
