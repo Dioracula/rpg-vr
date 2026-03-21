@@ -23,7 +23,6 @@
         .tab-btn:hover { background: #455a64; color: white; }
         .tab-btn.active { background: #f1c40f; color: #111; box-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
         
-        /* O segredo: a aba ativa vira um bloco flex */
         .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
         
@@ -247,22 +246,17 @@
 
 <script>
     // ==========================================
-    // SISTEMA DE ABAS (Correção do Bug Visual)
+    // SISTEMA DE ABAS
     // ==========================================
     function abrirAba(abaId, btnSelecionado) {
-        // Esconde todas as abas
         let abas = document.getElementsByClassName("tab-content");
         for (let i = 0; i < abas.length; i++) { 
             abas[i].classList.remove("active");
         }
-        
-        // Tira o amarelo dos botões
         let botoes = document.getElementsByClassName("tab-btn");
         for (let i = 0; i < botoes.length; i++) { 
             botoes[i].classList.remove("active"); 
         }
-        
-        // Mostra a aba clicada e pinta o botão
         document.getElementById(abaId).classList.add("active");
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
     }
