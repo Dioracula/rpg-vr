@@ -120,7 +120,7 @@
                         <option value="Escudo">Escudo (Mão Esquerda)</option>
                     </select>
                 </div>
-                <div class="input-group"><label>Caminho GLB</label><input type="text" id="arma-glb" placeholder="Ex: Armas/espada.glb"></div>
+                <div class="input-group"><label>Caminho GLB</label><input type="text" id="arma-glb" placeholder="Ex: Armas/Espadas/espada.glb"></div>
                 
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Dano (Força)</label><input type="number" id="arma-dano" value="10"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Defesa (+Armadura)</label><input type="number" id="arma-defesa" value="0"></div>
@@ -272,7 +272,7 @@
     const firestoreDB = firebase.firestore();
 
     // ==========================================
-    // EXTRATOR GLB E AUTOCOMPLETAR
+    // EXTRATOR GLB E AUTOCOMPLETAR INTELIGENTE
     // ==========================================
     document.getElementById('file-glb').addEventListener('change', function(e) {
         const file = e.target.files[0]; if (!file) return;
@@ -285,17 +285,27 @@
             const datalist = document.getElementById('lista-animacoes'); 
             datalist.innerHTML = '';
             
-            // INDEPENDENTE SE TEM ANIMAÇÃO OU NÃO, ELE AUTO-PREENCHE OS CAMINHOS!
+            // Lógica Inteligente para descobrir a Subpasta da Arma
+            let catArma = document.getElementById('arma-cat').value;
+            let subPastaArma = "Outros";
+            if(catArma === "Espada") subPastaArma = "Espadas";
+            else if(catArma === "Luva") subPastaArma = "Luvas";
+            else if(catArma === "Arco") subPastaArma = "Arcos";
+            else if(catArma === "Varinha") subPastaArma = "Varinhas";
+            else if(catArma === "Shuriken") subPastaArma = "Shurikens";
+            else if(catArma === "Escudo") subPastaArma = "Escudos";
+
+            // Preenche os caminhos
             document.getElementById('npc-glb').value = `Npcs/${file.name}`; 
             document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
-            document.getElementById('arma-glb').value = `Armas/${file.name}`;
+            document.getElementById('arma-glb').value = `Armas/${subPastaArma}/${file.name}`;
 
             if (animations && animations.length > 0) {
                 animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
-                statusText.innerText = `✅ Lidas ${animations.length} animações! Caminhos de Arquivo Preenchidos.`;
+                statusText.innerText = `✅ Lidas ${animations.length} animações! Caminhos Preenchidos.`;
                 statusText.style.color = "#2ecc71";
             } else { 
-                statusText.innerText = `⚠️ Lido sem animações (Ideal para Itens). Caminhos de Arquivo Preenchidos!`; 
+                statusText.innerText = `⚠️ Lido sem animações (Ideal para Itens). Caminhos Preenchidos!`; 
                 statusText.style.color = "#f39c12";
             }
         }, undefined, function(error) { 
@@ -362,7 +372,6 @@
             document.getElementById('arma-rot').value = a.rotMao || '0 0 0';
             document.getElementById('arma-pos').value = a.posMao || '0 0 0';
             
-            // CARREGA OS STATUS DO INVENTÁRIO
             document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15';
             document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
             document.getElementById('arma-inv-pos').value = a.posInv || '0 0 0.05';
@@ -385,8 +394,6 @@
             escalaMao: document.getElementById('arma-escala').value || '1 1 1',
             rotMao: document.getElementById('arma-rot').value || '0 0 0',
             posMao: document.getElementById('arma-pos').value || '0 0 0',
-            
-            // SALVA OS STATUS DO INVENTÁRIO
             escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', 
             rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', 
             posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05'
