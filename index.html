@@ -134,7 +134,6 @@
                 let htmlArco = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`;
                 containerEsq.innerHTML = htmlArco; escudoPC.innerHTML = htmlArco;
             } else if (armaStats && armaStats.visualEsq) {
-                // ADICIONADO: Renderiza o item secundário (Ex: Luva esquerda)
                 containerEsq.innerHTML = armaStats.visualEsq;
             } else {
                 containerEsq.innerHTML = '';
@@ -566,7 +565,7 @@
         // COMPONENTES A-FRAME GERAIS
         // ==========================================
         
-        // --- COLISOR VR ADICIONADO AQUI ---
+        // --- COLISOR VR ATUALIZADO COM CÁLCULO DE VELOCIDADE ---
         AFRAME.registerComponent('colisor-arma-vr', {
             schema: { mao: {type: 'string', default: 'direita'} },
             init: function() {
@@ -589,13 +588,19 @@
                 let posAtual = new THREE.Vector3();
                 this.el.object3D.getWorldPosition(posAtual);
                 
+                // Calcula a velocidade do movimento em metros por segundo
+                let velocidadeMovimento = 0;
                 if (timeDelta > 0) {
                     this.vetorMovimento.subVectors(posAtual, this.posAnterior).divideScalar(timeDelta / 1000);
+                    velocidadeMovimento = this.vetorMovimento.length();
                 }
                 this.posAnterior.copy(posAtual);
 
-                let isSwinging = this.vetorMovimento.length() > 0.8;
-                this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.4, 0.4, 0.4));
+                // Velocidade mínima para o golpe valer (1.5 metros por segundo)
+                let isSwinging = velocidadeMovimento > 1.5;
+                
+                // Hitbox menor (20cm) para obrigar a retirar a arma de forma clara
+                this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.2, 0.2, 0.2));
 
                 let inimigos = document.querySelectorAll('.colisao-inimigo');
                 inimigos.forEach(col => {
@@ -611,16 +616,25 @@
                     col.object3D.updateMatrixWorld(true);
                     this.boxInimigo.setFromObject(col.object3D);
 
-                    if (this.boxArma.intersectsBox(this.boxInimigo)) {
-                        if (!this.inimigosAtingidos.has(parent) && isSwinging) {
+                    let intersecting = this.boxArma.intersectsBox(this.boxInimigo);
+                    let estavaIntersectando = this.inimigosAtingidos.has(parent);
+
+                    if (intersecting) {
+                        if (!estavaIntersectando) {
+                            // Acabou de Tocar no inimigo
                             this.inimigosAtingidos.add(parent);
-                            if (syncComp) {
+                            
+                            // Só valida o dano se tocou com VELOCIDADE suficiente
+                            if (isSwinging && syncComp) {
                                 let danoBruto = window.playerState.forca + (armaStats.danoBonus || 0);
                                 syncComp.receberDano(danoBruto, categoria);
                             }
                         }
                     } else {
-                        this.inimigosAtingidos.delete(parent);
+                        // Destocou do inimigo (saiu da hitbox)
+                        if (estavaIntersectando) {
+                            this.inimigosAtingidos.delete(parent);
+                        }
                     }
                 });
 
@@ -630,21 +644,24 @@
                     this.boxProjetil.setFromObject(proj.object3D);
 
                     if (this.boxArma.intersectsBox(this.boxProjetil)) {
-                        if (categoria === 'Espada' || categoria === 'Arco') {
-                            window.tocarSom('snd-sword'); 
-                            proj.remove();
-                        } else if (categoria === 'Luva' || window.playerState.escudoEquipado) {
-                            let projComp = proj.components['projetil-inimigo-fisico'];
-                            if (projComp && proj.dataset.defletido !== "true") {
-                                window.tocarSom('snd-hit');
-                                proj.dataset.defletido = "true";
-                                
-                                let dirPunch = this.vetorMovimento.clone().normalize();
-                                if (this.vetorMovimento.lengthSq() > 1.0) {
-                                    projComp.vel.copy(dirPunch).multiplyScalar(8); 
-                                } else {
-                                    projComp.vel.multiplyScalar(-1.5); 
-                                    projComp.vel.y += 2; 
+                        // Para interagir com tiros (cortar ou rebater) também exige movimento mínimo
+                        if (isSwinging) {
+                            if (categoria === 'Espada' || categoria === 'Arco') {
+                                window.tocarSom('snd-sword'); 
+                                proj.remove();
+                            } else if (categoria === 'Luva' || window.playerState.escudoEquipado) {
+                                let projComp = proj.components['projetil-inimigo-fisico'];
+                                if (projComp && proj.dataset.defletido !== "true") {
+                                    window.tocarSom('snd-hit');
+                                    proj.dataset.defletido = "true";
+                                    
+                                    let dirPunch = this.vetorMovimento.clone().normalize();
+                                    if (velocidadeMovimento > 2.0) {
+                                        projComp.vel.copy(dirPunch).multiplyScalar(10); 
+                                    } else {
+                                        projComp.vel.multiplyScalar(-1.5); 
+                                        projComp.vel.y += 2; 
+                                    }
                                 }
                             }
                         }
@@ -1056,7 +1073,7 @@
 
                     let colisor = document.createElement('a-cylinder'); el.appendChild(colisor);
                     colisor.setAttribute('radius', '0.8'); colisor.setAttribute('height', '2.5'); colisor.setAttribute('position', '0 1.25 0'); colisor.setAttribute('opacity', '0'); colisor.classList.add('interativo'); colisor.npcData = data; colisor.setAttribute('sistema-npc-interacao', ''); 
-                    colisor.classList.add('colisao-inimigo'); // Para o colisor VR pegar também os NPCs
+                    colisor.classList.add('colisao-inimigo'); 
                     colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
                     let holograma = document.createElement('a-box'); el.appendChild(holograma); holograma.setAttribute('color', '#f1c40f'); holograma.setAttribute('opacity', '0.5'); holograma.setAttribute('scale', '0.6 1.8 0.6'); holograma.setAttribute('position', '0 0.9 0'); holograma.className = 'npc-holograma'; 
