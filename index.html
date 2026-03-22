@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate, Menus e Inventário Corrigidos</title>
+    <title>RPG MMO - Combate VR e Física Adicionados</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -133,6 +133,11 @@
                 let rot = { rotX: 180, rotY: 90, rotZ: 90 }; 
                 let htmlArco = `<a-entity rotation="${rot.rotX} ${rot.rotY} ${rot.rotZ}"><a-torus color="#8B4513" radius="0.3" radius-tubular="0.015" arc="180" rotation="0 0 90"></a-torus><a-cylinder color="#DDDDDD" radius="0.002" height="0.6" rotation="0 0 0"></a-cylinder></a-entity>`;
                 containerEsq.innerHTML = htmlArco; escudoPC.innerHTML = htmlArco;
+            } else if (armaStats && armaStats.visualEsq) {
+                // ADICIONADO: Renderiza o item secundário (Ex: Luva esquerda)
+                containerEsq.innerHTML = armaStats.visualEsq;
+            } else {
+                containerEsq.innerHTML = '';
             }
         };
 
@@ -451,7 +456,6 @@
             }
         }
         
-        // A SOLUÇÃO ROBUSTA PARA OS CONTROLES (Mantém o Ciclo do A-Frame intacto)
         function iniciarJogo(modo) { 
             window.GAME_MODE = modo; window.GAME_STARTED = true; 
             document.getElementById('ui-layer').style.display = 'none'; 
@@ -475,7 +479,6 @@
                 if(maoEsq) { maoEsq.setAttribute('visible', 'false'); maoEsq.setAttribute('raycaster', 'far', 0); }
                 if(maoDir) { maoDir.setAttribute('visible', 'false'); maoDir.setAttribute('raycaster', 'far', 0); }
                 
-                // Em Android, removemos os controles nativos de PC (o mobile-movement e mobile-look assumem)
                 if(cam) { cam.removeAttribute('look-controls'); } 
                 if(rig) { rig.removeAttribute('movement-controls'); } 
                 
@@ -484,7 +487,6 @@
                 if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(e => console.log(e)); }
                 
             } else { 
-                // Modo VR
                 if(cursor) { cursor.setAttribute('visible', 'false'); cursor.setAttribute('raycaster', 'far', 0); }
                 if(wpPc) wpPc.setAttribute('visible', 'false'); if(scPc) scPc.setAttribute('visible', 'false'); 
                 document.querySelector('a-scene').enterVR(); 
@@ -563,6 +565,94 @@
         // ==========================================
         // COMPONENTES A-FRAME GERAIS
         // ==========================================
+        
+        // --- COLISOR VR ADICIONADO AQUI ---
+        AFRAME.registerComponent('colisor-arma-vr', {
+            schema: { mao: {type: 'string', default: 'direita'} },
+            init: function() {
+                this.inimigosAtingidos = new Set();
+                this.boxArma = new THREE.Box3();
+                this.boxInimigo = new THREE.Box3();
+                this.boxProjetil = new THREE.Box3();
+                this.posAnterior = new THREE.Vector3();
+                this.vetorMovimento = new THREE.Vector3();
+            },
+            tick: function(time, timeDelta) {
+                if (window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
+                
+                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado'];
+                let categoria = armaStats.categoria;
+                
+                if (this.data.mao === 'esquerda' && categoria !== 'Luva') return;
+
+                this.el.object3D.updateMatrixWorld(true);
+                let posAtual = new THREE.Vector3();
+                this.el.object3D.getWorldPosition(posAtual);
+                
+                if (timeDelta > 0) {
+                    this.vetorMovimento.subVectors(posAtual, this.posAnterior).divideScalar(timeDelta / 1000);
+                }
+                this.posAnterior.copy(posAtual);
+
+                let isSwinging = this.vetorMovimento.length() > 0.8;
+                this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.4, 0.4, 0.4));
+
+                let inimigos = document.querySelectorAll('.colisao-inimigo');
+                inimigos.forEach(col => {
+                    let parent = col.closest('[sistema-inimigo-sync], [sistema-npc-interacao]');
+                    if (!parent) return;
+
+                    let syncComp = parent.components ? parent.components['sistema-inimigo-sync'] : null;
+                    if (syncComp && syncComp.hpAtual <= 0) {
+                        this.inimigosAtingidos.delete(parent);
+                        return;
+                    }
+
+                    col.object3D.updateMatrixWorld(true);
+                    this.boxInimigo.setFromObject(col.object3D);
+
+                    if (this.boxArma.intersectsBox(this.boxInimigo)) {
+                        if (!this.inimigosAtingidos.has(parent) && isSwinging) {
+                            this.inimigosAtingidos.add(parent);
+                            if (syncComp) {
+                                let danoBruto = window.playerState.forca + (armaStats.danoBonus || 0);
+                                syncComp.receberDano(danoBruto, categoria);
+                            }
+                        }
+                    } else {
+                        this.inimigosAtingidos.delete(parent);
+                    }
+                });
+
+                let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
+                projeteis.forEach(proj => {
+                    proj.object3D.updateMatrixWorld(true);
+                    this.boxProjetil.setFromObject(proj.object3D);
+
+                    if (this.boxArma.intersectsBox(this.boxProjetil)) {
+                        if (categoria === 'Espada' || categoria === 'Arco') {
+                            window.tocarSom('snd-sword'); 
+                            proj.remove();
+                        } else if (categoria === 'Luva' || window.playerState.escudoEquipado) {
+                            let projComp = proj.components['projetil-inimigo-fisico'];
+                            if (projComp && proj.dataset.defletido !== "true") {
+                                window.tocarSom('snd-hit');
+                                proj.dataset.defletido = "true";
+                                
+                                let dirPunch = this.vetorMovimento.clone().normalize();
+                                if (this.vetorMovimento.lengthSq() > 1.0) {
+                                    projComp.vel.copy(dirPunch).multiplyScalar(8); 
+                                } else {
+                                    projComp.vel.multiplyScalar(-1.5); 
+                                    projComp.vel.y += 2; 
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
         AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
         AFRAME.registerComponent('btn-dialogo-fechar', { init: function() { this.el.addEventListener('mousedown', () => { window.fecharDialogoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.fecharDialogoNPC(); }, {passive: false}); } });
         AFRAME.registerComponent('btn-dialogo-aceitar', { init: function() { this.el.addEventListener('mousedown', () => { window.aceitarMissaoNPC(); }); this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.aceitarMissaoNPC(); }, {passive: false}); } });
@@ -730,14 +820,33 @@
                 if (dt === 0 || !window.GAME_STARTED) return; 
 
                 if (!window.playerState.vivo) {
-                    this.el.remove();
-                    return;
+                    this.el.remove(); return;
                 }
 
                 this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
                 
                 if (this.el.object3D.position.y < -1) { 
-                    this.el.remove(); 
+                    this.el.remove(); return; 
+                }
+
+                if (this.el.dataset.defletido === "true") {
+                    let posProj = new THREE.Vector3();
+                    this.el.object3D.getWorldPosition(posProj);
+                    
+                    let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
+                    for(let i=0; i<inimigos.length; i++) {
+                        let ini = inimigos[i];
+                        let sync = ini.components['sistema-inimigo-sync'];
+                        if(sync && sync.hpAtual > 0) {
+                            let posIni = new THREE.Vector3();
+                            ini.object3D.getWorldPosition(posIni);
+                            if (posProj.distanceTo(posIni) < 1.5) {
+                                sync.receberDano(this.data.dano * 2, 'Luva'); 
+                                this.el.remove();
+                                return;
+                            }
+                        }
+                    }
                     return; 
                 }
                 
@@ -748,7 +857,6 @@
                 this.el.object3D.getWorldPosition(posProj);
                 
                 if (posProj.distanceTo(posPlayer) < 0.8) { 
-                    if (this.el.dataset.defletido === "true") return; 
                     window.receberDanoJogador(this.data.dano); 
                     this.el.remove(); 
                 }
@@ -905,7 +1013,8 @@
                         visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.setAttribute('visible', 'true'); });
                     }
 
-                    let infos = document.createElement('a-entity'); el.appendChild(infos); infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0"></a-cylinder>`;
+                    let infos = document.createElement('a-entity'); el.appendChild(infos); 
+                    infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0" scale="${escX} ${escY} ${escZ}"></a-cylinder>`;
                 });
 
                 this.db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
@@ -915,6 +1024,9 @@
                         let visual = el.querySelector('.modelo-visual');
                         if (visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            let colisor = el.querySelector('.colisao-inimigo');
+                            if(colisor) colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
                             if (visual.dataset.currentModel !== newModel) { 
                                 visual.dataset.currentModel = newModel; 
@@ -939,15 +1051,19 @@
 
                     let el = document.createElement('a-entity'); this.el.appendChild(el); el.dataset.npcId = id;
                     if (data.pos) el.setAttribute('position', `${data.pos.x} ${data.pos.y} ${data.pos.z}`); el.setAttribute('shadow', '');
+                    
+                    let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; 
 
                     let colisor = document.createElement('a-cylinder'); el.appendChild(colisor);
                     colisor.setAttribute('radius', '0.8'); colisor.setAttribute('height', '2.5'); colisor.setAttribute('position', '0 1.25 0'); colisor.setAttribute('opacity', '0'); colisor.classList.add('interativo'); colisor.npcData = data; colisor.setAttribute('sistema-npc-interacao', ''); 
+                    colisor.classList.add('colisao-inimigo'); // Para o colisor VR pegar também os NPCs
+                    colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
                     let holograma = document.createElement('a-box'); el.appendChild(holograma); holograma.setAttribute('color', '#f1c40f'); holograma.setAttribute('opacity', '0.5'); holograma.setAttribute('scale', '0.6 1.8 0.6'); holograma.setAttribute('position', '0 0.9 0'); holograma.className = 'npc-holograma'; 
                     let fallback = document.createElement('a-entity'); el.appendChild(fallback); fallback.innerHTML = `<a-cylinder color="#3498db" radius="0.3" height="1.6" position="0 0.8 0"></a-cylinder><a-sphere color="#f1c40f" radius="0.25" position="0 1.8 0"></a-sphere>`; 
 
                     let visual = document.createElement('a-entity'); el.appendChild(visual); visual.classList.add('modelo-visual');
-                    let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                    visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : ''; visual.dataset.currentModel = modelSrc;
 
@@ -968,6 +1084,9 @@
                         let visual = el.querySelector('.modelo-visual');
                         if(visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            let colisor = el.querySelector('.interativo');
+                            if(colisor && colisor.tagName === 'A-CYLINDER') colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '';
                             if (visual.dataset.currentModel !== newModel) { 
                                 visual.dataset.currentModel = newModel; 
@@ -1135,10 +1254,10 @@
                 <a-text id="contador-online" value="Conectando Servidor..." position="0.6 0.8 -1.2" color="#00FF00" scale="0.4 0.4 0.4" align="right"></a-text>
             </a-entity> 
             
-            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" vr-controles-hud>
+            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" vr-controles-hud colisor-arma-vr="mao: esquerda">
                 <a-entity id="arma-visual-esq" position="0 0 0" rotation="180 0 0"></a-entity>
             </a-entity>
-            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho>
+            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho colisor-arma-vr="mao: direita">
                 <a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity>
             </a-entity>
 
