@@ -591,7 +591,7 @@
         AFRAME.registerComponent('colisor-arma-vr', {
             schema: { mao: {type: 'string', default: 'direita'} },
             init: function() {
-                this.inimigosAtingidos = new Set();
+                this.inimigosAtingidos = new Map();
                 this.boxArma = new THREE.Box3();
                 this.boxInimigo = new THREE.Box3();
                 this.boxProjetil = new THREE.Box3();
@@ -610,7 +610,6 @@
                 let posAtual = new THREE.Vector3();
                 this.el.object3D.getWorldPosition(posAtual);
                 
-                // Calcula a velocidade do movimento em metros por segundo
                 let velocidadeMovimento = 0;
                 if (timeDelta > 0) {
                     this.vetorMovimento.subVectors(posAtual, this.posAnterior).divideScalar(timeDelta / 1000);
@@ -618,11 +617,9 @@
                 }
                 this.posAnterior.copy(posAtual);
 
-                // Velocidade mínima para o golpe valer (1.5 metros por segundo)
                 let isSwinging = velocidadeMovimento > 1.5;
-                
-                // Hitbox menor (20cm) para obrigar a retirar a arma de forma clara
-                this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.2, 0.2, 0.2));
+                let tamanhoHitbox = (categoria === 'Espada') ? new THREE.Vector3(0.1, 0.8, 0.1) : new THREE.Vector3(0.2, 0.2, 0.2);
+                this.boxArma.setFromCenterAndSize(posAtual, tamanhoHitbox);
 
                 let inimigos = document.querySelectorAll('.colisao-inimigo');
                 inimigos.forEach(col => {
@@ -638,24 +635,29 @@
                     col.object3D.updateMatrixWorld(true);
                     this.boxInimigo.setFromObject(col.object3D);
 
-                    let intersecting = this.boxArma.intersectsBox(this.boxInimigo);
-                    let estavaIntersectando = this.inimigosAtingidos.has(parent);
+                    let intersectandoAgora = this.boxArma.intersectsBox(this.boxInimigo);
+                    let registroHit = this.inimigosAtingidos.get(parent);
 
-                    if (intersecting) {
-                        if (!estavaIntersectando) {
-                            // Acabou de Tocar no inimigo
-                            this.inimigosAtingidos.add(parent);
+                    if (intersectandoAgora) {
+                        if (!registroHit) {
+                            this.inimigosAtingidos.set(parent, { tempoSaida: time, aplicouDano: false });
+                            registroHit = this.inimigosAtingidos.get(parent);
                             
-                            // Só valida o dano se tocou com VELOCIDADE suficiente
                             if (isSwinging && syncComp) {
-                                let danoBruto = window.playerState.forca + (armaStats.danoBonus || 0);
-                                syncComp.receberDano(danoBruto, categoria);
+                                let danoBase = window.playerState.forca + (armaStats.danoBonus || 0);
+                                let multiplicadorFisico = Math.min(2.5, velocidadeMovimento / 1.5);
+                                let danoFinal = Math.floor(danoBase * multiplicadorFisico);
+                                syncComp.receberDano(danoFinal, categoria);
+                                registroHit.aplicouDano = true;
                             }
+                        } else {
+                            registroHit.tempoSaida = time;
                         }
                     } else {
-                        // Destocou do inimigo (saiu da hitbox)
-                        if (estavaIntersectando) {
-                            this.inimigosAtingidos.delete(parent);
+                        if (registroHit) {
+                            if (time - registroHit.tempoSaida > 350) {
+                                this.inimigosAtingidos.delete(parent);
+                            }
                         }
                     }
                 });
@@ -666,7 +668,6 @@
                     this.boxProjetil.setFromObject(proj.object3D);
 
                     if (this.boxArma.intersectsBox(this.boxProjetil)) {
-                        // Para interagir com tiros (cortar ou rebater) também exige movimento mínimo
                         if (isSwinging) {
                             if (categoria === 'Espada' || categoria === 'Arco') {
                                 window.tocarSom('snd-sword'); 
