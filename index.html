@@ -64,6 +64,9 @@
         window.invAberto = false; 
         window.atribAberto = false;
         
+        // Identificador multiplayer local da sessão (usado para atrair Aggro)
+        window.meuIdMultiplayer = null; 
+
         window.playerState = {
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5, hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
             armaEquipada: 'Desarmado', escudoEquipado: false, nomeEscudo: '', flechas: 10, shurikens: 5, chaves: {}, invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
@@ -77,7 +80,7 @@
         window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
 
         // ==========================================
-        // ARSENAL RESTAURADO (Permite jogar sem configurar BD antes)
+        // ARSENAL RESTAURADO
         // ==========================================
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -133,9 +136,6 @@
             }
         };
 
-        // ==========================================
-        // SISTEMA DE DANO E ÁUDIO
-        // ==========================================
         window.tocarSom = function(idSom) {
             let som = document.getElementById(idSom);
             if (som && som.play) { 
@@ -188,9 +188,6 @@
             window.atualizarUI();
         };
 
-        // ==========================================
-        // ATUALIZAÇÃO UI E INVENTÁRIO
-        // ==========================================
         window.atualizarUI = function() { 
             let elsHtml = ['#txt-nivel-hud', '#txt-status-hud', '#hp-wrapper', '#mp-wrapper', '#txt-arma-hud', '#attr-nivel-classe', '#attr-hp-txt', '#attr-mp-txt', '#attr-hpmax', '#attr-mpmax', '#attr-atk', '#attr-def', '#attr-agi', '#attr-exp', '#attr-nextexp', '#attr-pts', '#inv-total-forca', '#inv-total-defesa', '#inv-total-ouro', '#tt-flechas', '#tt-shurikens', '#attr-slot-1', '#attr-slot-2']; 
             for(let i=0; i<elsHtml.length; i++) { if(!document.querySelector(elsHtml[i])) return; } 
@@ -260,9 +257,6 @@
             gridContainer.innerHTML = htmlSlots;
         };
 
-        // ==========================================
-        // CÓDIGO DE CONTROLE DO MOUSE NO PC (CURSOR HÍBRIDO)
-        // ==========================================
         window.travarMousePC = function() {
             if (window.GAME_MODE !== 'PC') return;
             let canvas = document.querySelector('.a-canvas');
@@ -286,9 +280,6 @@
             if (mouseCursor) mouseCursor.setAttribute('raycaster', 'objects: .interativo; far: 20');
         };
 
-        // ==========================================
-        // MÁGICA: POSICIONAR MENU NA FRENTE DO JOGADOR NO MAPA MUNDI
-        // ==========================================
         window.posicionarMenuDeFrente = function(menuId) {
             let menu = document.querySelector(menuId);
             let camera = document.querySelector('[camera]');
@@ -600,7 +591,10 @@
 
         AFRAME.registerComponent('firebase-multiplayer', {
             init: function() {
-                this.db = realtimeDB; this.playersRef = this.db.ref('players'); this.myId = 'player_' + Math.random().toString(36).substr(2, 9); this.myRef = this.db.ref('players/' + this.myId); this.myRef.onDisconnect().remove(); this.otherPlayers = {}; this.cena = document.querySelector('a-scene'); this.lastPosRot = "";
+                this.db = realtimeDB; this.playersRef = this.db.ref('players'); this.myId = 'player_' + Math.random().toString(36).substr(2, 9); 
+                window.meuIdMultiplayer = this.myId; // Grava o ID para o inimigo saber quem bateu nele!
+                
+                this.myRef = this.db.ref('players/' + this.myId); this.myRef.onDisconnect().remove(); this.otherPlayers = {}; this.cena = document.querySelector('a-scene'); this.lastPosRot = "";
                 this.lastIAHeartbeat = 0; this.db.ref('servidor_ia_status').on('value', snap => { this.lastIAHeartbeat = snap.val() || 0; });
 
                 this.playersRef.on('child_added', (snapshot) => {
@@ -866,19 +860,26 @@
                         return Math.max(0, numHp - dano); 
                     }, (error, committed, snapshot) => {
                         if (error) console.log("Erro no banco:", error);
-                        if (committed && snapshot.val() === 0) {
-                            this.hpAtual = 0; 
-                            window.playerState.xp += this.data.xpDrop; 
-                            let textoHp = this.el.querySelector('.hp-texto'); 
-                            if(textoHp) { textoHp.setAttribute('value', `+ ${this.data.xpDrop} XP!`); textoHp.setAttribute('color', '#00ff00'); }
-                            this.el.classList.remove('interativo');
+                        if (committed) {
+                            let novoHp = snapshot.val();
                             
-                            if (window.playerState.xp >= window.playerState.xpProxNivel) { 
-                                window.playerState.nivel++; window.playerState.pontos++; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
-                                let aviso = document.querySelector('#texto-central'); 
-                                if(aviso) { aviso.setAttribute('value', 'LEVEL UP! (Aperte C/Y)'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 4000); } 
-                            } 
-                            window.atualizarUI(); this.dbRef.update({ mortoEm: Date.now() }); 
+                            // INFORMA O SERVIDOR QUEM BATEU
+                            this.dbRef.update({ ultimoAtacante: window.meuIdMultiplayer });
+
+                            if (novoHp === 0) {
+                                this.hpAtual = 0; 
+                                window.playerState.xp += this.data.xpDrop; 
+                                let textoHp = this.el.querySelector('.hp-texto'); 
+                                if(textoHp) { textoHp.setAttribute('value', `+ ${this.data.xpDrop} XP!`); textoHp.setAttribute('color', '#00ff00'); }
+                                this.el.classList.remove('interativo');
+                                
+                                if (window.playerState.xp >= window.playerState.xpProxNivel) { 
+                                    window.playerState.nivel++; window.playerState.pontos++; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
+                                    let aviso = document.querySelector('#texto-central'); 
+                                    if(aviso) { aviso.setAttribute('value', 'LEVEL UP! (Aperte C/Y)'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 4000); } 
+                                } 
+                                window.atualizarUI(); this.dbRef.update({ mortoEm: Date.now() }); 
+                            }
                         }
                     });
                 }; 
@@ -1070,6 +1071,7 @@
         });
         
         AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; window.atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 3000); } } }); } });
+    }); // Fim do DOMContentLoaded
     </script>
 </head>
 <body>
