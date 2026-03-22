@@ -105,7 +105,8 @@
 <div class="container">
     <h1>👑 PAINEL DO MESTRE</h1>
     
-    <div class="header-controls">
+    <div class="header-controls" style="gap: 10px;">
+        <button id="btn-toggle-teste" class="btn btn-blue" onclick="window.toggleModoTeste()">🧪 Modo Teste: Carregando...</button>
         <button class="btn btn-dark" onclick="window.kickarTodos()">🥾 KICK ALL (Derrubar Todos)</button>
     </div>
 
@@ -344,6 +345,30 @@
         let abaNova = document.getElementById(abaId);
         if(abaNova) abaNova.style.display = "block";
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
+    };
+
+    // ==========================================
+    // SISTEMA DE MODO DE TESTE (NOVO)
+    // ==========================================
+    let modoTesteAtivo = false;
+    db.ref('server_config/modoTeste').on('value', snap => {
+        modoTesteAtivo = snap.val() || false;
+        let btn = document.getElementById('btn-toggle-teste');
+        if (btn) {
+            if (modoTesteAtivo) {
+                btn.innerText = "🧪 Modo Teste: ATIVADO";
+                btn.classList.remove('btn-blue');
+                btn.classList.add('btn-green');
+            } else {
+                btn.innerText = "🧪 Modo Teste: DESATIVADO";
+                btn.classList.remove('btn-green');
+                btn.classList.add('btn-blue');
+            }
+        }
+    });
+
+    window.toggleModoTeste = function() {
+        db.ref('server_config/modoTeste').set(!modoTesteAtivo);
     };
 
     // ==========================================
