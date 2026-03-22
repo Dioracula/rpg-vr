@@ -116,7 +116,6 @@
                 
                 containerDir.innerHTML = htmlArma; containerPC.innerHTML = htmlArma;
                 
-                // Se for luva de boxe/garras, bota na mão esquerda também!
                 if(armaStats.categoria === 'Luva' && !window.playerState.escudoEquipado) {
                     containerEsq.innerHTML = htmlArma;
                 }
@@ -165,7 +164,7 @@
 
             if (window.playerState.hpAtual <= 0) {
                 window.playerState.hpAtual = 0;
-                window.playerState.vivo = false;
+                window.playerState.vivo = false; // Isso avisa o Server.js que morremos!
                 
                 let aviso = document.querySelector('#texto-central');
                 if(aviso) { aviso.setAttribute('value', 'VOCÊ MORREU!'); aviso.setAttribute('color', '#ff0000'); aviso.setAttribute('visible', 'true'); }
@@ -569,7 +568,7 @@
         });
 
         // ==========================================
-        // CONTROLES VR AVANÇADOS (Hitbox, Magia, Bow)
+        // CONTROLES VR AVANÇADOS (Hitbox Precisa BOX3)
         // ==========================================
         AFRAME.registerComponent('vr-hand-logic', {
             schema: { side: {type: 'string'} },
@@ -577,7 +576,7 @@
                 this.velocity = new THREE.Vector3();
                 this.lastPosition = new THREE.Vector3();
                 this.triggerPressed = false;
-                this.hitEnemies = {}; // Guarda quem já apanhou nesse "balanço" de espada
+                this.hitEnemies = {}; 
                 this.cooldownMagia = 0;
                 this.pullingBow = false;
                 this.pullStartPos = new THREE.Vector3();
@@ -586,7 +585,6 @@
                     this.triggerPressed = true;
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
                     
-                    // Se estiver com o arco e for a mão direita
                     if (armaStats && armaStats.categoria === 'Arco' && this.data.side === 'right') {
                         this.pullingBow = true;
                         this.el.object3D.getWorldPosition(this.pullStartPos);
@@ -597,17 +595,15 @@
                     this.triggerPressed = false;
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
                     
-                    // Soltar Shuriken
                     if (armaStats && armaStats.categoria === 'Shuriken' && this.data.side === 'right') {
                         if (window.playerState.shurikens > 0) {
                             window.playerState.shurikens--;
                             window.atualizarUI();
-                            let vel = this.velocity.clone().multiplyScalar(2.0); // Amplifica a força do braço
+                            let vel = this.velocity.clone().multiplyScalar(2.0); 
                             this.atirarProjetil(vel, armaStats.danoBonus, true);
                         }
                     }
                     
-                    // Soltar Flecha
                     if (this.pullingBow && this.data.side === 'right') {
                         this.pullingBow = false;
                         if (window.playerState.flechas > 0) {
@@ -626,7 +622,6 @@
                                 bowDir.applyQuaternion(quat);
                             }
                             
-                            // Velocidade depende do quanto puxou para trás
                             let velMult = Math.max(15, pullDist * 60); 
                             this.atirarProjetil(bowDir.multiplyScalar(velMult), armaStats.danoBonus, true);
                         }
@@ -644,7 +639,7 @@
                 
                 proj.innerHTML = '<a-sphere radius="0.05" color="#fff" material="emissive: #fff"></a-sphere>';
                 document.querySelector('a-scene').appendChild(proj);
-                window.tocarSom('snd-sword'); // Você pode adicionar um 'snd-magic' se quiser
+                window.tocarSom('snd-sword'); 
             },
             tick: function(time, timeDelta) {
                 if (!window.GAME_STARTED || window.GAME_MODE !== 'VR' || !window.playerState.vivo) return;
@@ -662,33 +657,43 @@
                 let isMeleeRight = this.data.side === 'right' && arma && ['Espada', 'Luva'].includes(arma.categoria);
                 let isMeleeLeft = this.data.side === 'left' && ( (arma && arma.categoria === 'Luva' && !escudo) || escudo );
                 
-                // 1. COLISÃO FÍSICA MELEE E RESET DE HIT
+                // 1. COLISÃO FÍSICA MELEE E RESET DE HIT (AGORA COM BOX3 PIXEL PERFECT)
                 if (isMeleeRight || isMeleeLeft) {
+                    this.el.object3D.updateMatrixWorld(true);
+                    let boxArma = new THREE.Box3().setFromObject(this.el.object3D);
+
                     let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
                     inimigos.forEach(ini => {
                         let sync = ini.components['sistema-inimigo-sync'];
                         if (!sync || sync.hpAtual <= 0) return;
                         
-                        let iniPos = new THREE.Vector3();
-                        ini.object3D.getWorldPosition(iniPos);
-                        
-                        let colisor = ini.querySelector('.colisao-inimigo');
-                        let escX = 1.0; if(colisor && colisor.object3D) escX = colisor.object3D.scale.x;
-                        let radius = 1.2 * escX;
+                        let boxInimigo = new THREE.Box3();
+                        let colisorNode = ini.querySelector('.colisao-inimigo');
+                        if(colisorNode) {
+                            colisorNode.object3D.updateMatrixWorld(true);
+                            boxInimigo.setFromObject(colisorNode.object3D);
+                        } else {
+                            ini.object3D.updateMatrixWorld(true);
+                            boxInimigo.setFromObject(ini.object3D);
+                        }
 
-                        let dist = pos.distanceTo(iniPos);
-                        
-                        if (dist < radius + 0.4) { // Tocou
+                        // Intersection Box to Box (Super Preciso!)
+                        if (boxArma.intersectsBox(boxInimigo)) { 
                             if (!this.hitEnemies[ini.dataset.id]) {
-                                this.hitEnemies[ini.dataset.id] = true; // Impede ficar dando dano parado dentro
+                                this.hitEnemies[ini.dataset.id] = true; 
                                 
                                 let dano = window.playerState.forca;
                                 if (this.data.side === 'right' && arma) dano += arma.danoBonus;
                                 if (this.data.side === 'left' && escudo) dano += (escudo.defesaBonus || 5); 
                                 sync.receberDano(dano, arma ? arma.categoria : 'Melee');
                             }
-                        } else if (dist > radius + 0.8) {
-                            this.hitEnemies[ini.dataset.id] = false; // Tirou a arma, pode bater de novo
+                        } else {
+                            // Se a caixa não toca, e estiver a uma margem de segurança de distância, reseta a facada
+                            let dist = pos.distanceTo(ini.object3D.position);
+                            let escX = 1.0; if(colisorNode && colisorNode.object3D) escX = colisorNode.object3D.scale.x;
+                            if (dist > (1.2 * escX) + 0.5) {
+                                this.hitEnemies[ini.dataset.id] = false; 
+                            }
                         }
                     });
                 }
@@ -702,13 +707,11 @@
                     if (pos.distanceTo(projPos) < 0.6) {
                         let speed = this.velocity.length();
                         
-                        // Espada sempre destrói. Escudo parado destrói.
                         if ((this.data.side === 'right' && arma && arma.categoria === 'Espada') || 
                             (this.data.side === 'left' && escudo && speed < 1.5)) {
                             proj.remove();
                             window.tocarSom('snd-sword'); 
                         } 
-                        // Luva (qualquer mão) ou Escudo em movimento Ricocheteiam!
                         else if (
                             (arma && arma.categoria === 'Luva') || 
                             (this.data.side === 'left' && escudo && speed >= 1.5)
@@ -731,7 +734,6 @@
 
                 // 3. VARINHA MÁGICA
                 if (this.data.side === 'right' && arma && arma.categoria === 'Varinha') {
-                    // Se gatilho apertado + Mão movendo pra frente rápido + Passou 0.5s do ultimo tiro
                     let camObj = document.querySelector('[camera]');
                     if (camObj && this.triggerPressed && time - this.cooldownMagia > 500) {
                         
@@ -740,16 +742,14 @@
                         camObj.object3D.getWorldQuaternion(quat);
                         camDir.applyQuaternion(quat);
 
-                        // O dot product vê se a mão está indo na mesma direção que você olha
                         let velFrente = this.velocity.dot(camDir);
                         
-                        if (velFrente > 1.5) { // Movimento forte para frente
+                        if (velFrente > 1.5) { 
                             if (window.playerState.mpAtual >= 10) {
                                 window.playerState.mpAtual -= 10;
                                 window.atualizarUI();
                                 this.cooldownMagia = time;
                                 
-                                // Pega a direção exata para onde a varinha (mão direita) aponta
                                 let wandDir = new THREE.Vector3(0,0,-1);
                                 let wandQuat = new THREE.Quaternion();
                                 this.el.object3D.getWorldQuaternion(wandQuat);
@@ -817,7 +817,6 @@
                 let posProj = new THREE.Vector3(); 
                 this.el.object3D.getWorldPosition(posProj);
                 
-                // Se foi Rebatido, machuca os Inimigos em vez do jogador!
                 if (this.el.dataset.defletido === "true") {
                     let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
                     for(let i=0; i<inimigos.length; i++) {
@@ -830,13 +829,12 @@
                         let escX = 1.0; if(colisor && colisor.object3D) escX = colisor.object3D.scale.x;
                         
                         if (posProj.distanceTo(iniPos) < (1.2 * escX + 0.5)) {
-                            sync.receberDano(this.data.dano * 2, 'Deflect'); // Dobro de dano no ricochete!
+                            sync.receberDano(this.data.dano * 2, 'Deflect'); 
                             this.el.remove();
                             return;
                         }
                     }
                 } else {
-                    // Normal: Tenta acertar o jogador
                     if(!this.camera) return; 
                     let posPlayer = new THREE.Vector3(); 
                     this.camera.object3D.getWorldPosition(posPlayer); 
@@ -1185,7 +1183,6 @@
         });
         
         AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; window.atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 3000); } } }); } });
-    }); // Fim do DOMContentLoaded
     </script>
 </head>
 <body>
@@ -1223,27 +1220,8 @@
 
     <a-scene sistema-jogo gerenciador-inimigos gerenciador-npcs gerenciador-respawns renderer="colorManagement: true;">
         
-        <a-entity id="mouse-cursor" cursor="rayOrigin: mouse" raycaster="objects: none"></a-entity>
-
-        <a-assets timeout="3000">
-            <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
-            <a-asset-item id="modelo-espada-grande" src="Armas/Espadas/espada_grande.glb"></a-asset-item>
-            <a-asset-item id="modelo-arco" src="Armas/Arcos/arco.glb"></a-asset-item>
-            <a-asset-item id="modelo-escudo" src="Armas/Escudos/escudo.glb"></a-asset-item>
-            <a-asset-item id="modelo-inimigo" src="Inimigos/atiradora.glb"></a-asset-item>
-            <a-asset-item id="modelo-inimigo2" src="Inimigos/atiradora.glb"></a-asset-item>
-        </a-assets>
-
-        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.5" position="-1 2 1"></a-light>
-        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
-
-        <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow><a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text></a-box>
-
-        <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" mobile-movement position="0 0 0">
-            
-            <a-entity camera mobile-look position="0 1.6 0" look-controls="pointerLockEnabled: true">
-                
+        <a-entity id="rig" firebase-multiplayer position="0 0 0">
+            <a-entity camera position="0 1.6 0">
                 <a-entity id="cursor-centro" cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
                 
                 <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
@@ -1276,6 +1254,14 @@
             </a-entity>
 
         </a-entity>
+
+        <a-entity id="mouse-cursor" cursor="rayOrigin: mouse" raycaster="objects: none"></a-entity>
+
+        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="0.5" position="-1 2 1"></a-light>
+        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
+
+        <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow><a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text></a-box>
 
         <a-entity id="caixa-dialogo" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
             <a-plane color="#ecf0f1" width="2.2" height="1.6" position="0 0 0"></a-plane>
