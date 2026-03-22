@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate VR e Física Adicionados</title>
+    <title>RPG MMO - Combate VR e Física 3D</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -618,8 +618,12 @@
                 this.posAnterior.copy(posAtual);
 
                 let isSwinging = velocidadeMovimento > 1.5;
-                let tamanhoHitbox = (categoria === 'Espada') ? new THREE.Vector3(0.1, 0.8, 0.1) : new THREE.Vector3(0.2, 0.2, 0.2);
-                this.boxArma.setFromCenterAndSize(posAtual, tamanhoHitbox);
+                
+                // MUDANÇA 1: A hitbox agora mapeia perfeitamente as dimensões do modelo 3D da arma!
+                this.boxArma.setFromObject(this.el.object3D);
+                if (this.boxArma.isEmpty()) {
+                    this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.2, 0.2, 0.2));
+                }
 
                 let inimigos = document.querySelectorAll('.colisao-inimigo');
                 inimigos.forEach(col => {
@@ -640,24 +644,27 @@
 
                     if (intersectandoAgora) {
                         if (!registroHit) {
-                            this.inimigosAtingidos.set(parent, { tempoSaida: time, aplicouDano: false });
+                            this.inimigosAtingidos.set(parent, { tempoUltimoDano: 0 });
                             registroHit = this.inimigosAtingidos.get(parent);
-                            
-                            if (isSwinging && syncComp) {
+                        }
+                        
+                        // MUDANÇA 2: Ritmo de Combo em vez de Exigir Retirada da Arma.
+                        // Se você está balançando rápido, ele toma dano. O tempo de recarga entre cada golpe válido é de 600ms.
+                        // Se encostar devagar (velocidade < 1.5), não dá dano nenhum.
+                        if (isSwinging && syncComp) {
+                            if (time - registroHit.tempoUltimoDano > 600) {
                                 let danoBase = window.playerState.forca + (armaStats.danoBonus || 0);
                                 let multiplicadorFisico = Math.min(2.5, velocidadeMovimento / 1.5);
                                 let danoFinal = Math.floor(danoBase * multiplicadorFisico);
+                                
                                 syncComp.receberDano(danoFinal, categoria);
-                                registroHit.aplicouDano = true;
+                                registroHit.tempoUltimoDano = time;
                             }
-                        } else {
-                            registroHit.tempoSaida = time;
                         }
                     } else {
-                        if (registroHit) {
-                            if (time - registroHit.tempoSaida > 350) {
-                                this.inimigosAtingidos.delete(parent);
-                            }
+                        // Limpa a memória apenas se saiu do inimigo E o tempo do cooldown já passou
+                        if (registroHit && (time - registroHit.tempoUltimoDano > 600)) {
+                            this.inimigosAtingidos.delete(parent);
                         }
                     }
                 });
