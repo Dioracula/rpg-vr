@@ -216,6 +216,7 @@
                     </div>
                 </div>
 
+                <div class="input-group"><label style="color: #9b59b6;">Escala (Tamanho)</label><input type="text" id="npc-escala" placeholder="Ex: 1 1 1" value="1 1 1"></div>
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
                 <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
                 
@@ -276,6 +277,7 @@
                     </div>
                 </div>
 
+                <div class="input-group"><label style="color: #9b59b6;">Escala (Tamanho)</label><input type="text" id="novo-escala" placeholder="Ex: 1 1 1" value="1 1 1"></div>
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="novo-anim-parado" list="lista-animacoes" value="chr784_armature|chr784_bn01"></div>
                 <div class="input-group"><label>Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
                 <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
@@ -633,6 +635,9 @@
                 let data = snap.val(); if(!data) return; window.abrirAba('tab-npcs', null);
                 document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
                 document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; document.getElementById('npc-glb').value = data.modeloGlb || '';
+                
+                document.getElementById('npc-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
+
                 document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
                 document.getElementById('npc-x').value = data.pos ? data.pos.x : 0; document.getElementById('npc-y').value = data.pos ? data.pos.y : 0; document.getElementById('npc-z').value = data.pos ? data.pos.z : 0;
                 document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; 
@@ -647,9 +652,13 @@
         window.spawnarNovoNpc = function() {
             let id = document.getElementById('npc-id').value; if(!id) return;
             let tipo = document.getElementById('npc-tipo').value;
+            let escNpcArr = document.getElementById('npc-escala').value.split(' ');
+            let escNpcObj = { x: parseFloat(escNpcArr[0])||1, y: parseFloat(escNpcArr[1])||1, z: parseFloat(escNpcArr[2])||1 };
+
             db.ref('cenario_npcs/' + id).update({
                 nome: document.getElementById('npc-nome').value, tipo: tipo,
                 pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
+                escala: escNpcObj,
                 modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
                 dialogoPadrao: document.getElementById('npc-dialogo').value, dialogoMissao: document.getElementById('npc-dialogo-missao').value,
                 idMissao: document.getElementById('npc-missao-id').value, chaveConclusao: document.getElementById('npc-chave-conclusao').value,
@@ -712,7 +721,11 @@
                 document.getElementById('novo-id').value = id; document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
                 document.getElementById('novo-movimento').value = data.movimento || 'estatico'; document.getElementById('novo-tipo').value = data.tipo || 'meelee';
                 document.getElementById('novo-hp').value = data.hpMax || 50; document.getElementById('novo-dano').value = data.dano || 10;
-                document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; document.getElementById('novo-anim-parado').value = data.animParado || '';
+                document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; 
+                
+                document.getElementById('novo-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
+
+                document.getElementById('novo-anim-parado').value = data.animParado || '';
                 document.getElementById('novo-anim-andando').value = data.animAndando || ''; document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
                 document.getElementById('novo-anim-morte').value = data.animMorte || ''; document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0;
                 document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0;
@@ -731,11 +744,16 @@
 
         window.spawnarNovoInimigo = function() {
             let id = document.getElementById('novo-id').value; if(!id) return;
+
+            let escIniArr = document.getElementById('novo-escala').value.split(' ');
+            let escIniObj = { x: parseFloat(escIniArr[0])||1, y: parseFloat(escIniArr[1])||1, z: parseFloat(escIniArr[2])||1 };
+
             db.ref('cenario_inimigos/' + id).update({
                 hpMax: parseFloat(document.getElementById('novo-hp').value) || 50, hp: parseFloat(document.getElementById('novo-hp').value) || 50, dano: parseFloat(document.getElementById('novo-dano').value) || 10,
                 spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
                 pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
                 comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, 
+                escala: escIniObj,
                 aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15, attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
                 speed: parseFloat(document.getElementById('novo-speed').value) || 0.08, cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
                 respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
