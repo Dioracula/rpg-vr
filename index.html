@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate VR e Física 3D</title>
+    <title>RPG MMO - Combate VR e Física CM</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -619,9 +619,17 @@
 
                 let isSwinging = velocidadeMovimento > 1.5;
                 
-                // MUDANÇA 1: A hitbox agora mapeia perfeitamente as dimensões do modelo 3D da arma!
-                this.boxArma.setFromObject(this.el.object3D);
-                if (this.boxArma.isEmpty()) {
+                // MUDANÇA: A caixa de colisão agora é calculada APENAS em cima do modelo visual da arma,
+                // ignorando completamente a linha de 15 metros do laser-controls do A-Frame.
+                let armaVisual = this.data.mao === 'direita' ? this.el.querySelector('#arma-visual-dir') : this.el.querySelector('#arma-visual-esq');
+                this.boxArma.makeEmpty();
+                
+                if (armaVisual && armaVisual.object3D && armaVisual.object3D.children.length > 0) {
+                    this.boxArma.setFromObject(armaVisual.object3D);
+                }
+
+                // Se a caixa estiver vazia (ex: desarmado, sem modelo GLB), cria a caixa de soco de 20cm
+                if (this.boxArma.isEmpty() || !isFinite(this.boxArma.max.x) || this.boxArma.getSize(new THREE.Vector3()).length() < 0.05) {
                     this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.2, 0.2, 0.2));
                 }
 
@@ -648,9 +656,6 @@
                             registroHit = this.inimigosAtingidos.get(parent);
                         }
                         
-                        // MUDANÇA 2: Ritmo de Combo em vez de Exigir Retirada da Arma.
-                        // Se você está balançando rápido, ele toma dano. O tempo de recarga entre cada golpe válido é de 600ms.
-                        // Se encostar devagar (velocidade < 1.5), não dá dano nenhum.
                         if (isSwinging && syncComp) {
                             if (time - registroHit.tempoUltimoDano > 600) {
                                 let danoBase = window.playerState.forca + (armaStats.danoBonus || 0);
@@ -662,7 +667,6 @@
                             }
                         }
                     } else {
-                        // Limpa a memória apenas se saiu do inimigo E o tempo do cooldown já passou
                         if (registroHit && (time - registroHit.tempoUltimoDano > 600)) {
                             this.inimigosAtingidos.delete(parent);
                         }
