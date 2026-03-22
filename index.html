@@ -69,7 +69,7 @@
         window.atribAberto = false;
         window.meuIdMultiplayer = null; 
 
-        // Listas de Otimização para o VR (Evita varrer o cenário inteiro)
+        // Listas de Otimização
         window.inimigosAtivos = [];
         window.projeteisAtivos = [];
 
@@ -77,6 +77,12 @@
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5, hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
             armaEquipada: 'Desarmado', escudoEquipado: false, nomeEscudo: '', flechas: 100, shurikens: 50, chaves: {}, invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
         };
+
+        window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; 
+        window.ANIM_ANDANDO = 'chr784_armature|chr784_br01'; 
+        window.ANIM_ATIRANDO = 'chr784_armature|chr784_ba01'; 
+        window.ANIM_DANO = 'chr784_armature|chr784_bd01'; 
+        window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
@@ -370,6 +376,55 @@
             window.fecharDialogoNPC();
         };
 
+        // Combate Clássico (Mouse/Touch)
+        window.realizarAtaque = function() {
+            if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
+            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
+
+            window.tocarSom('snd-sword');
+            let pcWeapon = document.querySelector('#arma-visual-pc'); 
+            if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
+            
+            let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
+            let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
+            cameraObj.object3D.getWorldPosition(posCamera); 
+            let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
+            direcao.applyQuaternion(camQuat);
+            
+            let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
+            if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
+            
+            let alcanceArma = armaStats.distancia || 3.0; 
+
+            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+            inimigosEls.forEach(inimigoEl => { 
+                if(!inimigoEl.object3D) return; 
+                let syncComp = inimigoEl.components['sistema-inimigo-sync']; 
+                if(syncComp && syncComp.hpAtual <= 0) return;
+
+                let posInimigo = new THREE.Vector3(); 
+                inimigoEl.object3D.getWorldPosition(posInimigo); 
+                
+                let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z;
+                let dist2D = Math.hypot(dx, dz);
+                
+                let escX = 1.0;
+                let colisor = inimigoEl.querySelector('.colisao-inimigo');
+                if(colisor && colisor.object3D) { escX = colisor.object3D.scale.x; }
+                let raioColisao = 1.2 * escX;
+                
+                if (dist2D <= (alcanceArma + raioColisao)) { 
+                    let dirInimigo2D = new THREE.Vector2(dx, dz); 
+                    if (dist2D > 0.001) dirInimigo2D.normalize();
+                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
+                    
+                    if (anguloAcerto > 0.0) { 
+                        if(syncComp) { syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); }
+                    }
+                } 
+            });
+        };
+
         // ==========================================
         // FLUXO DO JOGO E LOGIN
         // ==========================================
@@ -480,7 +535,7 @@
         });
 
         // ==========================================
-        // CONTROLES VR AVANÇADOS (Alta Performance Box3)
+        // CONTROLES VR AVANÇADOS (Box3 com Anti-Freeze)
         // ==========================================
         AFRAME.registerComponent('vr-hand-logic', {
             schema: { side: {type: 'string'} },
@@ -504,6 +559,7 @@
                 this.el.addEventListener('triggerdown', () => {
                     this.triggerPressed = true;
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                    
                     if (armaStats && armaStats.categoria === 'Arco' && this.data.side === 'right') {
                         this.pullingBow = true;
                         this.el.object3D.getWorldPosition(this.pullStartPos);
@@ -571,47 +627,50 @@
 
                 let isMeleeRight = this.data.side === 'right' && arma && ['Espada', 'Luva'].includes(arma.categoria);
                 let isMeleeLeft = this.data.side === 'left' && ( (arma && arma.categoria === 'Luva' && !escudo) || escudo );
+                
                 let isWandRight = this.data.side === 'right' && arma && arma.categoria === 'Varinha';
 
                 if (!isMeleeRight && !isMeleeLeft && !isWandRight) return;
 
                 let speed = this.velocity.length();
 
-                // 1. COLISÃO FÍSICA MELEE E RESET DE HIT
+                // 1. COLISÃO FÍSICA MELEE 
                 if ((isMeleeRight || isMeleeLeft) && speed > 0.5) {
                     
-                    // Extrai a hitbox exata da arma visual
                     let visualNode = this.el.querySelector('.arma-malha');
                     if (visualNode && visualNode.object3D) {
                         visualNode.object3D.updateMatrixWorld(true);
                         this.boxArma.setFromObject(visualNode.object3D);
                         
-                        for (let i = 0; i < window.inimigosAtivos.length; i++) {
-                            let ini = window.inimigosAtivos[i];
-                            let sync = ini.components['sistema-inimigo-sync'];
-                            if (!sync || sync.hpAtual <= 0) continue;
-                            
-                            let colisorNode = ini.querySelector('.colisao-inimigo');
-                            if (!colisorNode) continue;
+                        // Failsafe: Se a arma não carregou, a Box fica infinita e quebra o jogo.
+                        if (!this.boxArma.isEmpty()) {
+                            for (let i = 0; i < window.inimigosAtivos.length; i++) {
+                                let ini = window.inimigosAtivos[i];
+                                let sync = ini.components['sistema-inimigo-sync'];
+                                if (!sync || sync.hpAtual <= 0) continue;
+                                
+                                let colisorNode = ini.querySelector('.colisao-inimigo');
+                                if (!colisorNode) continue;
 
-                            colisorNode.object3D.updateMatrixWorld(true);
-                            this.boxInimigo.setFromObject(colisorNode.object3D);
+                                colisorNode.object3D.updateMatrixWorld(true);
+                                this.boxInimigo.setFromObject(colisorNode.object3D);
 
-                            if (this.boxArma.intersectsBox(this.boxInimigo)) { 
-                                if (!this.hitEnemies[ini.dataset.id]) {
-                                    this.hitEnemies[ini.dataset.id] = true; 
-                                    
-                                    let dano = window.playerState.forca;
-                                    if (this.data.side === 'right' && arma) dano += arma.danoBonus;
-                                    if (this.data.side === 'left' && escudo) dano += (escudo.defesaBonus || 5); 
-                                    sync.receberDano(dano, arma ? arma.categoria : 'Melee');
-                                }
-                            } else {
-                                ini.object3D.getWorldPosition(this.iniPosCache);
-                                let dist = this.posCache.distanceTo(this.iniPosCache);
-                                let escX = colisorNode.object3D.scale.x || 1.0;
-                                if (dist > (1.2 * escX) + 0.5) {
-                                    this.hitEnemies[ini.dataset.id] = false; 
+                                if (!this.boxInimigo.isEmpty() && this.boxArma.intersectsBox(this.boxInimigo)) { 
+                                    if (!this.hitEnemies[ini.dataset.id]) {
+                                        this.hitEnemies[ini.dataset.id] = true; 
+                                        
+                                        let dano = window.playerState.forca;
+                                        if (this.data.side === 'right' && arma) dano += arma.danoBonus;
+                                        if (this.data.side === 'left' && escudo) dano += (escudo.defesaBonus || 5); 
+                                        sync.receberDano(dano, arma ? arma.categoria : 'Melee');
+                                    }
+                                } else {
+                                    ini.object3D.getWorldPosition(this.iniPosCache);
+                                    let dist = this.posCache.distanceTo(this.iniPosCache);
+                                    let escX = colisorNode.object3D.scale.x || 1.0;
+                                    if (dist > (1.2 * escX) + 0.5) {
+                                        this.hitEnemies[ini.dataset.id] = false; 
+                                    }
                                 }
                             }
                         }
@@ -627,6 +686,7 @@
                         proj.object3D.getWorldPosition(this.projPosCache);
                         
                         if (this.posCache.distanceTo(this.projPosCache) < 0.6) {
+                            
                             if ((this.data.side === 'right' && arma && arma.categoria === 'Espada') || 
                                 (this.data.side === 'left' && escudo && speed < 1.5)) {
                                 proj.remove();
@@ -678,6 +738,48 @@
             }
         });
 
+        AFRAME.registerComponent('vr-controles-hud', { init: function () { this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); } });
+
+        AFRAME.registerComponent('pc-controles', {
+            init: function() {
+                window.addEventListener('contextmenu', e => e.preventDefault());
+                window.addEventListener('keydown', (e) => { 
+                    if (!window.GAME_STARTED || window.GAME_MODE !== 'PC') return; 
+                    window.lastActionTime = Date.now();
+                    if (e.key.toLowerCase() === 'i') { window.toggleMenu('inv'); } 
+                    if (e.key.toLowerCase() === 'c') { window.toggleMenu('atrib'); } 
+                    if (e.key.toLowerCase() === 'q') { 
+                        window.playerState.escudoEquipado = !window.playerState.escudoEquipado; window.atualizarUI(); 
+                        let msg = window.playerState.escudoEquipado ? 'Escudo Equipado (Q)!' : 'Escudo Guardado!'; 
+                        let aviso = document.querySelector('#texto-central'); 
+                        if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } 
+                    } 
+                });
+
+                let podeAtacarPC = true;
+                window.addEventListener('mousedown', (e) => {
+                    if(!window.GAME_STARTED || window.GAME_MODE !== 'PC' || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
+                    window.lastActionTime = Date.now();
+                    let cursor = document.querySelector('#cursor-centro'); 
+                    if(cursor && cursor.components && cursor.components.raycaster) {
+                        let acertoUI = cursor.components.raycaster.intersectedEls.some(el => el.classList.contains('interativo') && !el.hasAttribute('sistema-inimigo-sync'));
+                        if(acertoUI) return; 
+                    }
+                    if(e.button === 0) { 
+                        if (!podeAtacarPC) return; 
+                        podeAtacarPC = false; setTimeout(() => podeAtacarPC = true, 800); 
+                        window.realizarAtaque(); 
+                    }
+                });
+
+                window.addEventListener('click', () => { 
+                    if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.invAberto && !window.atribAberto && !window.npcAtivo) { 
+                        window.travarMousePC(); 
+                    } 
+                });
+            }
+        });
+
         AFRAME.registerComponent('projetil-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10}, gravidade: {type: 'boolean', default: false} },
             init: function () { 
@@ -701,6 +803,8 @@
                 
                 this.el.object3D.updateMatrixWorld(true);
                 this.boxProj.setFromObject(this.el.object3D);
+                
+                if (this.boxProj.isEmpty()) return;
 
                 for (let i = 0; i < window.inimigosAtivos.length; i++) {
                     let ini = window.inimigosAtivos[i];
@@ -716,7 +820,7 @@
                         this.boxInimigo.setFromObject(ini.object3D);
                     }
 
-                    if (this.boxProj.intersectsBox(this.boxInimigo)) { 
+                    if (!this.boxInimigo.isEmpty() && this.boxProj.intersectsBox(this.boxInimigo)) { 
                         sync.receberDano(this.data.dano, 'Projetil'); 
                         this.el.remove(); 
                         break; 
@@ -969,7 +1073,7 @@
         </div>
     </div>
 
-    <a-scene sistema-jogo gerenciador-inimigos gerenciador-npcs gerenciador-respawns renderer="colorManagement: true;">
+    <a-scene pc-controles sistema-jogo gerenciador-inimigos gerenciador-npcs gerenciador-respawns renderer="colorManagement: true;">
         
         <a-entity id="rig" firebase-multiplayer position="0 0 0">
             <a-entity camera position="0 1.6 0">
