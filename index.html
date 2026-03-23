@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Shuriken Ninja Style VR</title>
+    <title>RPG MMO - Criação de Personagem</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -16,7 +16,7 @@
 
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-select: none; -webkit-user-select: none;}
-        #ui-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 15, 20, 0.95); z-index: 9999999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; pointer-events: all !important; } 
+        #ui-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 15, 20, 0.95); z-index: 9999999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; pointer-events: all !important; transition: background 0.5s;} 
         .menu-box { background: #2c3e50; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; pointer-events: auto; } 
         .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; font-size: 1rem;} 
         .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; transition: 0.2s;} 
@@ -38,6 +38,23 @@
         .hud-btn:active { background: #f1c40f; color: #111; transform: scale(0.95); }
         #btn-atacar { width: 80px; height: 80px; background: rgba(192, 57, 43, 0.8); border-color: #e74c3c; font-size: 2rem; margin-top: 10px;}
         .menu-top-right { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: auto;}
+
+        /* --- TELA DE CRIAÇÃO DE PERSONAGEM --- */
+        #char-creation-menu { position: absolute; right: 50px; top: 50%; transform: translateY(-50%); background: rgba(20, 25, 30, 0.85); padding: 25px; border-radius: 10px; width: 320px; border: 1px solid rgba(255,255,255,0.1); display: none; pointer-events: auto; backdrop-filter: blur(5px); box-shadow: -5px 0 20px rgba(0,0,0,0.5); }
+        .char-title { text-align: center; color: #f1c40f; margin-top: 0; border-bottom: 1px solid #34495e; padding-bottom: 10px; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px;}
+        .char-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 5px;}
+        .char-row span.label { color: #bdc3c7; font-weight: bold; font-size: 0.85rem;}
+        .arrow-btn { background: #34495e; color: white; border: none; padding: 5px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s;}
+        .arrow-btn:hover { background: #f1c40f; color: #111; }
+        .val-display { font-weight: bold; color: #fff; width: 40px; text-align: center; }
+        .color-palette { display: flex; gap: 8px; }
+        .color-swatch { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .color-swatch:hover { transform: scale(1.2); }
+        .color-swatch.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.8); }
+        .gender-btn { flex: 1; padding: 8px; background: #2c3e50; color: #fff; border: 1px solid #34495e; cursor: pointer; transition: 0.2s;}
+        .gender-btn.active { background: #3498db; font-weight: bold; border-color: #2980b9;}
+        .gender-btn:first-child { border-radius: 5px 0 0 5px; } .gender-btn:last-child { border-radius: 0 5px 5px 0; }
+        .char-input { width: 100%; padding: 10px; margin-top: 15px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #7f8c8d; background: #2c3e50; color: white; box-sizing: border-box; text-align: center; font-size: 1.1rem;}
     </style>
 
     <script>
@@ -66,10 +83,26 @@
         
         window.meuIdMultiplayer = null; 
 
+        // ESTADO GLOBAL DO JOGADOR
         window.playerState = {
+            nome: "Visitante",
+            personagemCriado: false, // Flag crucial para saber se já passou pela criação
+            visual: {
+                genero: 'M', rosto: 1, cabelo: 1,
+                corCabelo: '#e74c3c', corPele: '#ffcd94'
+            },
             nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, forca: 10, velocidade: 5, defesa: 5, hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
             armaEquipada: 'Desarmado', escudoEquipado: false, nomeEscudo: 'Escudo de Madeira', flechas: 10, shurikens: 5, chaves: {}, invulneravel: false, ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
         };
+
+        // RASCUNHO DA CRIAÇÃO DO PERSONAGEM
+        window.charDraft = {
+            genero: 'M', rosto: 1, cabelo: 1,
+            corCabelo: '#e74c3c', corPele: '#ffcd94'
+        };
+
+        const coresCabelo = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e', '#ecf0f1', '#111111'];
+        const coresPele = ['#ffcd94', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#3d220f'];
 
         window.ANIM_PARADO = 'chr784_armature|chr784_bn01'; 
         window.ANIM_ANDANDO = 'chr784_armature|chr784_br01'; 
@@ -97,6 +130,93 @@
             if (!window.currentUser) return; 
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
+        };
+
+        // --- SISTEMA DE CRIAÇÃO DE PERSONAGEM (LOGICA) ---
+        window.mudarAtributo = function(attr, direcao) {
+            let max = (attr === 'rosto') ? 5 : 10; // 5 rostos, 10 cabelos
+            window.charDraft[attr] += direcao;
+            if(window.charDraft[attr] > max) window.charDraft[attr] = 1;
+            if(window.charDraft[attr] < 1) window.charDraft[attr] = max;
+            document.getElementById(`val-${attr}`).innerText = `${window.charDraft[attr]}/${max}`;
+            window.atualizarBonecoCriacao();
+        };
+
+        window.setGenero = function(gen) {
+            window.charDraft.genero = gen;
+            document.getElementById('btn-gen-m').classList.remove('active');
+            document.getElementById('btn-gen-f').classList.remove('active');
+            document.getElementById(`btn-gen-${gen.toLowerCase()}`).classList.add('active');
+            window.atualizarBonecoCriacao();
+        };
+
+        window.setCor = function(tipo, cor, element) {
+            window.charDraft[tipo] = cor;
+            // Atualiza outline do botão selecionado
+            let parent = element.parentNode;
+            for(let i=0; i<parent.children.length; i++) { parent.children[i].classList.remove('selected'); }
+            element.classList.add('selected');
+            window.atualizarBonecoCriacao();
+        };
+
+        window.atualizarBonecoCriacao = function() {
+            // ATUALIZA AS CORES NO MANEQUIM 3D EM TEMPO REAL
+            let dummyPele = document.querySelectorAll('.dummy-pele');
+            let dummyCabelo = document.querySelectorAll('.dummy-cabelo');
+            
+            dummyPele.forEach(el => el.setAttribute('color', window.charDraft.corPele));
+            dummyCabelo.forEach(el => el.setAttribute('color', window.charDraft.corCabelo));
+
+            // Troca de forma baseado no genero (Apenas exemplo visual)
+            let corpo = document.querySelector('#dummy-corpo');
+            if(corpo) {
+                if(window.charDraft.genero === 'F') { corpo.setAttribute('scale', '0.22 0.55 0.15'); } 
+                else { corpo.setAttribute('scale', '0.28 0.6 0.2'); }
+            }
+            
+            // Troca do estilo de Cabelo (Geometria básica como Exemplo)
+            let cabeloGeo = document.querySelector('#dummy-cabelo-geo');
+            if(cabeloGeo) {
+                if(window.charDraft.cabelo % 2 === 0) { cabeloGeo.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.16; height: 0.2'); }
+                else { cabeloGeo.setAttribute('geometry', 'primitive: box; width: 0.28; height: 0.15; depth: 0.28'); }
+            }
+            // (Futuramente aqui vc injetará o caminho dos seus .glb modulares reais)
+        };
+
+        window.confirmarPersonagem = function() {
+            let nomeInput = document.getElementById('char-nome').value.trim();
+            if(nomeInput.length < 3) {
+                alert("O nome deve ter pelo menos 3 caracteres."); return;
+            }
+            // Salva os dados no State principal
+            window.playerState.nome = nomeInput;
+            window.playerState.visual = Object.assign({}, window.charDraft);
+            window.playerState.personagemCriado = true;
+            window.salvarJogoNuvem();
+
+            // Esconde a criação, volta pro Start Menu e desce o jogador
+            document.getElementById('char-creation-menu').style.display = 'none';
+            document.getElementById('ui-layer').style.background = 'rgba(15, 15, 20, 0.95)';
+            document.getElementById('start-menu').style.display = 'block';
+            
+            let rig = document.querySelector('#rig');
+            if(rig) {
+                let r = window.playerState.ultimoRespawn;
+                rig.setAttribute('position', `${r.x} ${r.y} ${r.z}`);
+            }
+        };
+
+        // Renderiza paletas de cores via JS para não poluir o HTML
+        window.carregarPaletas = function() {
+            let pCabelo = document.getElementById('paleta-cabelo');
+            let pPele = document.getElementById('paleta-pele');
+            
+            coresCabelo.forEach(c => {
+                pCabelo.innerHTML += `<div class="color-swatch ${c===window.charDraft.corCabelo?'selected':''}" style="background-color: ${c};" onclick="setCor('corCabelo', '${c}', this)"></div>`;
+            });
+            coresPele.forEach(c => {
+                pPele.innerHTML += `<div class="color-swatch ${c===window.charDraft.corPele?'selected':''}" style="background-color: ${c};" onclick="setCor('corPele', '${c}', this)"></div>`;
+            });
         };
 
         window.atualizarArmaVisual = function() { 
@@ -210,7 +330,7 @@
             let defesaTotal = window.playerState.defesa + (armaStats ? armaStats.defesaBonus : 0) + (window.playerState.escudoEquipado && escudoStats ? escudoStats.defesaBonus : 0); 
             
             let els = { 
-                '#attr-nivel-classe': `Lv ${window.playerState.nivel} Aventureiro`, '#attr-hp-txt': `HP: ${window.playerState.hpAtual}/${window.playerState.hpMax}`, '#attr-mp-txt': `MP: ${window.playerState.mpAtual}/${window.playerState.mpMax}`, '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, '#attr-slot-1': window.playerState.armaEquipada 
+                '#attr-nivel-classe': `Lv ${window.playerState.nivel} ${window.playerState.nome}`, '#attr-hp-txt': `HP: ${window.playerState.hpAtual}/${window.playerState.hpMax}`, '#attr-mp-txt': `MP: ${window.playerState.mpAtual}/${window.playerState.mpMax}`, '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, '#attr-slot-1': window.playerState.armaEquipada 
             }; 
             for(let id in els) { let e = document.querySelector(id); if(e) e.setAttribute('value', els[id]); } 
             
@@ -439,19 +559,44 @@
             });
         };
 
+        // ==========================================
+        // FLUXO DO JOGO, LOGIN E CRIAÇÃO
+        // ==========================================
         function iniciarTelaSelecaoModo() { 
-            document.getElementById('login-menu').style.display = 'none'; document.getElementById('start-menu').style.display = 'block'; 
+            document.getElementById('login-menu').style.display = 'none'; 
+            
             if (window.currentUser && window.currentUser.uid && !window.currentUser.uid.startsWith('teste_')) { 
                 firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { 
-                    if (doc.exists) { 
+                    if (doc.exists && doc.data().personagemCriado) { 
+                        // Já tem personagem, vai pro jogo!
                         window.playerState = Object.assign(window.playerState, doc.data()); 
                         if(window.playerState.hpAtual <= 0) { window.playerState.hpAtual = window.playerState.hpMax; window.playerState.vivo = true; }
-                        if (window.GAME_STARTED) window.atualizarUI(); 
-                    } 
+                        document.getElementById('start-menu').style.display = 'block'; 
+                    } else {
+                        // NOVO USUÁRIO: Vai para a tela de criação
+                        abrirSalaDeCriacao();
+                    }
                 }).catch(e => console.error("Erro ao carregar save", e)); 
+            } else {
+                abrirSalaDeCriacao(); // No modo teste, força criar pra ver funcionando
             }
         }
         
+        function abrirSalaDeCriacao() {
+            // Remove o fundo escuro opaco para vermos o 3D
+            document.getElementById('ui-layer').style.background = 'transparent';
+            document.getElementById('char-creation-menu').style.display = 'block';
+            window.carregarPaletas();
+            
+            // Move a câmera lá para o alto onde está o manequim de criação
+            let rig = document.querySelector('#rig');
+            let cam = document.querySelector('[camera]');
+            if(rig) { rig.setAttribute('position', '0 100 2.5'); }
+            if(cam) { cam.object3D.rotation.set(0, 0, 0); }
+            
+            window.atualizarBonecoCriacao();
+        }
+
         function iniciarJogo(modo) { 
             window.GAME_MODE = modo; window.GAME_STARTED = true; 
             document.getElementById('ui-layer').style.display = 'none'; 
@@ -814,23 +959,15 @@
                             window.playerState.shurikens--; 
                             window.atualizarUI();
                             
-                            // === NOVO CÁLCULO ESTILO FACA/NINJA (LINHA RETA) ===
-                            
-                            // 1. Pega a rotação atual da mão (controlador)
                             let quatMao = new THREE.Quaternion();
                             this.el.object3D.getWorldQuaternion(quatMao);
                             
-                            // 2. Define a direção base (para frente do controlador é Z negativo)
                             let direcaoArremesso = new THREE.Vector3(0, 0, -1);
-                            
-                            // 3. Aplica a rotação da mão na direção, obtendo o vetor exato para onde está apontando
                             direcaoArremesso.applyQuaternion(quatMao);
                             
-                            // 4. Define uma velocidade alta e fixa para o arremesso reto (Estilo faca/ninja)
-                            let setSpeed = 25; // Alta velocidade para trajetória retilínea
+                            let setSpeed = 25; 
                             let finalVel = direcaoArremesso.multiplyScalar(setSpeed);
 
-                            // Cria o projétil na posição atual da mão
                             let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
                             let proj = document.createElement('a-entity');
                             proj.setAttribute('position', `${currPos.x} ${currPos.y} ${currPos.z}`);
@@ -843,7 +980,6 @@
                             let armaStats = window.bancoDeArmas['Shuriken'];
                             let danoTiro = window.playerState.forca + (armaStats.danoBonus || 5);
                             
-                            // Aplica o componente com a nova velocidade direta
                             proj.setAttribute('projetil-fisico', `velocidade: ${finalVel.x} ${finalVel.y} ${finalVel.z}; dano: ${danoTiro}`);
                             document.querySelector('a-scene').appendChild(proj);
                             window.tocarSom('snd-sword');
@@ -877,7 +1013,22 @@
                     let rX = data.rotation ? data.rotation.x || 0 : 0; let rY = data.rotation ? data.rotation.y || 0 : 0; let rZ = data.rotation ? data.rotation.z || 0 : 0;
                     avatar.setAttribute('rotation', `${rX} ${rY} ${rZ}`);
                     avatar.dataset.vivo = data.vivo !== false ? "true" : "false"; avatar.setAttribute('visible', data.vivo !== false ? 'true' : 'false');
-                    let conteudoAvatar = '<a-box scale="0.3 0.3 0.3" color="#f1c40f" position="0 0.5 0"><a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box><a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box></a-box><a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder><a-text value="Aliado" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>';
+                    
+                    // LÊ AS CORES DO PERSONAGEM (Ou usa cor padrão)
+                    let pCabeloCor = data.visual && data.visual.corCabelo ? data.visual.corCabelo : '#f1c40f';
+                    let pPeleCor = data.visual && data.visual.corPele ? data.visual.corPele : '#ffcd94';
+                    let pNome = data.nome || "Aliado";
+
+                    // AVATAR ATUALIZADO COM AS CORES DA CRIAÇÃO
+                    let conteudoAvatar = `
+                        <a-box scale="0.3 0.3 0.3" color="${pCabeloCor}" position="0 0.5 0">
+                            <a-box color="#222" scale="0.1 0.1 0.05" position="-0.3 0.2 -0.51"></a-box>
+                            <a-box color="#222" scale="0.1 0.1 0.05" position="0.3 0.2 -0.51"></a-box>
+                            <a-plane width="1" height="1" position="0 0 -0.5" color="${pPeleCor}"></a-plane>
+                        </a-box>
+                        <a-cylinder radius="0.25" height="0.6" color="#2980b9" position="0 0.0 0"></a-cylinder>
+                        <a-text value="${pNome}" align="center" position="0 0.9 0" color="white" scale="0.6 0.6 0.6" side="double"></a-text>
+                    `;
                     avatar.innerHTML = conteudoAvatar; this.otherPlayers[id] = avatar;
                 });
 
@@ -905,7 +1056,7 @@
                     let euler = new THREE.Euler(0, 0, 0, 'YXZ'); euler.setFromQuaternion(this.cameraObj.object3D.quaternion); let rotY = euler.y * 180 / Math.PI;
                     let currentPosRot = pos.x.toFixed(2) + pos.y.toFixed(2) + pos.z.toFixed(2) + rotY.toFixed(2);
                     if (this.lastPosRot !== currentPosRot) { window.lastActionTime = Date.now(); this.lastPosRot = currentPosRot; }
-                    this.myRef.set({ position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 }, vivo: window.playerState.vivo }); 
+                    this.myRef.set({ position: { x: Number(pos.x.toFixed(3)), y: Number(pos.y.toFixed(3)), z: Number(pos.z.toFixed(3)) }, rotation: { x: 0, y: Number(rotY.toFixed(3)), z: 0 }, vivo: window.playerState.vivo, visual: window.playerState.visual, nome: window.playerState.nome }); 
                 }
             }
         });
@@ -1016,8 +1167,6 @@
         AFRAME.registerComponent('projetil-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
             init: function () { 
-                // === REDUÇÃO DE GRAVIDADE ESTILO NINJA ===
-                // Mudado de -9.8 para -1.5 para flutuar mais e ir mais longe
                 this.gravidade = new THREE.Vector3(0, -1.5, 0); 
                 this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
             },
@@ -1469,6 +1618,48 @@
                 <p id="login-error"></p>
             </form>
         </div>
+
+        <div id="char-creation-menu">
+            <h2 class="char-title">Criar Personagem</h2>
+            
+            <div class="char-row" style="background: transparent; padding: 0;">
+                <button id="btn-gen-m" class="gender-btn active" onclick="setGenero('M')">Masculino</button>
+                <button id="btn-gen-f" class="gender-btn" onclick="setGenero('F')">Feminino</button>
+            </div>
+
+            <div class="char-row">
+                <span class="label">Rosto</span>
+                <div>
+                    <button class="arrow-btn" onclick="mudarAtributo('rosto', -1)">❮</button>
+                    <span class="val-display" id="val-rosto">1/5</span>
+                    <button class="arrow-btn" onclick="mudarAtributo('rosto', 1)">❯</button>
+                </div>
+            </div>
+
+            <div class="char-row">
+                <span class="label">Cabelo</span>
+                <div>
+                    <button class="arrow-btn" onclick="mudarAtributo('cabelo', -1)">❮</button>
+                    <span class="val-display" id="val-cabelo">1/10</span>
+                    <button class="arrow-btn" onclick="mudarAtributo('cabelo', 1)">❯</button>
+                </div>
+            </div>
+
+            <div class="char-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="label" style="margin-bottom: 10px;">Cor do Cabelo</span>
+                <div class="color-palette" id="paleta-cabelo"></div>
+            </div>
+
+            <div class="char-row" style="flex-direction: column; align-items: flex-start;">
+                <span class="label" style="margin-bottom: 10px;">Tom de Pele</span>
+                <div class="color-palette" id="paleta-pele"></div>
+            </div>
+
+            <input type="text" id="char-nome" class="char-input" placeholder="Digite seu Nome..." maxlength="15">
+            
+            <button class="btn btn-green" onclick="confirmarPersonagem()">Confirmar Personagem</button>
+        </div>
+
         <div id="start-menu" class="menu-box">
             <h2 style="color: #2ecc71;">Logado!</h2>
             <button id="btn-pc" class="btn btn-orange">Jogar no PC (Mouse)</button>
@@ -1505,6 +1696,19 @@
         <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
         <a-light type="directional" color="#ffffff" intensity="0.5" position="-1 2 1"></a-light>
         <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
+
+        <a-entity id="palco-criacao" position="0 100 0">
+            <a-light type="spot" position="0 3 2" intensity="1.5" color="#fff" target="#dummy-corpo"></a-light>
+            <a-cylinder radius="1" height="0.1" color="#34495e" position="0 0.05 0"></a-cylinder>
+            <a-cylinder radius="0.9" height="0.12" color="#f1c40f" position="0 0.06 0" material="emissive: #f1c40f; emissiveIntensity: 0.2"></a-cylinder>
+            
+            <a-entity id="manequim-criacao" position="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 15000; easing: linear">
+                <a-cylinder id="dummy-corpo" radius="0.28" height="0.6" color="#2c3e50" position="0 0.42 0"></a-cylinder>
+                <a-sphere class="dummy-pele" radius="0.18" color="#ffcd94" position="0 0.9 0"></a-sphere>
+                <a-entity id="dummy-cabelo-geo" geometry="primitive: cone; radiusBottom: 0.16; height: 0.2" class="dummy-cabelo" material="color: #e74c3c" position="0 1.05 0"></a-entity>
+            </a-entity>
+        </a-entity>
+
 
         <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow><a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text></a-box>
 
