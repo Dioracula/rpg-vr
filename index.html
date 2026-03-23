@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Mundo Principal</title>
+    <title>RPG MMO - Nova Interface MMO Clássica</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -17,8 +17,8 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-select: none; -webkit-user-select: none;}
         #ui-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 15, 20, 0.95); z-index: 9999999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; pointer-events: all !important; transition: background 0.5s;} 
-        .menu-box { background: #2c3e50; padding: 40px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; width: 320px; pointer-events: auto; } 
-        .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; font-size: 1rem;} 
+        .menu-box { background: #181d23; padding: 40px; border-radius: 10px; border: 2px solid #3a4454; box-shadow: 0 10px 25px rgba(0,0,0,0.8); text-align: center; width: 320px; pointer-events: auto; } 
+        .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #3a4454; background: #11151a; color: white; box-sizing: border-box; font-size: 1rem;} 
         .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; transition: 0.2s;} 
         .btn:hover { transform: scale(1.02); }
         .btn:active { transform: scale(0.98); opacity: 0.8; }
@@ -34,7 +34,7 @@
         #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 130px; height: 130px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: auto; border: 2px solid rgba(255,255,255,0.3); touch-action: none;}
         #joystick-stick { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(241, 196, 15, 0.8); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); pointer-events: none; transition: transform 0.05s ease-out;}
         #action-buttons { position: absolute; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 15px; pointer-events: auto; align-items: flex-end;}
-        .hud-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(44, 62, 80, 0.8); border: 2px solid #bdc3c7; color: white; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; touch-action: none; user-select: none; pointer-events: auto;}
+        .hud-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(24, 29, 35, 0.8); border: 2px solid #3a4454; color: white; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; touch-action: none; user-select: none; pointer-events: auto;}
         .hud-btn:active { background: #f1c40f; color: #111; transform: scale(0.95); }
         #btn-atacar { width: 80px; height: 80px; background: rgba(192, 57, 43, 0.8); border-color: #e74c3c; font-size: 2rem; margin-top: 10px;}
         .menu-top-right { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: auto;}
@@ -191,7 +191,7 @@
         };
 
         window.atualizarUI = function() { 
-            let elsHtml = ['#txt-nivel-hud', '#txt-status-hud', '#hp-wrapper', '#mp-wrapper', '#txt-arma-hud', '#attr-nivel-classe', '#attr-hp-txt', '#attr-mp-txt', '#attr-hpmax', '#attr-mpmax', '#attr-atk', '#attr-def', '#attr-agi', '#attr-exp', '#attr-nextexp', '#attr-pts', '#inv-total-forca', '#inv-total-defesa', '#inv-total-ouro', '#tt-flechas', '#tt-shurikens', '#attr-slot-1', '#attr-slot-2']; 
+            let elsHtml = ['#txt-nivel-hud', '#txt-status-hud', '#hp-wrapper', '#mp-wrapper', '#txt-arma-hud', '#attr-nivel-classe', '#attr-hp-txt', '#attr-mp-txt', '#attr-hpmax', '#attr-mpmax', '#attr-atk', '#attr-def', '#attr-agi', '#attr-exp', '#attr-nextexp', '#attr-pts', '#inv-total-ouro', '#tt-flechas', '#tt-shurikens', '#attr-slot-1', '#attr-slot-2']; 
             for(let i=0; i<elsHtml.length; i++) { if(!document.querySelector(elsHtml[i])) return; } 
             
             document.querySelector('#txt-nivel-hud').setAttribute('value', `Nivel: ${window.playerState.nivel} | XP: ${window.playerState.xp}/${window.playerState.xpProxNivel}`); 
@@ -213,37 +213,45 @@
             
             let nomeHeroi = window.playerState.nome || 'Aventureiro';
             let els = { 
-                '#attr-nivel-classe': `Lv ${window.playerState.nivel} ${nomeHeroi}`, '#attr-hp-txt': `HP: ${window.playerState.hpAtual}/${window.playerState.hpMax}`, '#attr-mp-txt': `MP: ${window.playerState.mpAtual}/${window.playerState.mpMax}`, '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, '#inv-total-forca': forcaTotal, '#inv-total-defesa': defesaTotal, '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, '#attr-slot-1': window.playerState.armaEquipada 
+                '#attr-nivel-classe': `Lv ${window.playerState.nivel} ${nomeHeroi}`, 
+                '#attr-hpmax': window.playerState.hpMax, '#attr-mpmax': window.playerState.mpMax, 
+                '#attr-atk': forcaTotal, '#attr-def': defesaTotal, '#attr-agi': window.playerState.velocidade, 
+                '#attr-exp': window.playerState.xp, '#attr-nextexp': window.playerState.xpProxNivel, '#attr-pts': window.playerState.pontos, 
+                '#inv-total-ouro': window.playerState.ouro, '#tt-flechas': window.playerState.flechas, '#tt-shurikens': window.playerState.shurikens, 
+                '#attr-slot-1': window.playerState.armaEquipada 
             }; 
             for(let id in els) { let e = document.querySelector(id); if(e) e.setAttribute('value', els[id]); } 
             
             let elSlot2 = document.querySelector('#attr-slot-2'); 
             if(elSlot2) { 
-                if(window.playerState.escudoEquipado && window.playerState.nomeEscudo) elSlot2.setAttribute('value', window.playerState.nomeEscudo); 
-                else if(armaStats && armaStats.categoria === 'Arco') elSlot2.setAttribute('value', '2 Maos (Arco)'); 
+                if(window.playerState.escudoEquipado && window.playerState.nomeEscudo) elSlot2.setAttribute('value', window.playerState.nomeEscudo.substring(0,8)); 
+                else if(armaStats && armaStats.categoria === 'Arco') elSlot2.setAttribute('value', '2 Maos'); 
                 else elSlot2.setAttribute('value', 'Vazio'); 
             } 
             window.atualizarArmaVisual(); 
             window.salvarJogoNuvem(); 
         };
 
+        // ========================================================
+        // NOVO RENDERIZADOR DE INVENTÁRIO (ESTILO MMO Aura Kingdom)
+        // ========================================================
         window.renderizarInventario = function() {
             let listaArmas = Object.keys(window.bancoDeArmas).filter(k => k !== 'Desarmado'); 
             let gridContainer = document.querySelector('#inv-grid-container'); 
             if(!gridContainer) return;
             
-            let cols = 6; let startX = -0.75; let startY = 0.35; let gap = 0.3; 
+            let cols = 7; let startX = -1.05; let startY = 0.55; let gap = 0.28; 
             let htmlSlots = "";
             
-            for (let i = 0; i < 18; i++) { 
+            // 35 Slots (7 colunas x 5 linhas)
+            for (let i = 0; i < 35; i++) { 
                 let col = i % cols; let row = Math.floor(i / cols); 
-                
                 let posX = startX + (col * gap);
                 let posY = startY - (row * gap);
                 
-                htmlSlots += `<a-box class="interativo" position="${posX} ${posY} 0.02" width="0.25" height="0.25" depth="0.02" color="#2b1b12" ${i < listaArmas.length ? `slot-interativo="item: ${listaArmas[i]}"` : ''}>
-                    <a-plane width="0.23" height="0.23" color="#f19e20" position="0 0 0.011"></a-plane>
-                    <a-plane width="0.21" height="0.21" color="#1e110b" position="0 0 0.012"></a-plane>`;
+                // Box estilo MMO (Borda mais clara, interior escuro)
+                htmlSlots += `<a-box class="interativo" position="${posX} ${posY} 0.01" width="0.25" height="0.25" depth="0.01" color="#3a4454" ${i < listaArmas.length ? `slot-interativo="item: ${listaArmas[i]}"` : ''}>
+                    <a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.006"></a-plane>`;
                 
                 if (i < listaArmas.length) { 
                     let nomeArma = listaArmas[i]; 
@@ -252,7 +260,7 @@
                         let glbPath = armaStats.modeloGlb.startsWith('#') ? armaStats.modeloGlb : `url(${armaStats.modeloGlb})`;
                         htmlSlots += `<a-entity gltf-model="${glbPath}" scale="${armaStats.escalaInv || '0.15 0.15 0.15'}" rotation="${armaStats.rotInv || '0 0 0'}" position="${armaStats.posInv || '0 0 0.05'}"></a-entity>`;
                     } else { 
-                        htmlSlots += `<a-text value="${nomeArma}" align="center" width="1" position="0 0 0.02" color="#FFF"></a-text>`;
+                        htmlSlots += `<a-text value="${nomeArma.substring(0,5)}" align="center" width="1" position="0 0 0.02" color="#bdc3c7" scale="0.8 0.8 0.8"></a-text>`;
                     } 
                 } 
                 htmlSlots += `</a-box>`;
@@ -298,7 +306,7 @@
             camera.object3D.getWorldQuaternion(camQuat);
             let camRotY = new THREE.Euler().setFromQuaternion(camQuat, 'YXZ').y;
             
-            let distancia = 1.5; 
+            let distancia = 1.8; // Afastado um pouco para caber o layout grande
             let spawnX = camPos.x - Math.sin(camRotY) * distancia;
             let spawnZ = camPos.z - Math.cos(camRotY) * distancia;
 
@@ -442,26 +450,20 @@
             });
         };
 
-        // ==========================================
-        // FLUXO DO JOGO E LOGIN (ATUALIZADO)
-        // ==========================================
         function iniciarTelaSelecaoModo() { 
             document.getElementById('login-menu').style.display = 'none'; 
             
             if (window.currentUser && window.currentUser.uid && !window.currentUser.uid.startsWith('teste_')) { 
                 firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { 
                     if (doc.exists && doc.data().personagemCriado) { 
-                        // JÁ TEM PERSONAGEM: Vai pro Start Menu
                         window.playerState = Object.assign(window.playerState, doc.data()); 
                         if(window.playerState.hpAtual <= 0) { window.playerState.hpAtual = window.playerState.hpMax; window.playerState.vivo = true; }
                         document.getElementById('start-menu').style.display = 'block'; 
                     } else {
-                        // NÃO TEM PERSONAGEM: Redireciona pro HTML de criação
                         window.location.href = 'create.html';
                     }
                 }).catch(e => console.error("Erro ao carregar save", e)); 
             } else {
-                // Usuário de teste, assume que já criou
                 document.getElementById('start-menu').style.display = 'block'; 
             }
         }
@@ -477,7 +479,6 @@
             let cursor = document.querySelector('#cursor-centro'); let wpPc = document.querySelector('#arma-visual-pc'); let scPc = document.querySelector('#escudo-visual-pc');
             let cam = document.querySelector('[camera]'); let rig = document.querySelector('#rig');
 
-            // Posiciona o jogador no respawn
             if(rig) {
                 let r = window.playerState.ultimoRespawn;
                 if(r) rig.setAttribute('position', `${r.x} ${r.y} ${r.z}`);
@@ -535,7 +536,6 @@
                 auth.signInWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; iniciarTelaSelecaoModo(); }).catch((error) => { btn.innerText = "Entrar"; mostrarErroLogin("Erro: " + error.message); }); 
             }); 
 
-            // Checa se o usuário já estava logado ao abrir a página
             auth.onAuthStateChanged((user) => {
                 if (user) {
                     window.currentUser = user;
@@ -1427,14 +1427,14 @@
                 let painelTooltip = document.querySelector('#inv-tooltip'); let txtNome = document.querySelector('#tt-nome'); let txtForca = document.querySelector('#tt-forca'); let txtDefesa = document.querySelector('#tt-defesa'); let boxEquipar = document.querySelector('#tt-acao'); 
                 
                 this.el.addEventListener('mouseenter', () => { 
-                    this.el.children[0].setAttribute('color', '#FFD700'); let itemAlvo = window.bancoDeArmas[this.data.item]; let itemEquipado = window.bancoDeArmas[window.playerState.armaEquipada]; if(!itemAlvo) return; 
+                    this.el.children[0].setAttribute('color', '#f1c40f'); let itemAlvo = window.bancoDeArmas[this.data.item]; let itemEquipado = window.bancoDeArmas[window.playerState.armaEquipada]; if(!itemAlvo) return; 
                     let diffForca = itemAlvo.danoBonus - (itemEquipado ? itemEquipado.danoBonus : 0); let diffDefesa = itemAlvo.defesaBonus - (itemEquipado ? itemEquipado.defesaBonus : 0); 
                     if(painelTooltip) painelTooltip.setAttribute('visible', 'true'); if(txtNome) txtNome.setAttribute('value', this.data.item); 
-                    if(txtForca) { txtForca.setAttribute('value', `Dano Item: ${itemAlvo.danoBonus}${diffForca !== 0 ? (diffForca>0?` (+${diffForca})`:` (${diffForca})`) : ''}`); txtForca.setAttribute('color', diffForca>0?'#00FF00':(diffForca<0?'#FF4444':'#FFF')); } 
-                    if(txtDefesa) { txtDefesa.setAttribute('value', `Defesa Item: ${itemAlvo.defesaBonus}${diffDefesa !== 0 ? (diffDefesa>0?` (+${diffDefesa})`:` (${diffDefesa})`) : ''}`); txtDefesa.setAttribute('color', diffDefesa>0?'#00FF00':(diffDefesa<0?'#FF4444':'#FFF')); } 
-                    if(boxEquipar) { let msg = itemAlvo.categoria === 'Escudo' ? (window.playerState.nomeEscudo === this.data.item ? 'EQUIPADO' : '[C] Equipar Escudo') : (window.playerState.armaEquipada === this.data.item ? 'EQUIPADO' : '[C] Equipar Arma'); let cor = (window.playerState.armaEquipada === this.data.item || window.playerState.nomeEscudo === this.data.item) ? '#FFD700' : '#FFF'; boxEquipar.setAttribute('value', msg); boxEquipar.setAttribute('color', cor); } 
+                    if(txtForca) { txtForca.setAttribute('value', `ATK: ${itemAlvo.danoBonus}`); } 
+                    if(txtDefesa) { txtDefesa.setAttribute('value', `DEF: ${itemAlvo.defesaBonus}`); } 
+                    if(boxEquipar) { let msg = itemAlvo.categoria === 'Escudo' ? (window.playerState.nomeEscudo === this.data.item ? '[ EQUIPPED ]' : '[C] Equipar') : (window.playerState.armaEquipada === this.data.item ? '[ EQUIPPED ]' : '[C] Equipar'); let cor = (window.playerState.armaEquipada === this.data.item || window.playerState.nomeEscudo === this.data.item) ? '#f1c40f' : '#2ecc71'; boxEquipar.setAttribute('value', msg); boxEquipar.setAttribute('color', cor); } 
                 }); 
-                this.el.addEventListener('mouseleave', () => { this.el.children[0].setAttribute('color', '#f19e20'); if(painelTooltip) painelTooltip.setAttribute('visible', 'false'); }); 
+                this.el.addEventListener('mouseleave', () => { this.el.children[0].setAttribute('color', '#151a21'); if(painelTooltip) painelTooltip.setAttribute('visible', 'false'); }); 
                 
                 const equiparFuncao = () => { 
                     let itemAlvo = window.bancoDeArmas[this.data.item]; if(!itemAlvo) return;
@@ -1471,7 +1471,7 @@
                 const upFn = () => { 
                     if (window.playerState.pontos > 0 && window.playerState.vivo) { 
                         window.playerState.pontos--; window.playerState[this.data.tipo]++; this.el.setAttribute('color', '#fff'); 
-                        setTimeout(() => { if(this.el) this.el.setAttribute('color', '#4CC3D9'); }, 150); 
+                        setTimeout(() => { if(this.el) this.el.setAttribute('color', this.data.tipo === 'forca' ? '#e74c3c' : (this.data.tipo === 'defesa' ? '#3498db' : '#f1c40f')); }, 150); 
                         if (this.data.tipo === 'defesa') { window.playerState.hpMax += 10; window.playerState.hpAtual = window.playerState.hpMax; } 
                         if (this.data.tipo === 'forca') { window.playerState.mpMax += 10; window.playerState.mpAtual = window.playerState.mpMax; } 
                         window.atualizarUI(); 
@@ -1580,99 +1580,128 @@
         </a-entity>
 
         <a-entity id="caixa-dialogo" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane color="#ecf0f1" width="2.2" height="1.6" position="0 0 0"></a-plane>
-            <a-plane color="#bdc3c7" width="2.25" height="1.65" position="0 0 -0.01"></a-plane>
+            <a-plane color="#181d23" width="2.2" height="1.6" opacity="0.95" position="0 0 0"></a-plane>
+            <a-plane color="#11151a" width="2.15" height="1.55" position="0 0 0.01"></a-plane>
             
-            <a-plane color="#2c3e50" width="2.2" height="0.25" position="0 0.675 0.01"></a-plane>
-            <a-text id="npc-nome-ui" value="Nome do NPC" position="-1.0 0.675 0.02" color="#f1c40f" scale="0.5 0.5 0.5" baseline="center"></a-text>
+            <a-plane color="#222831" width="2.15" height="0.25" position="0 0.65 0.02"></a-plane>
+            <a-text id="npc-nome-ui" value="Nome do NPC" position="-1.0 0.65 0.03" color="#f1c40f" scale="0.5 0.5 0.5" baseline="center"></a-text>
             
-            <a-box id="btn-npc-x" btn-dialogo-fechar class="interativo" color="#e74c3c" width="0.15" height="0.15" depth="0.02" position="1.0 0.675 0.02">
+            <a-box id="btn-npc-x" btn-dialogo-fechar class="interativo" color="#e74c3c" width="0.15" height="0.15" depth="0.02" position="1.0 0.65 0.03">
                 <a-text value="X" align="center" position="0 0 0.02" color="#FFF" scale="0.4 0.4 0.4"></a-text>
             </a-box>
 
-            <a-text id="npc-texto-ui" value="Texto..." position="-1.0 0.4 0.01" color="#2c3e50" scale="0.4 0.4 0.4" wrap-count="45" baseline="top"></a-text>
-            <a-plane color="#bdc3c7" width="2.0" height="0.02" position="0 -0.1 0.01"></a-plane>
+            <a-text id="npc-texto-ui" value="Texto..." position="-1.0 0.4 0.02" color="#bdc3c7" scale="0.4 0.4 0.4" wrap-count="45" baseline="top"></a-text>
+            <a-plane color="#222831" width="2.0" height="0.01" position="0 -0.1 0.02"></a-plane>
 
-            <a-entity id="npc-recompensa-ui" visible="false" position="0 -0.2 0.01">
-                <a-text value="Recompensas da Missao:" position="-1.0 0 0" color="#8e44ad" scale="0.35 0.35 0.35"></a-text>
-                <a-text id="npc-rec-texto" value="" position="-1.0 -0.15 0" color="#27ae60" scale="0.4 0.4 0.4"></a-text>
+            <a-entity id="npc-recompensa-ui" visible="false" position="0 -0.2 0.02">
+                <a-text value="Recompensas da Missao:" position="-1.0 0 0" color="#9b59b6" scale="0.35 0.35 0.35"></a-text>
+                <a-text id="npc-rec-texto" value="" position="-1.0 -0.15 0" color="#2ecc71" scale="0.4 0.4 0.4"></a-text>
             </a-entity>
 
-            <a-box id="btn-npc-aceitar" btn-dialogo-aceitar class="interativo" color="#27ae60" width="0.8" height="0.2" depth="0.02" position="0 -0.55 0.02" visible="false">
+            <a-box id="btn-npc-aceitar" btn-dialogo-aceitar class="interativo" color="#27ae60" width="0.8" height="0.2" depth="0.02" position="0 -0.55 0.03" visible="false">
                 <a-text value="ACEITAR MISSAO" align="center" position="0 0 0.02" scale="0.4 0.4 0.4" color="#FFF"></a-text>
             </a-box>
         </a-entity>
 
         <a-entity id="menu-inventario-novo" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane width="3.2" height="1.9" color="#e67e22" opacity="1.0" position="0 0 0"></a-plane>
-            <a-plane width="3.1" height="1.8" color="#362319" opacity="1.0" position="0 0 0.01"></a-plane>
-            <a-entity position="-1.2 0.2 0.02">
-                <a-cylinder radius="0.2" height="0.02" rotation="90 0 0" position="0 0.45 0" color="#d35400" segments-radial="6"><a-text value="INV" position="-0.12 0 0.02" color="#FFF" scale="0.8 0.8 0.8" rotation="-90 0 0"></a-text></a-cylinder>
-                <a-box class="interativo" width="0.8" height="0.2" depth="0.02" position="0 0.1 0" color="#f39c12"><a-text value="WEAPON" position="-0.3 -0.03 0.02" color="#5a2e0a" scale="0.6 0.6 0.6"></a-text></a-box>
-                <a-box class="interativo" btn-escudo width="0.8" height="0.2" depth="0.02" position="0 -0.15 0" color="#a05e10"><a-text value="TOGGLE SHIELD (Q)" position="-0.42 -0.03 0.02" color="#dbbc9c" scale="0.45 0.45 0.45"></a-text></a-box>
-                <a-box width="0.8" height="0.2" depth="0.02" position="0 -0.4 0" color="#a05e10"><a-text value="ARROWS:" position="-0.35 -0.03 0.02" color="#dbbc9c" scale="0.5 0.5 0.5"></a-text><a-text id="tt-flechas" value="10" position="0.15 -0.03 0.02" color="#FFF" scale="0.5 0.5 0.5"></a-text></a-box>
-                <a-box width="0.8" height="0.2" depth="0.02" position="0 -0.65 0" color="#a05e10"><a-text value="SHURIKEN:" position="-0.35 -0.03 0.02" color="#dbbc9c" scale="0.5 0.5 0.5"></a-text><a-text id="tt-shurikens" value="5" position="0.15 -0.03 0.02" color="#FFF" scale="0.5 0.5 0.5"></a-text></a-box>
+            <a-plane width="2.6" height="2.0" color="#181d23" opacity="0.95"></a-plane>
+            <a-plane width="2.55" height="1.95" color="#1c222b" position="0 0 0.005"></a-plane>
+
+            <a-plane width="2.55" height="0.15" color="#11151a" position="0 0.9 0.01"></a-plane>
+            <a-text value="INVENTORY" position="-1.2 0.9 0.02" color="#f1c40f" scale="0.6 0.6 0.6"></a-text>
+
+            <a-entity id="inv-grid-container" position="0.1 0.1 0.02"></a-entity>
+
+            <a-entity id="inv-tooltip" position="-0.4 0.1 0.05" visible="false">
+                <a-plane width="1.2" height="0.6" color="#0a0c10" opacity="0.95" border="1px solid #34495e"></a-plane>
+                <a-text id="tt-nome" value="Nome do Item" position="-0.5 0.2 0.01" color="#f1c40f" scale="0.45 0.45 0.45"></a-text>
+                <a-text id="tt-forca" value="Forca: 0" position="-0.5 0.05 0.01" color="#e74c3c" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="tt-defesa" value="Defesa: 0" position="-0.5 -0.1 0.01" color="#3498db" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="tt-acao" value="[C] Equipar" position="-0.5 -0.25 0.01" color="#2ecc71" scale="0.4 0.4 0.4"></a-text>
             </a-entity>
-            <a-plane width="2.0" height="1.2" color="#f1c40f" position="0.35 0.15 0.02"></a-plane>
-            <a-plane width="1.95" height="1.15" color="#5a371c" position="0.35 0.15 0.021"></a-plane>
-            <a-entity id="inv-grid-container" position="0.35 0.15 0.022"></a-entity>
-            <a-entity id="inv-tooltip" position="0.35 -0.6 0.03" visible="false">
-                <a-plane width="1.8" height="0.25" color="#111" opacity="0.9"></a-plane>
-                <a-text id="tt-nome" value="Nome do Item" position="-0.85 0.06 0.01" color="#FFD700" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="tt-forca" value="Forca: 0 (+0)" position="-0.85 -0.05 0.01" color="#FFF" scale="0.35 0.35 0.35"></a-text>
-                <a-text id="tt-defesa" value="Defesa: 0 (+0)" position="-0.2 -0.05 0.01" color="#FFF" scale="0.35 0.35 0.35"></a-text>
-                <a-text id="tt-acao" value="[C] Equipar Arma" position="0.35 -0.05 0.01" color="#00FF00" scale="0.3 0.3 0.3"></a-text>
-            </a-entity>
-            <a-entity position="0 -0.75 0.02">
-                <a-text value="< 1/4 >" position="-1.3 -0.02 0" color="#FFF" scale="0.7 0.7 0.7"></a-text>
-                <a-text value="ATK:" position="-0.5 -0.02 0" color="#e74c3c" scale="0.6 0.6 0.6"></a-text>
-                <a-text id="inv-total-forca" value="10" position="-0.2 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
-                <a-text value="DEF:" position="0.1 -0.02 0" color="#3498db" scale="0.6 0.6 0.6"></a-text>
-                <a-text id="inv-total-defesa" value="5" position="0.4 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
-                <a-circle radius="0.06" position="1.1 0 0" color="#f1c40f"></a-circle>
-                <a-text id="inv-total-ouro" value="0" position="1.2 -0.02 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+
+            <a-plane width="2.55" height="0.25" color="#11151a" position="0 -0.85 0.01"></a-plane>
+            
+            <a-entity position="0 -0.85 0.02">
+                <a-text value="Gold:" position="0.3 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
+                <a-circle radius="0.05" position="0.65 0 0" color="#f1c40f"></a-circle>
+                <a-text id="inv-total-ouro" value="0" position="0.75 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+
+                <a-text value="Arrows:" position="-1.2 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
+                <a-text id="tt-flechas" value="0" position="-0.8 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
+
+                <a-text value="Shurikens:" position="-0.5 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
+                <a-text id="tt-shurikens" value="0" position="-0.0 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
             </a-entity>
         </a-entity>
 
         <a-entity id="menu-atributos" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane width="2.6" height="1.8" color="#7f8c8d" opacity="1"></a-plane>
-            <a-plane width="2.55" height="1.75" color="#2c3e50" position="0 0 0.01"></a-plane>
-            <a-entity position="-0.85 0.1 0.02">
-                <a-plane width="0.7" height="0.9" color="#34495e" position="0 0.3 0"></a-plane>
-                <a-text value="Protagonista" position="-0.35 -0.2 0" scale="0.6 0.6 0.6"></a-text>
-                <a-text id="attr-nivel-classe" value="Lv 1 Espadachim" position="-0.35 -0.35 0" scale="0.5 0.5 0.5" color="#bdc3c7"></a-text>
-                <a-text id="attr-hp-txt" value="HP: 100/100" position="-0.35 -0.55 0" scale="0.4 0.4 0.4"></a-text>
-                <a-plane width="0.7" height="0.04" color="#c0392b" position="0 -0.65 0" align="left"></a-plane>
-                <a-text id="attr-mp-txt" value="MP: 100/100" position="-0.35 -0.75 0" scale="0.4 0.4 0.4"></a-text>
-                <a-plane width="0.7" height="0.04" color="#2980b9" position="0 -0.85 0" align="left"></a-plane>
-            </a-entity>
-            <a-plane width="0.01" height="1.6" color="#7f8c8d" position="-0.4 0 0.02"></a-plane>
-            <a-entity position="0.6 0.6 0.02">
-                <a-text value="Arma Primaria" position="-0.6 0.25 0" align="center" scale="0.4 0.4 0.4" color="#e74c3c"></a-text>
-                <a-box width="0.5" height="0.25" depth="0.01" position="-0.6 0 0" color="#34495e"><a-text id="attr-slot-1" value="Desarmado" position="0 0 0.02" align="center" scale="0.4 0.4 0.4"></a-text></a-box>
-                <a-text value="Escudo / Sec." position="0.2 0.25 0" align="center" scale="0.4 0.4 0.4" color="#f1c40f"></a-text>
-                <a-box width="0.5" height="0.25" depth="0.01" position="0.2 0 0" color="#34495e"><a-text id="attr-slot-2" value="Vazio" position="0 0 0.02" align="center" scale="0.4 0.4 0.4"></a-text></a-box>
-            </a-entity>
-            <a-plane width="1.8" height="0.01" color="#7f8c8d" position="0.6 0.35 0.02"></a-plane>
-            <a-entity position="0.6 -0.2 0.02">
-                <a-text value="HP Max" position="-0.8 0.4 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-hpmax" value="100" position="-0.1 0.4 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="MP Max" position="-0.8 0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-mpmax" value="100" position="-0.1 0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="Ataque (+)" position="-0.8 0.1 0" scale="0.4 0.4 0.4" color="#e74c3c"></a-text><a-text id="attr-atk" value="10" position="-0.1 0.1 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: forca" position="-0.02 0.1 0" width="0.08" height="0.08" depth="0.01" color="#e74c3c"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
-                <a-text value="Agilidade (+)" position="-0.8 -0.05 0" scale="0.4 0.4 0.4" color="#f1c40f"></a-text><a-text id="attr-agi" value="5" position="-0.1 -0.05 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: velocidade" position="-0.02 -0.05 0" width="0.08" height="0.08" depth="0.01" color="#f1c40f"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
-                <a-text value="Pts. Livres" position="-0.8 -0.25 0" scale="0.4 0.4 0.4" color="#2ecc71"></a-text><a-text id="attr-pts" value="0" position="-0.1 -0.25 0" scale="0.4 0.4 0.4" color="#2ecc71" align="right"></a-text>
+            <a-plane width="3.4" height="2.2" color="#181d23" opacity="0.95"></a-plane>
+            <a-plane width="3.35" height="2.15" color="#1c222b" position="0 0 0.005"></a-plane>
+
+            <a-plane width="3.35" height="0.2" color="#11151a" position="0 0.975 0.01"></a-plane>
+            <a-text value="GEAR & ATTRIBUTES" position="-1.6 0.975 0.02" color="#f1c40f" scale="0.6 0.6 0.6"></a-text>
+            <a-text id="attr-nivel-classe" value="Lv 1 Aventureiro" position="0 0.975 0.02" color="#FFF" scale="0.6 0.6 0.6" align="center"></a-text>
+
+            <a-entity position="-1.2 0.3 0.02">
+                <a-text value="Equipped Gear" position="-0.35 0.45 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
                 
-                <a-text value="EXP Atual" position="0.1 0.4 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-exp" value="0" position="0.8 0.4 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="Prox. Nivel" position="0.1 0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text id="attr-nextexp" value="50" position="0.8 0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="Defesa (+)" position="0.1 0.1 0" scale="0.4 0.4 0.4" color="#3498db"></a-text><a-text id="attr-def" value="5" position="0.8 0.1 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: defesa" position="0.88 0.1 0" width="0.08" height="0.08" depth="0.01" color="#3498db"><a-text value="+" align="center" position="0 0 0.01" scale="0.4 0.4 0.4"></a-text></a-box>
-                <a-text value="Sorte" position="0.1 -0.05 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text value="10" position="0.8 -0.05 0" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="Esquiva" position="0.1 -0.25 0" scale="0.4 0.4 0.4" color="#bdc3c7"></a-text><a-text value="5%" position="0.8 -0.25 0" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 0.2 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Head" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 -0.1 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Body" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 -0.4 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Legs" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
+                
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="0.1 0.2 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Hands" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="0.1 -0.1 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Feet" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
+                
+                <a-text value="Main Hand" position="-0.25 -0.65 0" color="#e74c3c" scale="0.3 0.3 0.3" align="center"></a-text>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#e74c3c" position="-0.25 -0.85 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text id="attr-slot-1" value="None" position="0 0 0.02" color="#FFF" scale="0.25 0.25 0.25" align="center"></a-text></a-box>
+
+                <a-text value="Off Hand" position="0.1 -0.65 0" color="#3498db" scale="0.3 0.3 0.3" align="center"></a-text>
+                <a-box width="0.25" height="0.25" depth="0.01" color="#3498db" position="0.1 -0.85 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text id="attr-slot-2" value="None" position="0 0 0.02" color="#FFF" scale="0.25 0.25 0.25" align="center"></a-text></a-box>
             </a-entity>
-            <a-plane width="0.6" height="0.15" color="#7f8c8d" position="-0.9 -0.8 0.02"><a-text value="Geral" align="center" scale="0.4 0.4 0.4" color="#fff" position="0 0 0.01"></a-text></a-plane>
-            <a-plane width="0.6" height="0.15" color="#34495e" position="-0.25 -0.8 0.02"><a-text value="Adicional" align="center" scale="0.4 0.4 0.4" color="#bdc3c7" position="0 0 0.01"></a-text></a-plane>
-            <a-plane width="0.6" height="0.15" color="#34495e" position="0.4 -0.8 0.02"><a-text value="Elementos" align="center" scale="0.4 0.4 0.4" color="#bdc3c7" position="0 0 0.01"></a-text></a-plane>
+
+            <a-entity position="0 0 0.02">
+                <a-plane width="1.2" height="1.6" color="#11151a" position="0 0.05 0"></a-plane>
+                <a-text value="CHARACTER PREVIEW" position="0 0.05 0.01" color="#3a4454" scale="0.5 0.5 0.5" align="center"></a-text>
+                
+                <a-plane width="1.2" height="0.15" color="#151a21" position="0 -0.85 0"></a-plane>
+                <a-text value="XP" position="-0.5 -0.82 0.01" color="#f1c40f" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-exp" value="0" position="0 -0.82 0.01" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-text value="/" position="0.05 -0.82 0.01" color="#7f8c8d" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-nextexp" value="50" position="0.1 -0.82 0.01" color="#FFF" scale="0.4 0.4 0.4" align="left"></a-text>
+            </a-entity>
+
+            <a-entity position="0.8 0.4 0.02">
+                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 0.35 0"></a-plane>
+                <a-text value="Health & Mana" position="-0.35 0.35 0.01" color="#FFF" scale="0.4 0.4 0.4"></a-text>
+                
+                <a-text value="HP Max:" position="-0.35 0.2 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-hpmax" value="100" position="0.9 0.2 0" color="#2ecc71" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-text value="MP Max:" position="-0.35 0.05 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-mpmax" value="100" position="0.9 0.05 0" color="#3498db" scale="0.4 0.4 0.4" align="right"></a-text>
+
+                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 -0.15 0"></a-plane>
+                <a-text value="Offensive" position="-0.35 -0.15 0.01" color="#e74c3c" scale="0.4 0.4 0.4"></a-text>
+
+                <a-text value="ATK DMG:" position="-0.35 -0.3 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-atk" value="10" position="0.5 -0.3 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-box class="interativo" btn-atributo="tipo: forca" width="0.08" height="0.08" depth="0.01" color="#e74c3c" position="0.8 -0.3 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
+
+                <a-text value="SPEED (AGI):" position="-0.35 -0.45 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-agi" value="5" position="0.5 -0.45 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-box class="interativo" btn-atributo="tipo: velocidade" width="0.08" height="0.08" depth="0.01" color="#f1c40f" position="0.8 -0.45 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
+
+                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 -0.75 0"></a-plane>
+                <a-text value="Defensive" position="-0.35 -0.75 0.01" color="#3498db" scale="0.4 0.4 0.4"></a-text>
+
+                <a-text value="DEFENSE:" position="-0.35 -0.9 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-def" value="5" position="0.5 -0.9 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
+                <a-box class="interativo" btn-atributo="tipo: defesa" width="0.08" height="0.08" depth="0.01" color="#3498db" position="0.8 -0.9 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
+
+                <a-plane width="1.4" height="0.15" color="#151a21" position="0.3 -1.2 0"></a-plane>
+                <a-text value="Available Points:" position="-0.35 -1.2 0.01" color="#f1c40f" scale="0.4 0.4 0.4"></a-text>
+                <a-text id="attr-pts" value="0" position="0.9 -1.2 0.01" color="#f1c40f" scale="0.5 0.5 0.5" align="right"></a-text>
+            </a-entity>
         </a-entity>
     </a-scene>
 </body>
