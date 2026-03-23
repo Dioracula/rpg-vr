@@ -33,6 +33,7 @@
         .card.player-card { border-left-color: #9b59b6; }
         .card.respawn-card { border-left-color: #00ffcc; }
         .card.arma-card { border-left-color: #e67e22; }
+        .card.cosm-card { border-left-color: #ff69b4; } /* Rosa para Cosméticos */
         
         .card h3 { margin: 0 0 10px 0; color: #f1c40f; width: 100%; display: flex; justify-content: space-between;}
         
@@ -57,6 +58,7 @@
         .painel-spawn.ini-spawn { background: #2c3e50; border: 2px solid #e74c3c;}
         .painel-spawn.resp-spawn { background: #16a085; border: 2px solid #1abc9c;}
         .painel-spawn.arma-spawn { background: #d35400; border: 2px solid #e67e22;}
+        .painel-spawn.cosm-spawn { background: #2c3e50; border: 2px solid #ff69b4;}
         .painel-spawn h2 { margin-top: 0; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px;}
         
         .grid-spawn { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
@@ -79,7 +81,7 @@
 <div id="github-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:99999; justify-content:center; align-items:center; backdrop-filter: blur(5px);">
     <div style="background:#1a1a1a; padding:25px; border-radius:10px; width:600px; max-width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.8); border: 1px solid #333;">
         <h2 style="color:#f1c40f; margin-top:0; display:flex; align-items:center; gap:10px;">🐙 Navegador GitHub</h2>
-        <p style="color:#bdc3c7; font-size:0.9rem; margin-top:-10px;">Conecte seu repositório para ler os arquivos GLB diretamente.</p>
+        <p style="color:#bdc3c7; font-size:0.9rem; margin-top:-10px;">Conecte seu repositório para ler os arquivos GLB ou PNG diretamente.</p>
         
         <div style="display:flex; gap:10px; margin-bottom:15px;">
             <input type="text" id="gh-user" placeholder="Usuário (Ex: seunome)" value="Dioracula" style="flex:1; padding:10px; border-radius:5px; border:1px solid #7f8c8d; background:#2c3e50; color:white;">
@@ -114,6 +116,7 @@
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
+        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos</button>
         <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Arsenal (Itens)</button>
         <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Respawns</button>
         <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ NPCs</button>
@@ -124,6 +127,50 @@
         <h2 class="section-title">🎒 INVENTÁRIO E STATUS DOS JOGADORES</h2>
         <div id="lista-jogadores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
             <p style="color: #7f8c8d;">Carregando banco de dados...</p>
+        </div>
+    </div>
+
+    <div id="tab-cosmeticos" class="tab-content">
+        <h2 class="section-title">🎭 COSMÉTICOS E CRIAÇÃO DE PERSONAGEM</h2>
+        <div id="lista-cosmeticos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;"></div>
+
+        <div class="painel-spawn cosm-spawn" id="form-cosmetico">
+            <h2>✂️ Adicionar Rosto ou Cabelo</h2>
+            <div class="grid-spawn">
+                <div class="input-group"><label>ID Único</label><input type="text" id="cosm-id" placeholder="Ex: cabelo_curto_01"></div>
+                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="cosm-nome" placeholder="Ex: Corte Militar"></div>
+                
+                <div class="input-group">
+                    <label>Categoria</label>
+                    <select id="cosm-tipo">
+                        <option value="cabelo">Cabelo (Modelo 3D)</option>
+                        <option value="rosto">Rosto (Textura PNG/JPG)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Gênero Permitido</label>
+                    <select id="cosm-genero">
+                        <option value="Ambos">Ambos</option>
+                        <option value="M">Apenas Masculino</option>
+                        <option value="F">Apenas Feminino</option>
+                    </select>
+                </div>
+                
+                <div class="input-group" style="grid-column: span 2;">
+                    <label>Caminho do Arquivo (GLB ou PNG) <span id="status-cosm-arquivo" class="status-extracao"></span></label>
+                    <input type="text" id="cosm-arquivo" placeholder="Ex: Cosmeticos/Cabelos/cabelo_01.glb">
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="file" id="file-cosm-arquivo" accept=".glb,.gltf,.png,.jpg" style="width: 150px; font-size:0.75rem;">
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo')">🐙 Abrir GitHub</button>
+                    </div>
+                </div>
+
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Escala Fixa</label><input type="text" id="cosm-escala" value="1 1 1"></div>
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Ajuste de Posição</label><input type="text" id="cosm-pos" value="0 0 0"></div>
+                <div class="input-group grupo-especial"><label style="color:#f39c12">Ajuste de Rotação</label><input type="text" id="cosm-rot" value="0 0 0"></div>
+            </div>
+            <button class="btn btn-purple" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="salvarCosmetico()">✨ SALVAR COSMÉTICO NO BANCO</button>
         </div>
     </div>
 
@@ -373,7 +420,7 @@
     };
 
     // ==========================================
-    // SISTEMA DE NAVEGAÇÃO DO GITHUB
+    // SISTEMA DE NAVEGAÇÃO DO GITHUB (ATUALIZADO PARA PNG/JPG)
     // ==========================================
     let ghTargetInput = "";
     let ghPastaBase = "";
@@ -420,10 +467,11 @@
             }
 
             const pastas = data.filter(item => item.type === 'dir');
-            const arquivos = data.filter(item => item.type === 'file' && (item.name.endsWith('.glb') || item.name.endsWith('.gltf')));
+            // AGORA PERMITE PNG E JPG PARA OS ROSTOS
+            const arquivos = data.filter(item => item.type === 'file' && (item.name.endsWith('.glb') || item.name.endsWith('.gltf') || item.name.endsWith('.png') || item.name.endsWith('.jpg')));
 
             if (pastas.length === 0 && arquivos.length === 0) {
-                fileList.innerHTML += `<p style="color:#7f8c8d; text-align:center;">Nenhum arquivo GLB ou pasta encontrado aqui.</p>`;
+                fileList.innerHTML += `<p style="color:#7f8c8d; text-align:center;">Nenhum arquivo 3D ou de Imagem encontrado aqui.</p>`;
             }
 
             pastas.forEach(pasta => {
@@ -435,9 +483,10 @@
             });
 
             arquivos.forEach(arquivo => {
+                let icon = arquivo.name.endsWith('.png') || arquivo.name.endsWith('.jpg') ? '🖼️' : '📦';
                 fileList.innerHTML += `
                     <div class="gh-item" onclick="selecionarArquivoGitHub('${arquivo.download_url}', '${arquivo.name}')">
-                        <span class="gh-icon" style="color:#f1c40f;">📦</span> 
+                        <span class="gh-icon" style="color:#f1c40f;">${icon}</span> 
                         <span style="color:#ecf0f1;">${arquivo.name}</span>
                     </div>
                 `;
@@ -455,12 +504,16 @@
         let subPasta = "";
         if (ghSelectCatId) {
             let cat = document.getElementById(ghSelectCatId).value;
+            // Para as armas
             if(cat === "Espada") subPasta = "Espadas/";
             else if(cat === "Luva") subPasta = "Luvas/";
             else if(cat === "Arco") subPasta = "Arcos/";
             else if(cat === "Varinha") subPasta = "Varinhas/";
             else if(cat === "Shuriken") subPasta = "Shurikens/";
             else if(cat === "Escudo") subPasta = "Escudos/";
+            // Para cosméticos
+            else if(cat === "cabelo") subPasta = "Cabelos/";
+            else if(cat === "rosto") subPasta = "Rostos/";
             else subPasta = "Outros/";
         }
 
@@ -468,7 +521,15 @@
         if (targetInput) targetInput.value = `${ghPastaBase}${subPasta}${fileName}`;
 
         let statusText = document.getElementById(ghStatusId);
-        if (statusText) { statusText.innerText = "(⏳ Baixando do GitHub...)"; statusText.style.color = "#f39c12"; }
+        
+        // Se for PNG ou JPG, não precisamos extrair animações. Apenas dá um OK.
+        if (fileName.endsWith('.png') || fileName.endsWith('.jpg')) {
+            if (statusText) { statusText.innerText = "(✅ Imagem de Textura carregada)"; statusText.style.color = "#2ecc71"; }
+            setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000);
+            return;
+        }
+
+        if (statusText) { statusText.innerText = "(⏳ Lendo GLB do GitHub...)"; statusText.style.color = "#f39c12"; }
         
         try {
             const res = await fetch(downloadUrl);
@@ -481,11 +542,11 @@
                 const datalist = document.getElementById('lista-animacoes'); 
                 
                 if (animations && animations.length > 0) {
-                    datalist.innerHTML = ''; 
-                    animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
+                    if(datalist) datalist.innerHTML = ''; 
+                    animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
                     if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações extraídas)`; statusText.style.color = "#2ecc71"; }
                 } else { 
-                    if(statusText) { statusText.innerText = `(⚠️ Carregado sem animações)`; statusText.style.color = "#f39c12"; }
+                    if(statusText) { statusText.innerText = `(✅ Carregado. Sem animações)`; statusText.style.color = "#3498db"; }
                 }
                 setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
             }, undefined, function(error) { 
@@ -501,14 +562,12 @@
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
 
-        function processarGLBLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
+        function processarArquivoLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
             let fileInput = document.getElementById(fileInputId);
             if (!fileInput) return;
             
             fileInput.addEventListener('change', function(e) {
                 const file = e.target.files[0]; if (!file) return;
-                const urlTemporaria = URL.createObjectURL(file); 
-                const loader = new THREE.GLTFLoader(); 
                 const statusText = document.getElementById(statusId);
                 
                 let subPasta = "";
@@ -520,22 +579,34 @@
                     else if(cat === "Varinha") subPasta = "Varinhas/";
                     else if(cat === "Shuriken") subPasta = "Shurikens/";
                     else if(cat === "Escudo") subPasta = "Escudos/";
+                    else if(cat === "cabelo") subPasta = "Cabelos/";
+                    else if(cat === "rosto") subPasta = "Rostos/";
                     else subPasta = "Outros/";
                 }
 
                 let targetInput = document.getElementById(targetInputId);
                 if (targetInput) targetInput.value = `${pastaBase}${subPasta}${file.name}`;
                 
+                // Se for PNG ou JPG, pula a checagem de animações do Three.js
+                if (file.name.endsWith('.png') || file.name.endsWith('.jpg')) {
+                    if(statusText) { statusText.innerText = `(✅ Imagem selecionada)`; statusText.style.color = "#2ecc71"; }
+                    setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000);
+                    return;
+                }
+
+                // Se for GLB, carrega pra tentar extrair as animações e jogar na datalist
+                const urlTemporaria = URL.createObjectURL(file); 
+                const loader = new THREE.GLTFLoader(); 
                 loader.load(urlTemporaria, function(gltf) {
                     const animations = gltf.animations; 
                     const datalist = document.getElementById('lista-animacoes'); 
                     
                     if (animations && animations.length > 0) {
-                        datalist.innerHTML = ''; 
-                        animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
+                        if(datalist) datalist.innerHTML = ''; 
+                        animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
                         if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações)`; statusText.style.color = "#2ecc71"; }
                     } else { 
-                        if(statusText) { statusText.innerText = `(⚠️ Sem animações)`; statusText.style.color = "#f39c12"; }
+                        if(statusText) { statusText.innerText = `(✅ Pronto. Sem animações)`; statusText.style.color = "#3498db"; }
                     }
                     setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
                 }, undefined, function(error) { 
@@ -544,11 +615,89 @@
             });
         }
 
-        processarGLBLocal('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
-        processarGLBLocal('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
-        processarGLBLocal('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
-        processarGLBLocal('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
+        processarArquivoLocal('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
+        processarArquivoLocal('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
+        processarArquivoLocal('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
+        processarArquivoLocal('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
+        processarArquivoLocal('file-cosm-arquivo', 'cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo');
 
+        // ==========================================
+        // SISTEMA DE COSMÉTICOS (ROSTOS / CABELOS)
+        // ==========================================
+        const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
+        
+        db.ref('banco_cosmeticos').on('value', snap => {
+            if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML = ''; 
+            let cosmeticos = snap.val(); if(!cosmeticos) return;
+            
+            for(let id in cosmeticos) {
+                let c = cosmeticos[id];
+                let icone = c.tipo === 'rosto' ? '😀' : '💇';
+                let tagGen = c.genero === 'Ambos' ? 'M/F' : (c.genero === 'M' ? '♂️ Masc' : '♀️ Fem');
+                
+                if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML += `
+                    <div class="card cosm-card">
+                        <h3>${icone} ${c.nome || id} <span style="font-size:0.8rem; color:#ccc;">[${c.tipo.toUpperCase()}]</span></h3>
+                        <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px;">
+                            🆔 <b>ID:</b> ${id} <br>
+                            🚻 <b>Gênero:</b> ${tagGen} <br>
+                            📁 <b>Arquivo:</b> <span style="color:#bdc3c7; font-size:0.8rem;">${c.arquivo || ''}</span>
+                        </div>
+                        <div class="action-buttons" style="width: 100%;">
+                            <button class="btn btn-edit" onclick="carregarEdicaoCosmetico('${id}')">✏️ Editar</button>
+                            <button class="btn btn-dark" onclick="excluirCosmetico('${id}')">🗑️ Excluir</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        window.salvarCosmetico = function() {
+            let id = document.getElementById('cosm-id').value.trim(); 
+            if(!id) { alert("Dê um ID único para o cosmético! (Ex: cabelo_espigado_01)"); return; }
+            
+            db.ref('banco_cosmeticos/' + id).set({
+                nome: document.getElementById('cosm-nome').value.trim() || id,
+                tipo: document.getElementById('cosm-tipo').value,
+                genero: document.getElementById('cosm-genero').value,
+                arquivo: document.getElementById('cosm-arquivo').value.trim(),
+                escala: document.getElementById('cosm-escala').value || '1 1 1',
+                posicao: document.getElementById('cosm-pos').value || '0 0 0',
+                rotacao: document.getElementById('cosm-rot').value || '0 0 0'
+            }).then(() => {
+                alert("🎭 Cosmético adicionado ao banco! Estará disponível na criação de personagem.");
+                document.getElementById('cosm-id').value = '';
+                document.getElementById('cosm-nome').value = '';
+                document.getElementById('cosm-arquivo').value = '';
+            }).catch(e => alert("Erro ao salvar: " + e.message));
+        };
+
+        window.carregarEdicaoCosmetico = function(id) {
+            db.ref('banco_cosmeticos/' + id).once('value').then(snap => {
+                let c = snap.val(); if(!c) return;
+                document.getElementById('cosm-id').value = id;
+                document.getElementById('cosm-nome').value = c.nome || '';
+                document.getElementById('cosm-tipo').value = c.tipo || 'cabelo';
+                document.getElementById('cosm-genero').value = c.genero || 'Ambos';
+                document.getElementById('cosm-arquivo').value = c.arquivo || '';
+                document.getElementById('cosm-escala').value = c.escala || '1 1 1';
+                document.getElementById('cosm-pos').value = c.posicao || '0 0 0';
+                document.getElementById('cosm-rot').value = c.rotacao || '0 0 0';
+                
+                let formCosm = document.getElementById('form-cosmetico');
+                if(formCosm) formCosm.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
+
+        window.excluirCosmetico = function(id) { 
+            if(confirm(`DESTRUIR o cosmético ${id}? Jogadores usando ele ficarão carecas/sem rosto!`)) {
+                db.ref('banco_cosmeticos/' + id).remove(); 
+            }
+        };
+
+        // ==========================================
+        // RESTANTE DOS COMPONENTES (Jogadores, Armas, NPCs, Inimigos)
+        // ==========================================
         firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
             const listaJogadores = document.getElementById('lista-jogadores'); 
             if(listaJogadores) listaJogadores.innerHTML = '';
@@ -575,7 +724,6 @@
             });
         });
 
-        // NOVA FUNÇÃO DO ADMIN PARA SALVAR A MUNIÇÃO NO BANCO
         window.darShurikensAdmin = function(uid) {
             let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
             if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
@@ -718,7 +866,7 @@
         db.ref('cenario_inimigos').on('child_added', (snapshot) => {
             let id = snapshot.key; let ini = snapshot.val();
             let card = document.createElement('div'); 
-            card.className = 'card'; 
+            card.className = 'card ini-card'; 
             card.id = `card-ini-${id}`;
             
             let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
