@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RPG MMO - Forjar Herói</title>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; user-select: none; }
+        
+        #ui-creation { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; justify-content: flex-end; align-items: center; pointer-events: none; padding-right: 50px; box-sizing: border-box; z-index: 1000; }
+        
+        .creation-box { background: rgba(20, 25, 30, 0.85); padding: 30px; border-radius: 12px; width: 340px; border: 1px solid rgba(255,255,255,0.1); pointer-events: auto; backdrop-filter: blur(8px); box-shadow: -5px 0 30px rgba(0,0,0,0.8); }
+        .char-title { text-align: center; color: #f1c40f; margin-top: 0; border-bottom: 2px solid #34495e; padding-bottom: 15px; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 1px;}
+        
+        .char-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px;}
+        .char-row span.label { color: #bdc3c7; font-weight: bold; font-size: 0.9rem;}
+        
+        .arrow-btn { background: #34495e; color: white; border: none; padding: 6px 15px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s;}
+        .arrow-btn:hover { background: #f1c40f; color: #111; }
+        .val-display { font-weight: bold; color: #fff; width: 45px; text-align: center; display: inline-block; }
+        
+        .color-palette { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;}
+        .color-swatch { width: 25px; height: 25px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+        .color-swatch:hover { transform: scale(1.2); }
+        .color-swatch.selected { border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+        
+        .gender-btn { flex: 1; padding: 10px; background: #2c3e50; color: #fff; border: 1px solid #34495e; cursor: pointer; transition: 0.2s; font-size: 1rem;}
+        .gender-btn.active { background: #3498db; font-weight: bold; border-color: #2980b9;}
+        .gender-btn:first-child { border-radius: 5px 0 0 5px; } .gender-btn:last-child { border-radius: 0 5px 5px 0; }
+        
+        .char-input { width: 100%; padding: 12px; margin-top: 10px; margin-bottom: 20px; border-radius: 5px; border: 2px solid #7f8c8d; background: #1a252f; color: #f1c40f; box-sizing: border-box; text-align: center; font-size: 1.2rem; font-weight: bold;}
+        .char-input:focus { border-color: #f1c40f; outline: none; }
+        
+        .btn-confirm { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 5px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+        .btn-confirm:hover { background: #2ecc71; transform: scale(1.02); }
+        
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.5rem; transition: opacity 0.5s;}
+    </style>
+
+    <script>
+        const firebaseConfig = {
+             apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
+             authDomain: "rpg-vr-online.firebaseapp.com",
+             databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
+             projectId: "rpg-vr-online",
+             storageBucket: "rpg-vr-online.firebasestorage.app",
+             messagingSenderId: "676174796336",
+             appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const auth = firebase.auth(); 
+        const firestoreDB = firebase.firestore(); 
+
+        let currentUserUid = null;
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUserUid = user.uid;
+                setTimeout(() => {
+                    let overlay = document.getElementById('loading-overlay');
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                }, 1000);
+            } else {
+                // Se chegou aqui e não tá logado, chuta pro index
+                window.location.href = 'index.html';
+            }
+        });
+
+        window.charDraft = {
+            genero: 'M', rosto: 1, cabelo: 1,
+            corCabelo: '#e74c3c', corPele: '#ffcd94'
+        };
+
+        const coresCabelo = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e', '#ecf0f1', '#111111'];
+        const coresPele = ['#ffcd94', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#3d220f'];
+
+        window.mudarAtributo = function(attr, direcao) {
+            let max = (attr === 'rosto') ? 5 : 10; 
+            window.charDraft[attr] += direcao;
+            if(window.charDraft[attr] > max) window.charDraft[attr] = 1;
+            if(window.charDraft[attr] < 1) window.charDraft[attr] = max;
+            document.getElementById(`val-${attr}`).innerText = `${window.charDraft[attr]}/${max}`;
+            window.atualizarBonecoCriacao();
+        };
+
+        window.setGenero = function(gen) {
+            window.charDraft.genero = gen;
+            document.getElementById('btn-gen-m').classList.remove('active');
+            document.getElementById('btn-gen-f').classList.remove('active');
+            document.getElementById(`btn-gen-${gen.toLowerCase()}`).classList.add('active');
+            window.atualizarBonecoCriacao();
+        };
+
+        window.setCor = function(tipo, cor, element) {
+            window.charDraft[tipo] = cor;
+            let parent = element.parentNode;
+            for(let i=0; i<parent.children.length; i++) { parent.children[i].classList.remove('selected'); }
+            element.classList.add('selected');
+            window.atualizarBonecoCriacao();
+        };
+
+        window.atualizarBonecoCriacao = function() {
+            let dummyPele = document.querySelectorAll('.dummy-pele');
+            let dummyCabelo = document.querySelectorAll('.dummy-cabelo');
+            
+            dummyPele.forEach(el => el.setAttribute('color', window.charDraft.corPele));
+            dummyCabelo.forEach(el => el.setAttribute('color', window.charDraft.corCabelo));
+
+            let corpo = document.querySelector('#dummy-corpo');
+            if(corpo) {
+                if(window.charDraft.genero === 'F') { corpo.setAttribute('scale', '0.22 0.55 0.15'); } 
+                else { corpo.setAttribute('scale', '0.28 0.6 0.2'); }
+            }
+            
+            let cabeloGeo = document.querySelector('#dummy-cabelo-geo');
+            if(cabeloGeo) {
+                if(window.charDraft.cabelo % 2 === 0) { cabeloGeo.setAttribute('geometry', 'primitive: cone; radiusBottom: 0.16; height: 0.2'); }
+                else { cabeloGeo.setAttribute('geometry', 'primitive: box; width: 0.28; height: 0.15; depth: 0.28'); }
+            }
+        };
+
+        window.confirmarPersonagem = function() {
+            if(!currentUserUid) { alert("Erro de autenticação. Tente relogar."); return; }
+
+            let nomeInput = document.getElementById('char-nome').value.trim();
+            if(nomeInput.length < 3) { alert("O nome do herói deve ter pelo menos 3 letras!"); return; }
+
+            let btn = document.querySelector('.btn-confirm');
+            btn.innerText = "Forjando...";
+            btn.disabled = true;
+
+            // STATUS PADRÃO DE UM NOVO JOGADOR
+            let novoPlayerState = {
+                nome: nomeInput,
+                personagemCriado: true,
+                visual: window.charDraft,
+                nivel: 1, xp: 0, xpProxNivel: 50, pontos: 0, ouro: 0, 
+                forca: 10, velocidade: 5, defesa: 5, 
+                hpAtual: 100, hpMax: 100, mpAtual: 100, mpMax: 100, vivo: true,
+                armaEquipada: 'Desarmado', escudoEquipado: false, nomeEscudo: '', 
+                flechas: 10, shurikens: 5, chaves: {}, invulneravel: false, 
+                ultimoRespawn: { id: 'base_inicial', x: 0, y: 0, z: 0 }
+            };
+
+            // Salva no banco e redireciona de volta para o jogo
+            firestoreDB.collection("jogadores").doc(currentUserUid).set(novoPlayerState)
+            .then(() => {
+                window.location.href = 'index.html'; // DEVOLVE PARA O JOGO
+            })
+            .catch(e => {
+                console.error(e);
+                alert("Erro ao criar personagem!");
+                btn.innerText = "Tentar Novamente";
+                btn.disabled = false;
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let pCabelo = document.getElementById('paleta-cabelo');
+            let pPele = document.getElementById('paleta-pele');
+            
+            coresCabelo.forEach(c => { pCabelo.innerHTML += `<div class="color-swatch ${c===window.charDraft.corCabelo?'selected':''}" style="background-color: ${c};" onclick="setCor('corCabelo', '${c}', this)"></div>`; });
+            coresPele.forEach(c => { pPele.innerHTML += `<div class="color-swatch ${c===window.charDraft.corPele?'selected':''}" style="background-color: ${c};" onclick="setCor('corPele', '${c}', this)"></div>`; });
+        });
+    </script>
+</head>
+<body>
+
+    <div id="loading-overlay">Conectando ao Reino...</div>
+
+    <div id="ui-creation">
+        <div class="creation-box">
+            <h2 class="char-title">Forjar Herói</h2>
+            
+            <div class="char-row" style="background: transparent; padding: 0;">
+                <button id="btn-gen-m" class="gender-btn active" onclick="setGenero('M')">Masculino</button>
+                <button id="btn-gen-f" class="gender-btn" onclick="setGenero('F')">Feminino</button>
+            </div>
+
+            <div class="char-row">
+                <span class="label">Rosto</span>
+                <div>
+                    <button class="arrow-btn" onclick="mudarAtributo('rosto', -1)">❮</button>
+                    <span class="val-display" id="val-rosto">1/5</span>
+                    <button class="arrow-btn" onclick="mudarAtributo('rosto', 1)">❯</button>
+                </div>
+            </div>
+
+            <div class="char-row">
+                <span class="label">Cabelo (Estilo)</span>
+                <div>
+                    <button class="arrow-btn" onclick="mudarAtributo('cabelo', -1)">❮</button>
+                    <span class="val-display" id="val-cabelo">1/10</span>
+                    <button class="arrow-btn" onclick="mudarAtributo('cabelo', 1)">❯</button>
+                </div>
+            </div>
+
+            <div class="char-row" style="flex-direction: column; align-items: center;">
+                <span class="label" style="margin-bottom: 10px;">Cor do Cabelo</span>
+                <div class="color-palette" id="paleta-cabelo"></div>
+            </div>
+
+            <div class="char-row" style="flex-direction: column; align-items: center;">
+                <span class="label" style="margin-bottom: 10px;">Tom de Pele</span>
+                <div class="color-palette" id="paleta-pele"></div>
+            </div>
+
+            <input type="text" id="char-nome" class="char-input" placeholder="NOME DO HERÓI" maxlength="15" autocomplete="off">
+            
+            <button class="btn-confirm" onclick="confirmarPersonagem()">Entrar no Mundo</button>
+        </div>
+    </div>
+
+    <a-scene renderer="colorManagement: true;" background="color: #111">
+        <a-entity camera position="0 1.6 2.5"></a-entity>
+        
+        <a-light type="ambient" color="#222"></a-light>
+        <a-light type="spot" position="0 3 2" intensity="1.5" color="#fff" target="#dummy-corpo" penumbra="0.5"></a-light>
+        <a-light type="point" position="-2 1 -1" intensity="0.5" color="#3498db"></a-light>
+        <a-light type="point" position="2 1 -1" intensity="0.5" color="#e74c3c"></a-light>
+
+        <a-cylinder radius="1" height="0.1" color="#1a252f" position="0 0.05 0"></a-cylinder>
+        <a-cylinder radius="0.9" height="0.12" color="#f1c40f" position="0 0.06 0" material="emissive: #f1c40f; emissiveIntensity: 0.1"></a-cylinder>
+        
+        <a-entity id="manequim-criacao" position="0 0 0" animation="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear">
+            <a-cylinder id="dummy-corpo" radius="0.28" height="0.6" color="#2c3e50" position="0 0.42 0"></a-cylinder>
+            <a-sphere class="dummy-pele" radius="0.18" color="#ffcd94" position="0 0.9 0"></a-sphere>
+            <a-entity id="dummy-cabelo-geo" geometry="primitive: cone; radiusBottom: 0.16; height: 0.2" class="dummy-cabelo" material="color: #e74c3c" position="0 1.05 0"></a-entity>
+        </a-entity>
+    </a-scene>
+</body>
+</html>
