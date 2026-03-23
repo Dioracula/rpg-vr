@@ -33,7 +33,7 @@
         .card.player-card { border-left-color: #9b59b6; }
         .card.respawn-card { border-left-color: #00ffcc; }
         .card.arma-card { border-left-color: #e67e22; }
-        .card.cosm-card { border-left-color: #ff69b4; } /* Rosa para Cosméticos */
+        .card.cosm-card { border-left-color: #ff69b4; } 
         
         .card h3 { margin: 0 0 10px 0; color: #f1c40f; width: 100%; display: flex; justify-content: space-between;}
         
@@ -116,7 +116,7 @@
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
-        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos</button>
+        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos & Vestuário</button>
         <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Arsenal (Itens)</button>
         <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Respawns</button>
         <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ NPCs</button>
@@ -131,20 +131,25 @@
     </div>
 
     <div id="tab-cosmeticos" class="tab-content">
-        <h2 class="section-title">🎭 COSMÉTICOS E CRIAÇÃO DE PERSONAGEM</h2>
+        <h2 class="section-title">🎭 ARQUIVOS DE CORPO, ROUPAS E COSMÉTICOS</h2>
         <div id="lista-cosmeticos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;"></div>
 
         <div class="painel-spawn cosm-spawn" id="form-cosmetico">
-            <h2>✂️ Adicionar Rosto ou Cabelo</h2>
+            <h2>✂️ Adicionar Peça de Vestuário ou Corpo</h2>
             <div class="grid-spawn">
-                <div class="input-group"><label>ID Único</label><input type="text" id="cosm-id" placeholder="Ex: cabelo_curto_01"></div>
-                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="cosm-nome" placeholder="Ex: Corte Militar"></div>
+                <div class="input-group"><label>ID Único</label><input type="text" id="cosm-id" placeholder="Ex: capacete_cavaleiro_01"></div>
+                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="cosm-nome" placeholder="Ex: Capacete do Cavaleiro Negro"></div>
                 
                 <div class="input-group">
-                    <label>Categoria</label>
+                    <label>Categoria (Parte do Corpo)</label>
                     <select id="cosm-tipo">
-                        <option value="cabelo">Cabelo (Modelo 3D)</option>
-                        <option value="rosto">Rosto (Textura PNG/JPG)</option>
+                        <option value="corpo">🧍 Corpo Base Completo</option>
+                        <option value="cabelo">💇 Cabelo</option>
+                        <option value="rosto">😀 Rosto (Textura PNG/JPG)</option>
+                        <option value="capacete">⛑️ Capacete / Chapéu</option>
+                        <option value="armadura">🦺 Armadura / Peitoral</option>
+                        <option value="luvas">🧤 Luvas de Armadura / Manoplas</option>
+                        <option value="botas">👢 Botas / Calçados</option>
                     </select>
                 </div>
 
@@ -159,10 +164,10 @@
                 
                 <div class="input-group" style="grid-column: span 2;">
                     <label>Caminho do Arquivo (GLB ou PNG) <span id="status-cosm-arquivo" class="status-extracao"></span></label>
-                    <input type="text" id="cosm-arquivo" placeholder="Ex: Cosmeticos/Cabelos/cabelo_01.glb">
+                    <input type="text" id="cosm-arquivo" placeholder="Ex: Cosmeticos/Capacetes/cap_cavaleiro.glb">
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
                         <input type="file" id="file-cosm-arquivo" accept=".glb,.gltf,.png,.jpg" style="width: 150px; font-size:0.75rem;">
-                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo')">🐙 Abrir GitHub</button>
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo')">🐙 Abrir GitHub</button>
                     </div>
                 </div>
 
@@ -170,7 +175,7 @@
                 <div class="input-group grupo-especial"><label style="color:#f39c12">Ajuste de Posição</label><input type="text" id="cosm-pos" value="0 0 0"></div>
                 <div class="input-group grupo-especial"><label style="color:#f39c12">Ajuste de Rotação</label><input type="text" id="cosm-rot" value="0 0 0"></div>
             </div>
-            <button class="btn btn-purple" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="salvarCosmetico()">✨ SALVAR COSMÉTICO NO BANCO</button>
+            <button class="btn btn-purple" style="width: 100%; font-size: 1.1rem; margin-top: 15px;" onclick="salvarCosmetico()">✨ REGISTRAR PEÇA NO BANCO</button>
         </div>
     </div>
 
@@ -359,7 +364,6 @@
 </div>
 
 <script>
-    // INICIALIZAÇÃO SEGURA E GLOBAL
     const firebaseConfig = {
          apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
          authDomain: "rpg-vr-online.firebaseapp.com",
@@ -396,7 +400,7 @@
     };
 
     // ==========================================
-    // SISTEMA DE MODO DE TESTE (NOVO)
+    // SISTEMA DE MODO DE TESTE
     // ==========================================
     let modoTesteAtivo = false;
     db.ref('server_config/modoTeste').on('value', snap => {
@@ -420,7 +424,7 @@
     };
 
     // ==========================================
-    // SISTEMA DE NAVEGAÇÃO DO GITHUB (ATUALIZADO PARA PNG/JPG)
+    // SISTEMA DE NAVEGAÇÃO DO GITHUB
     // ==========================================
     let ghTargetInput = "";
     let ghPastaBase = "";
@@ -467,7 +471,6 @@
             }
 
             const pastas = data.filter(item => item.type === 'dir');
-            // AGORA PERMITE PNG E JPG PARA OS ROSTOS
             const arquivos = data.filter(item => item.type === 'file' && (item.name.endsWith('.glb') || item.name.endsWith('.gltf') || item.name.endsWith('.png') || item.name.endsWith('.jpg')));
 
             if (pastas.length === 0 && arquivos.length === 0) {
@@ -511,9 +514,14 @@
             else if(cat === "Varinha") subPasta = "Varinhas/";
             else if(cat === "Shuriken") subPasta = "Shurikens/";
             else if(cat === "Escudo") subPasta = "Escudos/";
-            // Para cosméticos
+            // Para peças de corpo/cosméticos
             else if(cat === "cabelo") subPasta = "Cabelos/";
             else if(cat === "rosto") subPasta = "Rostos/";
+            else if(cat === "corpo") subPasta = "Corpos/";
+            else if(cat === "capacete") subPasta = "Capacetes/";
+            else if(cat === "armadura") subPasta = "Armaduras/";
+            else if(cat === "luvas") subPasta = "Manoplas/";
+            else if(cat === "botas") subPasta = "Botas/";
             else subPasta = "Outros/";
         }
 
@@ -522,7 +530,6 @@
 
         let statusText = document.getElementById(ghStatusId);
         
-        // Se for PNG ou JPG, não precisamos extrair animações. Apenas dá um OK.
         if (fileName.endsWith('.png') || fileName.endsWith('.jpg')) {
             if (statusText) { statusText.innerText = "(✅ Imagem de Textura carregada)"; statusText.style.color = "#2ecc71"; }
             setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000);
@@ -581,20 +588,23 @@
                     else if(cat === "Escudo") subPasta = "Escudos/";
                     else if(cat === "cabelo") subPasta = "Cabelos/";
                     else if(cat === "rosto") subPasta = "Rostos/";
+                    else if(cat === "corpo") subPasta = "Corpos/";
+                    else if(cat === "capacete") subPasta = "Capacetes/";
+                    else if(cat === "armadura") subPasta = "Armaduras/";
+                    else if(cat === "luvas") subPasta = "Manoplas/";
+                    else if(cat === "botas") subPasta = "Botas/";
                     else subPasta = "Outros/";
                 }
 
                 let targetInput = document.getElementById(targetInputId);
                 if (targetInput) targetInput.value = `${pastaBase}${subPasta}${file.name}`;
                 
-                // Se for PNG ou JPG, pula a checagem de animações do Three.js
                 if (file.name.endsWith('.png') || file.name.endsWith('.jpg')) {
                     if(statusText) { statusText.innerText = `(✅ Imagem selecionada)`; statusText.style.color = "#2ecc71"; }
                     setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000);
                     return;
                 }
 
-                // Se for GLB, carrega pra tentar extrair as animações e jogar na datalist
                 const urlTemporaria = URL.createObjectURL(file); 
                 const loader = new THREE.GLTFLoader(); 
                 loader.load(urlTemporaria, function(gltf) {
@@ -622,7 +632,7 @@
         processarArquivoLocal('file-cosm-arquivo', 'cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo');
 
         // ==========================================
-        // SISTEMA DE COSMÉTICOS (ROSTOS / CABELOS)
+        // SISTEMA DE COSMÉTICOS (ROUPAS / CORPOS)
         // ==========================================
         const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
         
@@ -632,7 +642,17 @@
             
             for(let id in cosmeticos) {
                 let c = cosmeticos[id];
-                let icone = c.tipo === 'rosto' ? '😀' : '💇';
+                
+                // Define o emoji e cor baseado no tipo da peça
+                let icone = '✨';
+                if(c.tipo === 'rosto') icone = '😀';
+                else if(c.tipo === 'cabelo') icone = '💇';
+                else if(c.tipo === 'corpo') icone = '🧍';
+                else if(c.tipo === 'capacete') icone = '⛑️';
+                else if(c.tipo === 'armadura') icone = '🦺';
+                else if(c.tipo === 'luvas') icone = '🧤';
+                else if(c.tipo === 'botas') icone = '👢';
+
                 let tagGen = c.genero === 'Ambos' ? 'M/F' : (c.genero === 'M' ? '♂️ Masc' : '♀️ Fem');
                 
                 if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML += `
@@ -654,7 +674,7 @@
 
         window.salvarCosmetico = function() {
             let id = document.getElementById('cosm-id').value.trim(); 
-            if(!id) { alert("Dê um ID único para o cosmético! (Ex: cabelo_espigado_01)"); return; }
+            if(!id) { alert("Dê um ID único para a peça! (Ex: capacete_ferro_01)"); return; }
             
             db.ref('banco_cosmeticos/' + id).set({
                 nome: document.getElementById('cosm-nome').value.trim() || id,
@@ -665,7 +685,7 @@
                 posicao: document.getElementById('cosm-pos').value || '0 0 0',
                 rotacao: document.getElementById('cosm-rot').value || '0 0 0'
             }).then(() => {
-                alert("🎭 Cosmético adicionado ao banco! Estará disponível na criação de personagem.");
+                alert("🎭 Peça registrada no banco com sucesso!");
                 document.getElementById('cosm-id').value = '';
                 document.getElementById('cosm-nome').value = '';
                 document.getElementById('cosm-arquivo').value = '';
@@ -677,7 +697,7 @@
                 let c = snap.val(); if(!c) return;
                 document.getElementById('cosm-id').value = id;
                 document.getElementById('cosm-nome').value = c.nome || '';
-                document.getElementById('cosm-tipo').value = c.tipo || 'cabelo';
+                document.getElementById('cosm-tipo').value = c.tipo || 'corpo';
                 document.getElementById('cosm-genero').value = c.genero || 'Ambos';
                 document.getElementById('cosm-arquivo').value = c.arquivo || '';
                 document.getElementById('cosm-escala').value = c.escala || '1 1 1';
@@ -690,7 +710,7 @@
         };
 
         window.excluirCosmetico = function(id) { 
-            if(confirm(`DESTRUIR o cosmético ${id}? Jogadores usando ele ficarão carecas/sem rosto!`)) {
+            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) {
                 db.ref('banco_cosmeticos/' + id).remove(); 
             }
         };
