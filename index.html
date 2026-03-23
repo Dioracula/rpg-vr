@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate VR e Física CM</title>
+    <title>RPG MMO - Combate VR e Física ttt</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -100,7 +100,6 @@
         // ==========================================
         window.salvarJogoNuvem = function() { 
             if (!window.currentUser) return; 
-            // Não tenta salvar no Firestore se for usuário de teste (fake uid não tem auth vinculada)
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
         };
@@ -402,6 +401,12 @@
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
 
+            // MUDANÇA: TRAVA DE VR.
+            // Se estiver no VR e não for arco/magia/shuriken, não permite "atacar" com o gatilho a longa distância.
+            if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Varinha' && armaStats.categoria !== 'Shuriken') {
+                return; // Impede o dano fantasma de 3 metros usando o gatilho!
+            }
+
             window.tocarSom('snd-sword');
             let pcWeapon = document.querySelector('#arma-visual-pc'); 
             if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
@@ -592,9 +597,6 @@
             schema: { mao: {type: 'string', default: 'direita'} },
             init: function() {
                 this.inimigosAtingidos = new Map();
-                this.boxArma = new THREE.Box3();
-                this.boxInimigo = new THREE.Box3();
-                this.boxProjetil = new THREE.Box3();
                 this.posAnterior = new THREE.Vector3();
                 this.vetorMovimento = new THREE.Vector3();
             },
@@ -619,35 +621,42 @@
 
                 let isSwinging = velocidadeMovimento > 1.5;
                 
-                // MUDANÇA: A caixa de colisão agora é calculada APENAS em cima do modelo visual da arma,
-                // ignorando completamente a linha de 15 metros do laser-controls do A-Frame.
-                let armaVisual = this.data.mao === 'direita' ? this.el.querySelector('#arma-visual-dir') : this.el.querySelector('#arma-visual-esq');
-                this.boxArma.makeEmpty();
-                
-                if (armaVisual && armaVisual.object3D && armaVisual.object3D.children.length > 0) {
-                    this.boxArma.setFromObject(armaVisual.object3D);
-                }
+                // MUDANÇA: Criação de um "Retângulo/Cápsula" matemático exato baseado na arma
+                // Direção que o controle aponta (Para frente = -Z local)
+                let dir = new THREE.Vector3(0, -0.5, -1).normalize(); 
+                let camQuat = new THREE.Quaternion();
+                this.el.object3D.getWorldQuaternion(camQuat);
+                dir.applyQuaternion(camQuat);
 
-                // Se a caixa estiver vazia (ex: desarmado, sem modelo GLB), cria a caixa de soco de 20cm
-                if (this.boxArma.isEmpty() || !isFinite(this.boxArma.max.x) || this.boxArma.getSize(new THREE.Vector3()).length() < 0.05) {
-                    this.boxArma.setFromCenterAndSize(posAtual, new THREE.Vector3(0.2, 0.2, 0.2));
-                }
+                let compArma = 0.2; // Tamanho para Soco / Desarmado
+                if (categoria === 'Espada') compArma = 1.1; // 1.1 metros de lâmina para Espadas
 
-                let inimigos = document.querySelectorAll('.colisao-inimigo');
-                inimigos.forEach(col => {
-                    let parent = col.closest('[sistema-inimigo-sync], [sistema-npc-interacao]');
-                    if (!parent) return;
+                let ptBase = posAtual;
+                let ptPonta = posAtual.clone().add(dir.clone().multiplyScalar(compArma));
+                let linhaArma = new THREE.Line3(ptBase, ptPonta); // A "Cápsula" exata
 
-                    let syncComp = parent.components ? parent.components['sistema-inimigo-sync'] : null;
-                    if (syncComp && syncComp.hpAtual <= 0) {
+                let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
+                inimigos.forEach(parent => {
+                    let syncComp = parent.components['sistema-inimigo-sync'];
+                    if (!syncComp || syncComp.hpAtual <= 0) {
                         this.inimigosAtingidos.delete(parent);
                         return;
                     }
 
-                    col.object3D.updateMatrixWorld(true);
-                    this.boxInimigo.setFromObject(col.object3D);
+                    // Pega o centro do inimigo
+                    let posIni = new THREE.Vector3();
+                    parent.object3D.getWorldPosition(posIni);
+                    let scaleX = parent.object3D.scale.x || 1;
+                    let scaleY = parent.object3D.scale.y || 1;
+                    
+                    posIni.y += (1.0 * scaleY); // Sobe para a altura do peito do monstro
+                    let raioHitbox = 0.6 * scaleX; // Largura do corpo do monstro
 
-                    let intersectandoAgora = this.boxArma.intersectsBox(this.boxInimigo);
+                    // Encontra a distância da lâmina até o corpo do monstro
+                    let ptMaisProximo = new THREE.Vector3();
+                    linhaArma.closestPointToPoint(posIni, true, ptMaisProximo);
+                    let intersectandoAgora = (ptMaisProximo.distanceTo(posIni) <= raioHitbox);
+
                     let registroHit = this.inimigosAtingidos.get(parent);
 
                     if (intersectandoAgora) {
@@ -656,7 +665,7 @@
                             registroHit = this.inimigosAtingidos.get(parent);
                         }
                         
-                        if (isSwinging && syncComp) {
+                        if (isSwinging) {
                             if (time - registroHit.tempoUltimoDano > 600) {
                                 let danoBase = window.playerState.forca + (armaStats.danoBonus || 0);
                                 let multiplicadorFisico = Math.min(2.5, velocidadeMovimento / 1.5);
@@ -672,13 +681,17 @@
                         }
                     }
                 });
-
+                
+                // MUDANÇA PROJETEIS (Tiros): Usar a linha matemática para rebater/cortar tiros
                 let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
                 projeteis.forEach(proj => {
-                    proj.object3D.updateMatrixWorld(true);
-                    this.boxProjetil.setFromObject(proj.object3D);
+                    let posProj = new THREE.Vector3();
+                    proj.object3D.getWorldPosition(posProj);
+                    
+                    let ptMaisProximo = new THREE.Vector3();
+                    linhaArma.closestPointToPoint(posProj, true, ptMaisProximo);
 
-                    if (this.boxArma.intersectsBox(this.boxProjetil)) {
+                    if (ptMaisProximo.distanceTo(posProj) <= 0.3) { // 30cm do tiro até a arma
                         if (isSwinging) {
                             if (categoria === 'Espada' || categoria === 'Arco') {
                                 window.tocarSom('snd-sword'); 
