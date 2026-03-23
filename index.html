@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate VR e Física ttt</title>
+    <title>RPG MMO - Combate VR e Física Adicionados</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -100,6 +100,7 @@
         // ==========================================
         window.salvarJogoNuvem = function() { 
             if (!window.currentUser) return; 
+            // Não tenta salvar no Firestore se for usuário de teste (fake uid não tem auth vinculada)
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
         };
@@ -597,7 +598,7 @@
             schema: { mao: {type: 'string', default: 'direita'} },
             init: function() {
                 this.inimigosAtingidos = new Map();
-                this.posAnterior = new THREE.Vector3();
+                this.posHistory = []; 
                 this.vetorMovimento = new THREE.Vector3();
             },
             tick: function(time, timeDelta) {
@@ -612,14 +613,22 @@
                 let posAtual = new THREE.Vector3();
                 this.el.object3D.getWorldPosition(posAtual);
                 
-                let velocidadeMovimento = 0;
-                if (timeDelta > 0) {
-                    this.vetorMovimento.subVectors(posAtual, this.posAnterior).divideScalar(timeDelta / 1000);
-                    velocidadeMovimento = this.vetorMovimento.length();
-                }
-                this.posAnterior.copy(posAtual);
+                // SISTEMA ANTI-TREMEDEIRA (JITTER) PARA VR
+                this.posHistory.push({pos: posAtual.clone(), time: time});
+                if (this.posHistory.length > 6) this.posHistory.shift(); // Guarda últimos ~60-80ms
 
-                let isSwinging = velocidadeMovimento > 1.5;
+                let velocidadeMovimento = 0;
+                let oldData = this.posHistory[0];
+                let dt = (time - oldData.time) / 1000;
+
+                if (dt > 0) {
+                    let dist = posAtual.distanceTo(oldData.pos);
+                    velocidadeMovimento = dist / dt;
+                    this.vetorMovimento.subVectors(posAtual, oldData.pos).normalize();
+                }
+
+                // Exige um movimento mais amplo e intencional (2.0 m/s suavizado)
+                let isSwinging = velocidadeMovimento > 2.0; 
                 
                 // MUDANÇA: Criação de um "Retângulo/Cápsula" matemático exato baseado na arma
                 // Direção que o controle aponta (Para frente = -Z local)
