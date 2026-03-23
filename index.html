@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - 2 Combate VR e Física Adicionados</title>
+    <title>RPG MMO - 3 Combate VR e Física Adicionados</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -100,6 +100,7 @@
         // ==========================================
         window.salvarJogoNuvem = function() { 
             if (!window.currentUser) return; 
+            // Não tenta salvar no Firestore se for usuário de teste (fake uid não tem auth vinculada)
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
         };
@@ -610,23 +611,24 @@
                 let posAtual = new THREE.Vector3();
                 this.el.object3D.getWorldPosition(posAtual);
                 
-                // SISTEMA ANTI-TREMEDEIRA E EXIGÊNCIA DE MOVIMENTO AMPLO
+                // SISTEMA ANTI-TREMEDEIRA APRIMORADO E EXIGÊNCIA DE MOVIMENTO AMPLO
                 this.posHistory.push({pos: posAtual.clone(), time: time});
-                if (this.posHistory.length > 12) this.posHistory.shift(); // Guarda últimos ~150-200ms
+                if (this.posHistory.length > 10) this.posHistory.shift(); 
 
                 let velocidadeMovimento = 0;
                 let deslocamento = 0;
                 let oldData = this.posHistory[0];
                 let dt = (time - oldData.time) / 1000;
 
-                if (dt > 0) {
+                // Garante que acumulamos tempo suficiente para não medir espasmos de 1 frame
+                if (dt > 0.05) { 
                     deslocamento = posAtual.distanceTo(oldData.pos);
                     velocidadeMovimento = deslocamento / dt;
                     this.vetorMovimento.subVectors(posAtual, oldData.pos).normalize();
                 }
 
-                // Exige velocidade (> 2.0 m/s) E um deslocamento mínimo (> 30cm) para ser considerado um golpe
-                let isSwinging = velocidadeMovimento > 2.0 && deslocamento > 0.3; 
+                // Exige velocidade (> 2.5 m/s) E um deslocamento mínimo (> 35cm) para ser considerado um golpe
+                let isSwinging = velocidadeMovimento > 2.5 && deslocamento > 0.35; 
                 
                 let dir = new THREE.Vector3(0, -0.5, -1).normalize(); 
                 let camQuat = new THREE.Quaternion();
@@ -634,7 +636,7 @@
                 dir.applyQuaternion(camQuat);
 
                 let compArma = 0.2; 
-                if (categoria === 'Espada') compArma = 1.1; 
+                if (categoria === 'Espada') compArma = 0.8; // Reduzido de 1.1m para 80cm para evitar acertos sem querer de muito longe
 
                 let ptBase = posAtual;
                 let ptPonta = posAtual.clone().add(dir.clone().multiplyScalar(compArma));
@@ -922,7 +924,8 @@
                 let posProj = new THREE.Vector3(); 
                 this.el.object3D.getWorldPosition(posProj);
                 
-                if (posProj.distanceTo(posPlayer) < 0.8) { 
+                // MUDANÇA: Reduzido de 0.8m para 0.3m. Agora o jogador é muito mais "fino" e é mais fácil esquivar.
+                if (posProj.distanceTo(posPlayer) < 0.3) { 
                     window.receberDanoJogador(this.data.dano); 
                     this.el.remove(); 
                 }
