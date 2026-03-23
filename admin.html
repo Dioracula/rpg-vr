@@ -552,11 +552,39 @@
         firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
             const listaJogadores = document.getElementById('lista-jogadores'); 
             if(listaJogadores) listaJogadores.innerHTML = '';
+            
             querySnapshot.forEach((doc) => {
-                let p = doc.data(); let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
-                if(listaJogadores) listaJogadores.innerHTML += `<div class="card player-card"><h3>👤 Usuário: ${doc.id}</h3><div style="width: 100%;"><span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br><b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'}</div></div>`;
+                let p = doc.data(); 
+                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
+                if(listaJogadores) {
+                    listaJogadores.innerHTML += `
+                    <div class="card player-card">
+                        <h3>👤 Usuário: ${doc.id}</h3>
+                        <div style="width: 100%;">
+                            <span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br>
+                            <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
+                            🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
+                            <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
+                            <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
+                        </div>
+                    </div>`;
+                }
             });
         });
+
+        // NOVA FUNÇÃO DO ADMIN PARA SALVAR A MUNIÇÃO NO BANCO
+        window.darShurikensAdmin = function(uid) {
+            let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
+            if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
+            
+            firestoreDB.collection("jogadores").doc(uid).update({
+                shurikens: firebase.firestore.FieldValue.increment(qtd)
+            }).then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`))
+              .catch(e => alert("Erro ao enviar: " + e.message));
+        };
 
         const listaArmasDiv = document.getElementById('lista-armas');
         db.ref('banco_armas').on('value', snap => {
