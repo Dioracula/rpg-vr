@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO 44 - Combate VR e Física Adicionados</title>
+    <title>RPG MMO - Combate VR e Física Adicionados</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -78,6 +78,9 @@
         window.ANIM_MORTE = 'chr784_armature|chr784_bd02'; 
         window.CONFIG_ARCO = { rotX: 180, rotY: 90, rotZ: 90 }; 
 
+        // ==========================================
+        // ARSENAL RESTAURADO E ESCUDOS ADICIONADOS
+        // ==========================================
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
             'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
@@ -662,9 +665,14 @@
 
                 let ptBase = posWorldAtual;
                 let ptPonta = posWorldAtual.clone().add(dir.clone().multiplyScalar(compArma));
-                let linhaArma = new THREE.Line3(ptBase, ptPonta); 
+                
+                // CRIAR BOX3 FÍSICA PARA A ARMA BASEADA NO ALCANCE
+                let boxArma = new THREE.Box3();
+                boxArma.expandByPoint(ptBase);
+                boxArma.expandByPoint(ptPonta);
+                boxArma.expandByScalar(0.08); // Margem de segurança (espessura)
 
-                // --- SISTEMA DE DANO NOS INIMIGOS ---
+                // --- SISTEMA DE DANO NOS INIMIGOS (COM CAIXAS - AABB) ---
                 if (!isEscudo) { 
                     let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
                     inimigos.forEach(parent => {
@@ -674,18 +682,13 @@
                             return;
                         }
 
-                        let posIni = new THREE.Vector3();
-                        parent.object3D.getWorldPosition(posIni);
-                        let scaleX = parent.object3D.scale.x || 1;
-                        let scaleY = parent.object3D.scale.y || 1;
+                        let colisorNode = parent.querySelector('.colisao-inimigo');
+                        if (!colisorNode) return;
                         
-                        posIni.y += (1.0 * scaleY); 
-                        let raioHitbox = 0.6 * scaleX; 
+                        colisorNode.object3D.updateMatrixWorld(true);
+                        let boxInimigo = new THREE.Box3().setFromObject(colisorNode.object3D);
 
-                        let ptMaisProximo = new THREE.Vector3();
-                        linhaArma.closestPointToPoint(posIni, true, ptMaisProximo);
-                        let intersectandoAgora = (ptMaisProximo.distanceTo(posIni) <= raioHitbox);
-
+                        let intersectandoAgora = boxArma.intersectsBox(boxInimigo);
                         let registroHit = this.inimigosAtingidos.get(parent);
 
                         if (intersectandoAgora) {
@@ -712,19 +715,13 @@
                     });
                 }
                 
-                // --- SISTEMA DE DEFESA DE PROJÉTEIS ---
+                // --- SISTEMA DE DEFESA DE PROJÉTEIS (COM CAIXAS - AABB) ---
                 let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
                 projeteis.forEach(proj => {
-                    let posProj = new THREE.Vector3();
-                    proj.object3D.getWorldPosition(posProj);
-                    
-                    let ptMaisProximo = new THREE.Vector3();
-                    linhaArma.closestPointToPoint(posProj, true, ptMaisProximo);
+                    proj.object3D.updateMatrixWorld(true);
+                    let boxProj = new THREE.Box3().setFromObject(proj.object3D);
 
-                    let distanciaAcerto = isEscudo ? 0.5 : 0.4;
-
-                    if (ptMaisProximo.distanceTo(posProj) <= distanciaAcerto) { 
-                        
+                    if (boxArma.intersectsBox(boxProj)) { 
                         if (isEscudo) {
                             if (velocidadeMovimento > 1.5) { 
                                 let projComp = proj.components['projetil-inimigo-fisico'];
@@ -1125,15 +1122,34 @@
                     let visual = document.createElement('a-entity'); el.appendChild(visual); visual.classList.add('modelo-visual'); visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                     let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2'); visual.dataset.currentModel = modelSrc;
 
+                    let infos = document.createElement('a-entity'); el.appendChild(infos); 
+                    infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
+                                       <a-box class="colisao-inimigo" width="1.2" height="2.0" depth="1.2" position="0 1.0 0" opacity="0" scale="${escX} ${escY} ${escZ}"></a-box>`;
+
                     if (modelSrc && modelSrc.trim() !== '') {
                         let glbPath = modelSrc.startsWith('#') ? modelSrc : `url(${modelSrc})`;
                         visual.setAttribute('gltf-model', glbPath); visual.setAttribute('anti-piscar', '');
-                        visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
+                        
+                        visual.addEventListener('model-loaded', () => { 
+                            holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); 
+                            
+                            let mesh = visual.getObject3D('mesh');
+                            if(mesh) {
+                                let bbox = new THREE.Box3().setFromObject(mesh);
+                                let size = new THREE.Vector3(); bbox.getSize(size);
+                                let center = new THREE.Vector3(); bbox.getCenter(center);
+                                let colisor = el.querySelector('.colisao-inimigo');
+                                if(colisor) {
+                                    colisor.setAttribute('width', Math.max(0.5, size.x / escX));
+                                    colisor.setAttribute('height', Math.max(1.0, size.y / escY));
+                                    colisor.setAttribute('depth', Math.max(0.5, size.z / escZ));
+                                    let localCenterY = (center.y - el.object3D.position.y) / escY;
+                                    colisor.setAttribute('position', `0 ${localCenterY} 0`);
+                                }
+                            }
+                        });
                         visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.setAttribute('visible', 'true'); });
                     }
-
-                    let infos = document.createElement('a-entity'); el.appendChild(infos); 
-                    infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text><a-cylinder class="colisao-inimigo" radius="1.2" height="2.5" position="0 1.25 0" opacity="0" scale="${escX} ${escY} ${escZ}"></a-cylinder>`;
                 });
 
                 this.db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
@@ -1173,8 +1189,8 @@
                     
                     let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; 
 
-                    let colisor = document.createElement('a-cylinder'); el.appendChild(colisor);
-                    colisor.setAttribute('radius', '0.8'); colisor.setAttribute('height', '2.5'); colisor.setAttribute('position', '0 1.25 0'); colisor.setAttribute('opacity', '0'); colisor.classList.add('interativo'); colisor.npcData = data; colisor.setAttribute('sistema-npc-interacao', ''); 
+                    let colisor = document.createElement('a-box'); el.appendChild(colisor);
+                    colisor.setAttribute('width', '1.0'); colisor.setAttribute('height', '2.5'); colisor.setAttribute('depth', '1.0'); colisor.setAttribute('position', '0 1.25 0'); colisor.setAttribute('opacity', '0'); colisor.classList.add('interativo'); colisor.npcData = data; colisor.setAttribute('sistema-npc-interacao', ''); 
                     colisor.classList.add('colisao-inimigo'); 
                     colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
 
@@ -1189,7 +1205,24 @@
                     if (modelSrc !== '') {
                         let glbPath = modelSrc.startsWith('#') ? modelSrc : `url(${modelSrc})`;
                         visual.setAttribute('gltf-model', glbPath); visual.setAttribute('anti-piscar', '');
-                        visual.addEventListener('model-loaded', () => { holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); });
+                        
+                        visual.addEventListener('model-loaded', () => { 
+                            holograma.setAttribute('visible', 'false'); fallback.setAttribute('visible', 'false'); 
+                            
+                            let mesh = visual.getObject3D('mesh');
+                            if(mesh) {
+                                let bbox = new THREE.Box3().setFromObject(mesh);
+                                let size = new THREE.Vector3(); bbox.getSize(size);
+                                let center = new THREE.Vector3(); bbox.getCenter(center);
+                                if(colisor) {
+                                    colisor.setAttribute('width', Math.max(0.5, size.x / escX));
+                                    colisor.setAttribute('height', Math.max(1.0, size.y / escY));
+                                    colisor.setAttribute('depth', Math.max(0.5, size.z / escZ));
+                                    let localCenterY = (center.y - el.object3D.position.y) / escY;
+                                    colisor.setAttribute('position', `0 ${localCenterY} 0`);
+                                }
+                            }
+                        });
                         visual.addEventListener('model-error', () => { holograma.setAttribute('color', '#e74c3c'); holograma.setAttribute('opacity', '0.8'); fallback.innerHTML = `<a-cylinder color="#e74c3c" radius="0.4" height="1.8" position="0 0.9 0" opacity="0.8"></a-cylinder>`; fallback.setAttribute('visible', 'true'); });
                     }
 
@@ -1204,7 +1237,7 @@
                         if(visual) {
                             let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1; visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             let colisor = el.querySelector('.interativo');
-                            if(colisor && colisor.tagName === 'A-CYLINDER') colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
+                            if(colisor && colisor.tagName === 'A-BOX') colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                             
                             let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '';
                             if (visual.dataset.currentModel !== newModel) { 
@@ -1214,7 +1247,7 @@
                                 let holograma = el.querySelector('.npc-holograma'); if(holograma) { holograma.setAttribute('visible', 'true'); holograma.setAttribute('color', '#f1c40f'); } 
                             }
                         }
-                        let colisor = el.querySelector('a-cylinder.interativo'); if (colisor) colisor.npcData = data; 
+                        let colisor = el.querySelector('.interativo'); if (colisor) colisor.npcData = data; 
                         let nomeTag = el.querySelector('.npc-nome-tag'); if (nomeTag) nomeTag.setAttribute('value', data.nome || 'NPC');
                     }
                 });
