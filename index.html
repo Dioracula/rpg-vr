@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Combate VR e Física Adicionados</title>
+    <title>RPG MMO - 2 Combate VR e Física Adicionados</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -100,7 +100,6 @@
         // ==========================================
         window.salvarJogoNuvem = function() { 
             if (!window.currentUser) return; 
-            // Não tenta salvar no Firestore se for usuário de teste (fake uid não tem auth vinculada)
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
         };
@@ -402,10 +401,8 @@
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
 
-            // MUDANÇA: TRAVA DE VR.
-            // Se estiver no VR e não for arco/magia/shuriken, não permite "atacar" com o gatilho a longa distância.
             if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Varinha' && armaStats.categoria !== 'Shuriken') {
-                return; // Impede o dano fantasma de 3 metros usando o gatilho!
+                return; 
             }
 
             window.tocarSom('snd-sword');
@@ -613,36 +610,35 @@
                 let posAtual = new THREE.Vector3();
                 this.el.object3D.getWorldPosition(posAtual);
                 
-                // SISTEMA ANTI-TREMEDEIRA (JITTER) PARA VR
+                // SISTEMA ANTI-TREMEDEIRA E EXIGÊNCIA DE MOVIMENTO AMPLO
                 this.posHistory.push({pos: posAtual.clone(), time: time});
-                if (this.posHistory.length > 6) this.posHistory.shift(); // Guarda últimos ~60-80ms
+                if (this.posHistory.length > 12) this.posHistory.shift(); // Guarda últimos ~150-200ms
 
                 let velocidadeMovimento = 0;
+                let deslocamento = 0;
                 let oldData = this.posHistory[0];
                 let dt = (time - oldData.time) / 1000;
 
                 if (dt > 0) {
-                    let dist = posAtual.distanceTo(oldData.pos);
-                    velocidadeMovimento = dist / dt;
+                    deslocamento = posAtual.distanceTo(oldData.pos);
+                    velocidadeMovimento = deslocamento / dt;
                     this.vetorMovimento.subVectors(posAtual, oldData.pos).normalize();
                 }
 
-                // Exige um movimento mais amplo e intencional (2.0 m/s suavizado)
-                let isSwinging = velocidadeMovimento > 2.0; 
+                // Exige velocidade (> 2.0 m/s) E um deslocamento mínimo (> 30cm) para ser considerado um golpe
+                let isSwinging = velocidadeMovimento > 2.0 && deslocamento > 0.3; 
                 
-                // MUDANÇA: Criação de um "Retângulo/Cápsula" matemático exato baseado na arma
-                // Direção que o controle aponta (Para frente = -Z local)
                 let dir = new THREE.Vector3(0, -0.5, -1).normalize(); 
                 let camQuat = new THREE.Quaternion();
                 this.el.object3D.getWorldQuaternion(camQuat);
                 dir.applyQuaternion(camQuat);
 
-                let compArma = 0.2; // Tamanho para Soco / Desarmado
-                if (categoria === 'Espada') compArma = 1.1; // 1.1 metros de lâmina para Espadas
+                let compArma = 0.2; 
+                if (categoria === 'Espada') compArma = 1.1; 
 
                 let ptBase = posAtual;
                 let ptPonta = posAtual.clone().add(dir.clone().multiplyScalar(compArma));
-                let linhaArma = new THREE.Line3(ptBase, ptPonta); // A "Cápsula" exata
+                let linhaArma = new THREE.Line3(ptBase, ptPonta); 
 
                 let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
                 inimigos.forEach(parent => {
@@ -652,16 +648,14 @@
                         return;
                     }
 
-                    // Pega o centro do inimigo
                     let posIni = new THREE.Vector3();
                     parent.object3D.getWorldPosition(posIni);
                     let scaleX = parent.object3D.scale.x || 1;
                     let scaleY = parent.object3D.scale.y || 1;
                     
-                    posIni.y += (1.0 * scaleY); // Sobe para a altura do peito do monstro
-                    let raioHitbox = 0.6 * scaleX; // Largura do corpo do monstro
+                    posIni.y += (1.0 * scaleY); 
+                    let raioHitbox = 0.6 * scaleX; 
 
-                    // Encontra a distância da lâmina até o corpo do monstro
                     let ptMaisProximo = new THREE.Vector3();
                     linhaArma.closestPointToPoint(posIni, true, ptMaisProximo);
                     let intersectandoAgora = (ptMaisProximo.distanceTo(posIni) <= raioHitbox);
@@ -691,7 +685,6 @@
                     }
                 });
                 
-                // MUDANÇA PROJETEIS (Tiros): Usar a linha matemática para rebater/cortar tiros
                 let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
                 projeteis.forEach(proj => {
                     let posProj = new THREE.Vector3();
@@ -700,7 +693,7 @@
                     let ptMaisProximo = new THREE.Vector3();
                     linhaArma.closestPointToPoint(posProj, true, ptMaisProximo);
 
-                    if (ptMaisProximo.distanceTo(posProj) <= 0.3) { // 30cm do tiro até a arma
+                    if (ptMaisProximo.distanceTo(posProj) <= 0.3) { 
                         if (isSwinging) {
                             if (categoria === 'Espada' || categoria === 'Arco') {
                                 window.tocarSom('snd-sword'); 
