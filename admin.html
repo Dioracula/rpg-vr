@@ -70,10 +70,12 @@
         .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
         .status-extracao { font-size: 0.75rem; font-weight: bold; margin-left: 5px; }
 
+        /* Estilos do Navegador GitHub */
         .gh-item { padding: 10px; margin-bottom: 5px; background: #2c3e50; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
         .gh-item:hover { background: #34495e; transform: translateX(5px); }
         .gh-icon { font-size: 1.2rem; }
 
+        /* Estilo para campos Dinâmicos de Armas */
         .dyn-group { display: none; }
         .dyn-group.active { display: contents; }
         .bg-vfx { background: rgba(155, 89, 182, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(155, 89, 182, 0.3); }
@@ -120,7 +122,7 @@
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
-        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos</button>
+        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos & Vestuário</button>
         <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Arsenal (Itens)</button>
         <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Respawns</button>
         <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ NPCs</button>
@@ -141,21 +143,22 @@
         <div class="painel-spawn cosm-spawn" id="form-cosmetico">
             <h2>✂️ Adicionar Peça de Vestuário ou Corpo</h2>
             <div class="grid-spawn">
-                <div class="input-group"><label>ID Único</label><input type="text" id="cosm-id" placeholder="Ex: capacete_cavaleiro"></div>
-                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="cosm-nome" placeholder="Ex: Capacete Negro"></div>
+                <div class="input-group"><label>ID Único</label><input type="text" id="cosm-id" placeholder="Ex: capacete_cavaleiro_01"></div>
+                <div class="input-group"><label>Nome de Exibição</label><input type="text" id="cosm-nome" placeholder="Ex: Capacete do Cavaleiro Negro"></div>
                 
                 <div class="input-group">
-                    <label>Categoria (Corpo)</label>
+                    <label>Categoria (Parte do Corpo)</label>
                     <select id="cosm-tipo">
                         <option value="corpo">🧍 Corpo Base Completo</option>
                         <option value="cabelo">💇 Cabelo</option>
                         <option value="rosto">😀 Rosto (Textura PNG/JPG)</option>
                         <option value="capacete">⛑️ Capacete / Chapéu</option>
                         <option value="armadura">🦺 Armadura / Peitoral</option>
-                        <option value="luvas">🧤 Luvas de Armadura</option>
+                        <option value="luvas">🧤 Luvas de Armadura / Manoplas</option>
                         <option value="botas">👢 Botas / Calçados</option>
                     </select>
                 </div>
+
                 <div class="input-group">
                     <label>Gênero Permitido</label>
                     <select id="cosm-genero">
@@ -164,12 +167,13 @@
                         <option value="F">Apenas Feminino</option>
                     </select>
                 </div>
+                
                 <div class="input-group" style="grid-column: span 2;">
-                    <label>Caminho do Arquivo (GLB/PNG) <span id="status-cosm-arquivo" class="status-extracao"></span></label>
-                    <input type="text" id="cosm-arquivo" placeholder="Ex: Cosmeticos/Capacetes/cap.glb">
+                    <label>Caminho do Arquivo (GLB ou PNG) <span id="status-cosm-arquivo" class="status-extracao"></span></label>
+                    <input type="text" id="cosm-arquivo" placeholder="Ex: Cosmeticos/Capacetes/cap_cavaleiro.glb">
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
                         <input type="file" id="file-cosm-arquivo" accept=".glb,.gltf,.png,.jpg" style="width: 150px; font-size:0.75rem;">
-                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo')">🐙 GitHub</button>
+                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo')">🐙 Abrir GitHub</button>
                     </div>
                 </div>
 
@@ -220,17 +224,13 @@
                 <div class="input-group"><label>Rotação (Mão)</label><input type="text" id="arma-rot" value="0 0 0"></div>
                 <div class="input-group"><label>Posição (Mão)</label><input type="text" id="arma-pos" value="0 0 0"></div>
 
-                <div class="input-group grupo-especial"><label style="color:#f39c12">Escala (Inventário)</label><input type="text" id="arma-inv-escala" value="0.15 0.15 0.15"></div>
-                <div class="input-group grupo-especial"><label style="color:#f39c12">Rotação (Inventário)</label><input type="text" id="arma-inv-rot" value="0 0 0"></div>
-                <div class="input-group grupo-especial"><label style="color:#f39c12">Posição (Inventário)</label><input type="text" id="arma-inv-pos" value="0 0 0.05"></div>
-
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de HP Máx</label><input type="number" id="arma-b-hp" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Vel.</label><input type="number" step="0.1" id="arma-b-vel" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus Sorte</label><input type="number" id="arma-b-sorte" value="0"></div>
 
                 <div class="input-group bg-vfx" style="grid-column: span 2;">
                     <label>VFX: Animação de Acerto / Explosão <span id="status-arma-hit" class="status-extracao"></span></label>
-                    <input type="text" id="arma-hit-anim" placeholder="Ex: Efeitos/explosao.png">
+                    <input type="text" id="arma-hit-anim" placeholder="Ex: Efeitos/explosao.glb">
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
                         <input type="file" id="file-arma-hit" accept=".glb,.gltf,.png,.jpg,.gif" style="width: 130px; font-size:0.75rem;">
                         <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('arma-hit-anim', 'Efeitos/', 'status-arma-hit')">🐙 GitHub</button>
@@ -240,14 +240,14 @@
 
                 <div id="grp-swing" class="dyn-group">
                     <div class="input-group bg-vfx" style="grid-column: span 2;">
-                        <label>VFX: Rastro de Corte / Swing <span id="status-arma-swing" class="status-extracao"></span></label>
-                        <input type="text" id="arma-swing-anim" placeholder="Ex: Efeitos/rastro_espada.png">
+                        <label>VFX: Rastro de Corte / Swing (GLB/GIF/PNG) <span id="status-arma-swing" class="status-extracao"></span></label>
+                        <input type="text" id="arma-swing-anim" placeholder="Ex: Efeitos/rastro_espada.gif">
                         <div style="display: flex; gap: 5px; margin-top: 5px;">
                             <input type="file" id="file-arma-swing" accept=".glb,.gltf,.png,.jpg,.gif" style="width: 130px; font-size:0.75rem;">
                             <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('arma-swing-anim', 'Efeitos/', 'status-arma-swing')">🐙 GitHub</button>
                         </div>
                     </div>
-                    <div class="input-group bg-vfx"><label>VFX Escala (Swing)</label><input type="text" id="arma-swing-escala" value="1 1 1"></div>
+                    <div class="input-group bg-vfx"><label>VFX Escala / Tam.</label><input type="text" id="arma-swing-escala" value="1 1 1"></div>
                     <div class="input-group bg-vfx"><label>VFX Rotação Base</label><input type="text" id="arma-swing-rot" value="0 0 0"></div>
                 </div>
 
@@ -304,6 +304,7 @@
                         <option value="secundaria">Missão</option>
                     </select>
                 </div>
+                
                 <div class="input-group">
                     <label>Caminho GLB <span id="status-npc-glb" class="status-extracao"></span></label>
                     <input type="text" id="npc-glb" placeholder="Ex: Npcs/menino.glb">
@@ -312,16 +313,21 @@
                         <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('npc-glb', 'Npcs/', 'status-npc-glb')">🐙 GitHub</button>
                     </div>
                 </div>
+
                 <div class="input-group"><label style="color: #9b59b6;">Escala (Tamanho)</label><input type="text" id="npc-escala" placeholder="Ex: 1 1 1" value="1 1 1"></div>
                 <div class="input-group"><label>Anim. Parado</label><input type="text" id="npc-anim-parado" list="lista-animacoes" placeholder="Idle"></div>
                 <div class="input-group"><label>Anim. Falando</label><input type="text" id="npc-anim-falando" list="lista-animacoes" placeholder="Talk"></div>
+                
                 <div class="input-group"><label>Pos X</label><input type="number" step="0.1" id="npc-x" value="0"></div>
                 <div class="input-group"><label>Pos Y</label><input type="number" step="0.1" id="npc-y" value="0"></div>
                 <div class="input-group"><label>Pos Z</label><input type="number" step="0.1" id="npc-z" value="-5"></div>
+                
                 <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
                 <div class="input-group" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
+                
                 <div class="input-group"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
                 <div class="input-group"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
+
                 <div class="input-group"><label style="color:#2ecc71">Recompensa (XP)</label><input type="number" id="npc-rec-xp" value="0"></div>
                 <div class="input-group"><label style="color:#2ecc71">Recompensa (Ouro)</label><input type="number" id="npc-rec-ouro" value="0"></div>
                 <div class="input-group"><label style="color:#2ecc71">Recompensa (Item)</label><input type="text" id="npc-rec-item" placeholder="Ex: Espada Curva"></div>
@@ -355,6 +361,7 @@
                         <option value="atirador">Atirador (Magia/Arco)</option>
                     </select>
                 </div>
+                
                 <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Força (Dano)</label><input type="number" id="novo-dano" value="10"></div>
                 
@@ -390,6 +397,7 @@
                 <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000"></div>
                 <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Seg.)</label><input type="number" id="novo-respawn-time" value="60"></div>
+
                 <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Y</label><input type="number" step="0.1" id="novo-spawn-y" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial Z</label><input type="number" step="0.1" id="novo-spawn-z" value="-5"></div>
@@ -415,12 +423,12 @@
 
     const armasPadrao = {
         'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
-        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
-        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
-        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
-        'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
-        'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>', visualEsq: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>' },
-        'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>', visualEsq: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>' },
+        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
+        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
+        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
+        'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
+        'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>', visualEsq: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>' },
+        'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>', visualEsq: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>' },
         'Varinha': { categoria: 'Varinha', danoBonus: 10, defesaBonus: 0, distancia: 15.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', projetilGlb: '', projetilEscala: '1 1 1', projetilPos: '0 0.45 0', projetilVel: 20, hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#5C4033" radius="0.015" height="0.4" position="0 0.2 0"></a-cylinder><a-sphere id="wand-tip-vis" color="#00FFFF" radius="0.04" position="0 0.4 0" material="emissive: #00FFFF; emissiveIntensity: 0.8"></a-sphere><a-entity id="wand-tip" position="0 0.45 0"></a-entity>', visualEsq: '' },
         'Arco': { categoria: 'Arco', danoBonus: 12, defesaBonus: 0, distancia: 20.0, modeloGlb: '#modelo-arco', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', hitAnim: '', hitEscala: '1 1 1', visualDir: '', visualEsq: 'ARCO_ESPECIAL' },
         'Shuriken': { categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, distancia: 10.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', shurikenGravidade: -1.2, shurikenVel: 2.5, hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>', visualEsq: '' },
@@ -438,21 +446,34 @@
 
     window.kickarTodos = function() {
         if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
-            db.ref('players').remove().then(() => db.ref('server_commands/kick_all').set(Date.now())).then(() => alert("Sinal de KICK enviado!")).catch(e => alert("Erro ao kickar: " + e.message));
+            db.ref('players').remove()
+                .then(() => db.ref('server_commands/kick_all').set(Date.now()))
+                .then(() => alert("Sinal de KICK enviado!"))
+                .catch(e => alert("Erro ao kickar: " + e.message));
         }
     };
 
     window.abrirAba = function(abaId, btnSelecionado) {
-        let abas = document.getElementsByClassName("tab-content"); for (let i = 0; i < abas.length; i++) { abas[i].style.display = "none"; }
-        let botoes = document.getElementsByClassName("tab-btn"); for (let i = 0; i < botoes.length; i++) { botoes[i].classList.remove("active"); }
-        let abaNova = document.getElementById(abaId); if(abaNova) abaNova.style.display = "block";
+        let abas = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < abas.length; i++) { abas[i].style.display = "none"; }
+        let botoes = document.getElementsByClassName("tab-btn");
+        for (let i = 0; i < botoes.length; i++) { botoes[i].classList.remove("active"); }
+        let abaNova = document.getElementById(abaId);
+        if(abaNova) abaNova.style.display = "block";
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
     };
 
     let modoTesteAtivo = false;
     db.ref('server_config/modoTeste').on('value', snap => {
-        modoTesteAtivo = snap.val() || false; let btn = document.getElementById('btn-toggle-teste');
-        if (btn) { if (modoTesteAtivo) { btn.innerText = "🧪 Modo Teste: ATIVADO"; btn.classList.remove('btn-blue'); btn.classList.add('btn-green'); } else { btn.innerText = "🧪 Modo Teste: DESATIVADO"; btn.classList.remove('btn-green'); btn.classList.add('btn-blue'); } }
+        modoTesteAtivo = snap.val() || false;
+        let btn = document.getElementById('btn-toggle-teste');
+        if (btn) {
+            if (modoTesteAtivo) {
+                btn.innerText = "🧪 Modo Teste: ATIVADO"; btn.classList.remove('btn-blue'); btn.classList.add('btn-green');
+            } else {
+                btn.innerText = "🧪 Modo Teste: DESATIVADO"; btn.classList.remove('btn-green'); btn.classList.add('btn-blue');
+            }
+        }
     });
 
     window.toggleModoTeste = function() { db.ref('server_config/modoTeste').set(!modoTesteAtivo); };
@@ -470,7 +491,8 @@
         
         if(!user || !repo) { alert("⚠️ Por favor, digite seu Usuário e Repositório do GitHub primeiro!"); return; }
 
-        statusSpan.innerText = "Carregando pastas..."; fileList.innerHTML = ''; document.getElementById('gh-current-path').innerText = '/' + path;
+        statusSpan.innerText = "Carregando pastas..."; fileList.innerHTML = '';
+        document.getElementById('gh-current-path').innerText = '/' + path;
 
         try {
             const response = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/${path}`);
@@ -478,17 +500,24 @@
             
             const data = await response.json(); statusSpan.innerText = "";
             
-            if (path !== '') { let parentPath = path.substring(0, path.lastIndexOf('/')); fileList.innerHTML += `<div class="gh-item" onclick="carregarPastaGitHub('${parentPath}')"><span class="gh-icon">🔙</span> <b>[Voltar uma pasta]</b></div>`; }
+            if (path !== '') {
+                let parentPath = path.substring(0, path.lastIndexOf('/'));
+                fileList.innerHTML += `<div class="gh-item" onclick="carregarPastaGitHub('${parentPath}')"><span class="gh-icon">🔙</span> <b>[Voltar uma pasta]</b></div>`;
+            }
 
             const pastas = data.filter(item => item.type === 'dir');
             const arquivos = data.filter(item => item.type === 'file' && (item.name.endsWith('.glb') || item.name.endsWith('.gltf') || item.name.endsWith('.png') || item.name.endsWith('.jpg') || item.name.endsWith('.gif')));
 
-            if (pastas.length === 0 && arquivos.length === 0) { fileList.innerHTML += `<p style="color:#7f8c8d; text-align:center;">Nenhum arquivo 3D ou de Imagem encontrado aqui.</p>`; }
+            if (pastas.length === 0 && arquivos.length === 0) { fileList.innerHTML += `<p style="color:#7f8c8d; text-align:center;">Nenhum arquivo encontrado aqui.</p>`; }
 
             pastas.forEach(pasta => { fileList.innerHTML += `<div class="gh-item" onclick="carregarPastaGitHub('${pasta.path}')"><span class="gh-icon">📁</span> <b>${pasta.name}</b></div>`; });
-            arquivos.forEach(arquivo => { let icon = arquivo.name.endsWith('.glb') ? '📦' : '🖼️'; fileList.innerHTML += `<div class="gh-item" onclick="selecionarArquivoGitHub('${arquivo.download_url}', '${arquivo.name}')"><span class="gh-icon" style="color:#f1c40f;">${icon}</span> <span style="color:#ecf0f1;">${arquivo.name}</span></div>`; });
-
-        } catch (error) { statusSpan.innerText = "❌ Erro ao conectar."; fileList.innerHTML = `<p style="color:#e74c3c; text-align:center;">Erro: Verifique se o repositório é Público e o nome está correto.</p>`; }
+            arquivos.forEach(arquivo => {
+                let icon = arquivo.name.endsWith('.png') || arquivo.name.endsWith('.jpg') || arquivo.name.endsWith('.gif') ? '🖼️' : '📦';
+                fileList.innerHTML += `<div class="gh-item" onclick="selecionarArquivoGitHub('${arquivo.download_url}', '${arquivo.name}')"><span class="gh-icon" style="color:#f1c40f;">${icon}</span> <span style="color:#ecf0f1;">${arquivo.name}</span></div>`;
+            });
+        } catch (error) {
+            statusSpan.innerText = "❌ Erro ao conectar."; fileList.innerHTML = `<p style="color:#e74c3c; text-align:center;">Erro: Verifique se o repositório é Público e o nome está correto.</p>`;
+        }
     };
 
     window.selecionarArquivoGitHub = async function(downloadUrl, fileName) {
@@ -504,7 +533,9 @@
             else if(cat === "botas") subPasta = "Botas/"; else subPasta = "Outros/";
         }
 
-        let targetInput = document.getElementById(ghTargetInput); if (targetInput) targetInput.value = `${ghPastaBase}${subPasta}${fileName}`;
+        let targetInput = document.getElementById(ghTargetInput);
+        if (targetInput) targetInput.value = `${ghPastaBase}${subPasta}${fileName}`;
+
         let statusText = document.getElementById(ghStatusId);
         
         if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.gif')) {
@@ -513,25 +544,38 @@
         }
 
         if (statusText) { statusText.innerText = "(⏳ Lendo GLB do GitHub...)"; statusText.style.color = "#f39c12"; }
+        
         try {
-            const res = await fetch(downloadUrl); const blob = await res.blob(); const urlTemporaria = URL.createObjectURL(blob); const loader = new THREE.GLTFLoader(); 
+            const res = await fetch(downloadUrl); const blob = await res.blob(); const urlTemporaria = URL.createObjectURL(blob);
+            const loader = new THREE.GLTFLoader(); 
             loader.load(urlTemporaria, function(gltf) {
                 const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); 
                 if (animations && animations.length > 0) {
-                    if(datalist) datalist.innerHTML = ''; animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
+                    if(datalist) datalist.innerHTML = ''; 
+                    animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
                     if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações extraídas)`; statusText.style.color = "#2ecc71"; }
-                } else { if(statusText) { statusText.innerText = `(✅ Carregado. Sem animações)`; statusText.style.color = "#3498db"; } }
+                } else { 
+                    if(statusText) { statusText.innerText = `(✅ Carregado. Sem animações)`; statusText.style.color = "#3498db"; }
+                }
                 setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
-            }, undefined, function(error) { if(statusText) { statusText.innerText = '(❌ Erro ao ler GLB do GitHub)'; statusText.style.color = "#e74c3c"; } });
-        } catch (e) { if(statusText) { statusText.innerText = '(❌ Falha no Download)'; statusText.style.color = "#e74c3c"; } }
+            }, undefined, function(error) { 
+                if(statusText) { statusText.innerText = '(❌ Erro ao ler GLB do GitHub)'; statusText.style.color = "#e74c3c"; }
+            });
+        } catch (e) {
+            if(statusText) { statusText.innerText = '(❌ Falha no Download)'; statusText.style.color = "#e74c3c"; }
+        }
     };
 
     document.addEventListener('DOMContentLoaded', () => {
 
         function processarArquivoLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
-            let fileInput = document.getElementById(fileInputId); if (!fileInput) return;
+            let fileInput = document.getElementById(fileInputId);
+            if (!fileInput) return;
+            
             fileInput.addEventListener('change', function(e) {
-                const file = e.target.files[0]; if (!file) return; const statusText = document.getElementById(statusId);
+                const file = e.target.files[0]; if (!file) return;
+                const statusText = document.getElementById(statusId);
+                
                 let subPasta = "";
                 if (selectCatId) {
                     let cat = document.getElementById(selectCatId).value;
@@ -541,20 +585,29 @@
                     else if(cat === "capacete") subPasta = "Capacetes/"; else if(cat === "armadura") subPasta = "Armaduras/"; else if(cat === "luvas") subPasta = "Manoplas/";
                     else if(cat === "botas") subPasta = "Botas/"; else subPasta = "Outros/";
                 }
-                let targetInput = document.getElementById(targetInputId); if (targetInput) targetInput.value = `${pastaBase}${subPasta}${file.name}`;
+
+                let targetInput = document.getElementById(targetInputId);
+                if (targetInput) targetInput.value = `${pastaBase}${subPasta}${file.name}`;
+                
                 if (file.name.endsWith('.png') || file.name.endsWith('.jpg') || file.name.endsWith('.gif')) {
                     if(statusText) { statusText.innerText = `(✅ Imagem selecionada)`; statusText.style.color = "#2ecc71"; }
                     setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000); return;
                 }
+
                 const urlTemporaria = URL.createObjectURL(file); const loader = new THREE.GLTFLoader(); 
                 loader.load(urlTemporaria, function(gltf) {
                     const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); 
                     if (animations && animations.length > 0) {
-                        if(datalist) datalist.innerHTML = ''; animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
+                        if(datalist) datalist.innerHTML = ''; 
+                        animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
                         if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações)`; statusText.style.color = "#2ecc71"; }
-                    } else { if(statusText) { statusText.innerText = `(✅ Pronto. Sem animações)`; statusText.style.color = "#3498db"; } }
+                    } else { 
+                        if(statusText) { statusText.innerText = `(✅ Pronto. Sem animações)`; statusText.style.color = "#3498db"; }
+                    }
                     setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
-                }, undefined, function(error) { if(statusText) { statusText.innerText = '(❌ Erro no arquivo local)'; statusText.style.color = "#e74c3c"; } });
+                }, undefined, function(error) { 
+                    if(statusText) { statusText.innerText = '(❌ Erro no arquivo local)'; statusText.style.color = "#e74c3c"; }
+                });
             });
         }
 
@@ -567,6 +620,7 @@
         processarArquivoLocal('file-arma-swing', 'arma-swing-anim', 'Efeitos/', 'status-arma-swing', 'arma-cat');
         processarArquivoLocal('file-arma-proj', 'arma-projetil-glb', 'Magias/', 'status-arma-proj', 'arma-cat');
 
+        // Lógica Dinâmica da Forja de Armas
         function atualizarCamposArma() {
             let cat = document.getElementById('arma-cat').value;
             let isMelee = (cat === 'Espada' || cat === 'Luva');
@@ -579,10 +633,14 @@
         }
         document.getElementById('arma-cat').addEventListener('change', atualizarCamposArma);
 
+        // === JOGADORES ===
         firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
-            const listaJogadores = document.getElementById('lista-jogadores'); if(listaJogadores) listaJogadores.innerHTML = '';
+            const listaJogadores = document.getElementById('lista-jogadores'); 
+            if(listaJogadores) listaJogadores.innerHTML = '';
+            
             querySnapshot.forEach((doc) => {
                 let p = doc.data(); 
+                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
                 if(listaJogadores) {
                     listaJogadores.innerHTML += `
                     <div class="card player-card">
@@ -592,6 +650,7 @@
                             <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
                             🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
                         </div>
+                        
                         <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
                             <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
                             <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
@@ -608,16 +667,20 @@
             .then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`)).catch(e => alert("Erro ao enviar: " + e.message));
         };
 
+        // === COSMÉTICOS ===
         const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
         db.ref('banco_cosmeticos').on('value', snap => {
             if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML = ''; 
             let cosmeticos = snap.val(); if(!cosmeticos) return;
+            
             for(let id in cosmeticos) {
                 let c = cosmeticos[id];
                 let icone = '✨';
                 if(c.tipo === 'rosto') icone = '😀'; else if(c.tipo === 'cabelo') icone = '💇'; else if(c.tipo === 'corpo') icone = '🧍';
                 else if(c.tipo === 'capacete') icone = '⛑️'; else if(c.tipo === 'armadura') icone = '🦺'; else if(c.tipo === 'luvas') icone = '🧤'; else if(c.tipo === 'botas') icone = '👢';
+
                 let tagGen = c.genero === 'Ambos' ? 'M/F' : (c.genero === 'M' ? '♂️ Masc' : '♀️ Fem');
+                
                 if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML += `
                     <div class="card cosm-card">
                         <h3>${icone} ${c.nome || id} <span style="font-size:0.8rem; color:#ccc;">[${c.tipo.toUpperCase()}]</span></h3>
@@ -644,7 +707,8 @@
                 escala: document.getElementById('cosm-escala').value || '1 1 1', posicao: document.getElementById('cosm-pos').value || '0 0 0',
                 rotacao: document.getElementById('cosm-rot').value || '0 0 0'
             }).then(() => {
-                alert("🎭 Peça registrada no banco com sucesso!"); document.getElementById('cosm-id').value = ''; document.getElementById('cosm-nome').value = ''; document.getElementById('cosm-arquivo').value = '';
+                alert("🎭 Peça registrada no banco com sucesso!");
+                document.getElementById('cosm-id').value = ''; document.getElementById('cosm-nome').value = ''; document.getElementById('cosm-arquivo').value = '';
             }).catch(e => alert("Erro ao salvar: " + e.message));
         };
 
@@ -659,7 +723,9 @@
             });
         };
 
-        window.excluirCosmetico = function(id) { if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) { db.ref('banco_cosmeticos/' + id).remove(); } };
+        window.excluirCosmetico = function(id) { 
+            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) { db.ref('banco_cosmeticos/' + id).remove(); }
+        };
 
         // === ARMAS ===
         const listaArmasDiv = document.getElementById('lista-armas');
@@ -699,7 +765,7 @@
                 
                 document.getElementById('arma-hit-anim').value = a.hitAnim || ''; document.getElementById('arma-hit-escala').value = a.hitEscala || '1 1 1';
                 document.getElementById('arma-swing-anim').value = a.swingAnim || ''; document.getElementById('arma-swing-escala').value = a.swingEscala || '1 1 1';
-                document.getElementById('arma-swing-rot').value = a.swingRot || '0 0 0';
+                document.getElementById('arma-swing-rot').value = a.swingRotacao || '0 0 0';
                 
                 document.getElementById('arma-projetil-glb').value = a.projetilGlb || ''; document.getElementById('arma-projetil-escala').value = a.projetilEscala || '1 1 1';
                 document.getElementById('arma-projetil-pos').value = a.projetilPos || '0 0.45 0'; document.getElementById('arma-projetil-vel').value = a.projetilVel || 20;
@@ -721,7 +787,8 @@
                 escalaMao: document.getElementById('arma-escala').value || '1 1 1', rotMao: document.getElementById('arma-rot').value || '0 0 0', posMao: document.getElementById('arma-pos').value || '0 0 0',
                 escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05',
                 hitAnim: document.getElementById('arma-hit-anim').value, hitEscala: document.getElementById('arma-hit-escala').value || '1 1 1',
-                swingAnim: document.getElementById('arma-swing-anim').value, swingEscala: document.getElementById('arma-swing-escala').value || '1 1 1', swingRot: document.getElementById('arma-swing-rot').value || '0 0 0',
+                swingAnim: document.getElementById('arma-swing-anim').value, swingEscala: document.getElementById('arma-swing-escala').value || '1 1 1',
+                swingRotacao: document.getElementById('arma-swing-rot').value || '0 0 0',
                 projetilGlb: document.getElementById('arma-projetil-glb').value, projetilEscala: document.getElementById('arma-projetil-escala').value || '1 1 1',
                 projetilPos: document.getElementById('arma-projetil-pos').value || '0 0.45 0', projetilVel: parseFloat(document.getElementById('arma-projetil-vel').value) || 20,
                 shurikenGravidade: parseFloat(document.getElementById('arma-shuriken-gravidade').value) || -1.2, shurikenVel: parseFloat(document.getElementById('arma-shuriken-vel').value) || 2.5
