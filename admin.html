@@ -16,7 +16,7 @@
         h1 { color: #f1c40f; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; text-transform: uppercase;}
         .container { max-width: 1200px; margin: 0 auto; }
         .header-controls { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #f1c40f; }
+        .section-title { color: #fff; background: #333; padding: 10px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #f1c40f; display: flex; justify-content: space-between; align-items: center;}
         
         .admin-tabs { display: flex; gap: 10px; margin-bottom: 30px; background: #2c3e50; padding: 10px; border-radius: 8px; overflow-x: auto; }
         .tab-btn { flex: 1; background: #34495e; color: #bdc3c7; border: none; padding: 15px 20px; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s; white-space: nowrap; }
@@ -180,7 +180,10 @@
     </div>
 
     <div id="tab-armas" class="tab-content">
-        <h2 class="section-title">🗡️ FORJA DE ITENS (Armas e Escudos)</h2>
+        <h2 class="section-title">
+            🗡️ FORJA DE ITENS (Armas e Escudos)
+            <button class="btn btn-orange" style="width:auto; margin:0; padding: 8px 15px;" onclick="importarArmasPadrao()">📥 Importar Armas Padrão para o Banco</button>
+        </h2>
         <div id="lista-armas"></div>
 
         <div class="painel-spawn arma-spawn" id="form-arma">
@@ -378,7 +381,33 @@
     const firestoreDB = firebase.firestore();
 
     // ==========================================
-    // FUNÇÕES GLOBAIS
+    // DICIONÁRIO PADRÃO DE ARMAS DO JOGO
+    // ==========================================
+    const armasPadrao = {
+        'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
+        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
+        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
+        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
+        'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
+        'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>', visualEsq: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>' },
+        'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>', visualEsq: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>' },
+        'Varinha': { categoria: 'Varinha', danoBonus: 10, defesaBonus: 0, distancia: 15.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#5C4033" radius="0.015" height="0.4" position="0 0.2 0"></a-cylinder><a-sphere color="#00FFFF" radius="0.04" position="0 0.4 0" material="emissive: #00FFFF; emissiveIntensity: 0.8"></a-sphere>', visualEsq: '' },
+        'Arco': { categoria: 'Arco', danoBonus: 12, defesaBonus: 0, distancia: 20.0, modeloGlb: '#modelo-arco', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '', visualEsq: 'ARCO_ESPECIAL' },
+        'Shuriken': { categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, distancia: 10.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>', visualEsq: '' },
+        'Escudo de Madeira': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 3, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '', visualEsq: '<a-box color="#8B4513" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"></a-box>' },
+        'Escudo de Ferro': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 6, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '', visualEsq: '<a-box color="#7F8C8D" width="0.45" height="0.55" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#BDC3C7" width="0.4" height="0.5" depth="0.06" position="0 0 0"></a-box></a-box>' }
+    };
+
+    window.importarArmasPadrao = function() {
+        if(confirm("Isso vai salvar todas as armas padrão no Banco de Dados para que você possa editá-las. Deseja continuar?")) {
+            db.ref('banco_armas').update(armasPadrao)
+            .then(() => alert("✅ Armas Padrão carregadas no banco de dados com sucesso!"))
+            .catch(e => alert("❌ Erro ao importar: " + e.message));
+        }
+    };
+
+    // ==========================================
+    // FUNÇÕES GLOBAIS DO ADMIN
     // ==========================================
     window.kickarTodos = function() {
         if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
@@ -399,9 +428,6 @@
         if (btnSelecionado) { btnSelecionado.classList.add("active"); } 
     };
 
-    // ==========================================
-    // SISTEMA DE MODO DE TESTE
-    // ==========================================
     let modoTesteAtivo = false;
     db.ref('server_config/modoTeste').on('value', snap => {
         modoTesteAtivo = snap.val() || false;
@@ -507,14 +533,12 @@
         let subPasta = "";
         if (ghSelectCatId) {
             let cat = document.getElementById(ghSelectCatId).value;
-            // Para as armas
             if(cat === "Espada") subPasta = "Espadas/";
             else if(cat === "Luva") subPasta = "Luvas/";
             else if(cat === "Arco") subPasta = "Arcos/";
             else if(cat === "Varinha") subPasta = "Varinhas/";
             else if(cat === "Shuriken") subPasta = "Shurikens/";
             else if(cat === "Escudo") subPasta = "Escudos/";
-            // Para peças de corpo/cosméticos
             else if(cat === "cabelo") subPasta = "Cabelos/";
             else if(cat === "rosto") subPasta = "Rostos/";
             else if(cat === "corpo") subPasta = "Corpos/";
@@ -565,7 +589,7 @@
     };
 
     // ==========================================
-    // INICIALIZAÇÃO APÓS DOM CARREGAR
+    // INICIALIZAÇÃO E SCRIPTS DAS ABAS
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -631,19 +655,50 @@
         processarArquivoLocal('file-tiro-glb', 'novo-glb-tiro', 'Magias/', 'status-tiro-glb');
         processarArquivoLocal('file-cosm-arquivo', 'cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo');
 
-        // ==========================================
-        // SISTEMA DE COSMÉTICOS (ROUPAS / CORPOS)
-        // ==========================================
+        // === JOGADORES ===
+        firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
+            const listaJogadores = document.getElementById('lista-jogadores'); 
+            if(listaJogadores) listaJogadores.innerHTML = '';
+            
+            querySnapshot.forEach((doc) => {
+                let p = doc.data(); 
+                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
+                if(listaJogadores) {
+                    listaJogadores.innerHTML += `
+                    <div class="card player-card">
+                        <h3>👤 Usuário: ${doc.id}</h3>
+                        <div style="width: 100%;">
+                            <span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br>
+                            <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
+                            🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
+                        </div>
+                        
+                        <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
+                            <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
+                            <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
+                        </div>
+                    </div>`;
+                }
+            });
+        });
+
+        window.darShurikensAdmin = function(uid) {
+            let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
+            if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
+            firestoreDB.collection("jogadores").doc(uid).update({
+                shurikens: firebase.firestore.FieldValue.increment(qtd)
+            }).then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`))
+              .catch(e => alert("Erro ao enviar: " + e.message));
+        };
+
+        // === COSMÉTICOS ===
         const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
-        
         db.ref('banco_cosmeticos').on('value', snap => {
             if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML = ''; 
             let cosmeticos = snap.val(); if(!cosmeticos) return;
             
             for(let id in cosmeticos) {
                 let c = cosmeticos[id];
-                
-                // Define o emoji e cor baseado no tipo da peça
                 let icone = '✨';
                 if(c.tipo === 'rosto') icone = '😀';
                 else if(c.tipo === 'cabelo') icone = '💇';
@@ -675,7 +730,6 @@
         window.salvarCosmetico = function() {
             let id = document.getElementById('cosm-id').value.trim(); 
             if(!id) { alert("Dê um ID único para a peça! (Ex: capacete_ferro_01)"); return; }
-            
             db.ref('banco_cosmeticos/' + id).set({
                 nome: document.getElementById('cosm-nome').value.trim() || id,
                 tipo: document.getElementById('cosm-tipo').value,
@@ -703,57 +757,16 @@
                 document.getElementById('cosm-escala').value = c.escala || '1 1 1';
                 document.getElementById('cosm-pos').value = c.posicao || '0 0 0';
                 document.getElementById('cosm-rot').value = c.rotacao || '0 0 0';
-                
                 let formCosm = document.getElementById('form-cosmetico');
                 if(formCosm) formCosm.scrollIntoView({ behavior: 'smooth' });
             });
         };
 
         window.excluirCosmetico = function(id) { 
-            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) {
-                db.ref('banco_cosmeticos/' + id).remove(); 
-            }
+            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) { db.ref('banco_cosmeticos/' + id).remove(); }
         };
 
-        // ==========================================
-        // RESTANTE DOS COMPONENTES (Jogadores, Armas, NPCs, Inimigos)
-        // ==========================================
-        firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
-            const listaJogadores = document.getElementById('lista-jogadores'); 
-            if(listaJogadores) listaJogadores.innerHTML = '';
-            
-            querySnapshot.forEach((doc) => {
-                let p = doc.data(); 
-                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
-                if(listaJogadores) {
-                    listaJogadores.innerHTML += `
-                    <div class="card player-card">
-                        <h3>👤 Usuário: ${doc.id}</h3>
-                        <div style="width: 100%;">
-                            <span style="color:#bdc3c7;">🗡️ Nível: ${p.nivel} | 💰 Ouro: ${p.ouro} | ❤️ Vida: ${p.hpAtual}/${p.hpMax}</span><br>
-                            <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
-                            🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
-                        </div>
-                        
-                        <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
-                            <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
-                            <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
-                        </div>
-                    </div>`;
-                }
-            });
-        });
-
-        window.darShurikensAdmin = function(uid) {
-            let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
-            if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
-            
-            firestoreDB.collection("jogadores").doc(uid).update({
-                shurikens: firebase.firestore.FieldValue.increment(qtd)
-            }).then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`))
-              .catch(e => alert("Erro ao enviar: " + e.message));
-        };
-
+        // === ARMAS ===
         const listaArmasDiv = document.getElementById('lista-armas');
         db.ref('banco_armas').on('value', snap => {
             if(listaArmasDiv) listaArmasDiv.innerHTML = ''; 
@@ -780,48 +793,34 @@
         window.carregarEdicaoArma = function(id) {
             db.ref('banco_armas/' + id).once('value').then(snap => {
                 let a = snap.val(); if(!a) return;
-                document.getElementById('arma-id').value = id;
-                document.getElementById('arma-cat').value = a.categoria || 'Espada';
-                document.getElementById('arma-glb').value = a.modeloGlb || '';
-                document.getElementById('arma-dano').value = a.danoBonus || 0;
-                document.getElementById('arma-defesa').value = a.defesaBonus || 0;
-                document.getElementById('arma-dist').value = a.distancia || 3.0;
-                document.getElementById('arma-b-hp').value = a.bonusHP || 0;
-                document.getElementById('arma-b-vel').value = a.bonusVelocidade || 0;
-                document.getElementById('arma-b-sorte').value = a.bonusSorte || 0;
-                document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
-                document.getElementById('arma-rot').value = a.rotMao || '0 0 0';
-                document.getElementById('arma-pos').value = a.posMao || '0 0 0';
-                document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15';
-                document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
+                document.getElementById('arma-id').value = id; document.getElementById('arma-cat').value = a.categoria || 'Espada';
+                document.getElementById('arma-glb').value = a.modeloGlb || ''; document.getElementById('arma-dano').value = a.danoBonus || 0;
+                document.getElementById('arma-defesa').value = a.defesaBonus || 0; document.getElementById('arma-dist').value = a.distancia || 3.0;
+                document.getElementById('arma-b-hp').value = a.bonusHP || 0; document.getElementById('arma-b-vel').value = a.bonusVelocidade || 0;
+                document.getElementById('arma-b-sorte').value = a.bonusSorte || 0; document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
+                document.getElementById('arma-rot').value = a.rotMao || '0 0 0'; document.getElementById('arma-pos').value = a.posMao || '0 0 0';
+                document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15'; document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
                 document.getElementById('arma-inv-pos').value = a.posInv || '0 0 0.05';
-                let formArma = document.getElementById('form-arma');
-                if(formArma) formArma.scrollIntoView({ behavior: 'smooth' });
+                let formArma = document.getElementById('form-arma'); if(formArma) formArma.scrollIntoView({ behavior: 'smooth' });
             });
         };
 
         window.forjarArma = function() {
             let id = document.getElementById('arma-id').value; if(!id) { alert("Dê um nome para a arma!"); return; }
             db.ref('banco_armas/' + id).set({
-                categoria: document.getElementById('arma-cat').value,
-                modeloGlb: document.getElementById('arma-glb').value,
-                danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0,
-                defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
-                distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0,
-                bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
-                bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0,
-                bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
-                escalaMao: document.getElementById('arma-escala').value || '1 1 1',
-                rotMao: document.getElementById('arma-rot').value || '0 0 0',
-                posMao: document.getElementById('arma-pos').value || '0 0 0',
-                escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', 
-                rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', 
-                posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05'
+                categoria: document.getElementById('arma-cat').value, modeloGlb: document.getElementById('arma-glb').value,
+                danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0, defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
+                distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0, bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
+                bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0, bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
+                escalaMao: document.getElementById('arma-escala').value || '1 1 1', rotMao: document.getElementById('arma-rot').value || '0 0 0',
+                posMao: document.getElementById('arma-pos').value || '0 0 0', escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', 
+                rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05'
             }).then(() => alert("Item forjado e enviado para os jogadores!"));
         };
 
         window.excluirArma = function(id) { if(confirm(`DESTRUIR o item ${id}? Ele sumirá do inventário de todos!`)) db.ref('banco_armas/' + id).remove(); };
 
+        // === RESPAWNS ===
         const listaRespawnsDiv = document.getElementById('lista-respawns');
         db.ref('cenario_respawns').on('child_added', (snapshot) => {
             let id = snapshot.key; let r = snapshot.val();
@@ -836,6 +835,7 @@
             db.ref('cenario_respawns/' + id).set({ pos: { x: parseFloat(document.getElementById('resp-x').value)||0, y: parseFloat(document.getElementById('resp-y').value)||0, z: parseFloat(document.getElementById('resp-z').value)||0 }, raio: parseFloat(document.getElementById('resp-raio').value) || 3 });
         };
 
+        // === NPCS ===
         const listaNpcsDiv = document.getElementById('lista-npcs');
         db.ref('cenario_npcs').on('child_added', (snapshot) => {
             let id = snapshot.key; let npc = snapshot.val();
@@ -850,31 +850,25 @@
                 let data = snap.val(); if(!data) return; window.abrirAba('tab-npcs', null);
                 document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
                 document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; document.getElementById('npc-glb').value = data.modeloGlb || '';
-                
                 document.getElementById('npc-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
-
                 document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
                 document.getElementById('npc-x').value = data.pos ? data.pos.x : 0; document.getElementById('npc-y').value = data.pos ? data.pos.y : 0; document.getElementById('npc-z').value = data.pos ? data.pos.z : 0;
                 document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; 
                 document.getElementById('npc-missao-id').value = data.idMissao || ''; document.getElementById('npc-chave-conclusao').value = data.chaveConclusao || ''; 
                 document.getElementById('npc-requisito').value = data.requisito || ''; document.getElementById('npc-rec-xp').value = data.recXP || 0;
                 document.getElementById('npc-rec-ouro').value = data.recOuro || 0; document.getElementById('npc-rec-item').value = data.recItem || '';
-                let formNpc = document.getElementById('form-npc');
-                if(formNpc) formNpc.scrollIntoView({ behavior: 'smooth' });
+                let formNpc = document.getElementById('form-npc'); if(formNpc) formNpc.scrollIntoView({ behavior: 'smooth' });
             });
         };
 
         window.spawnarNovoNpc = function() {
             let id = document.getElementById('npc-id').value; if(!id) return;
-            let tipo = document.getElementById('npc-tipo').value;
             let escNpcArr = document.getElementById('npc-escala').value.split(' ');
             let escNpcObj = { x: parseFloat(escNpcArr[0])||1, y: parseFloat(escNpcArr[1])||1, z: parseFloat(escNpcArr[2])||1 };
-
             db.ref('cenario_npcs/' + id).update({
-                nome: document.getElementById('npc-nome').value, tipo: tipo,
+                nome: document.getElementById('npc-nome').value, tipo: document.getElementById('npc-tipo').value,
                 pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
-                escala: escNpcObj,
-                modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
+                escala: escNpcObj, modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
                 dialogoPadrao: document.getElementById('npc-dialogo').value, dialogoMissao: document.getElementById('npc-dialogo-missao').value,
                 idMissao: document.getElementById('npc-missao-id').value, chaveConclusao: document.getElementById('npc-chave-conclusao').value,
                 requisito: document.getElementById('npc-requisito').value, recXP: parseFloat(document.getElementById('npc-rec-xp').value) || 0,
@@ -882,18 +876,13 @@
             }).then(() => alert(`NPC atualizado!`));
         };
 
+        // === INIMIGOS ===
         const listaInimigosDiv = document.getElementById('lista-inimigos');
         db.ref('cenario_inimigos').on('child_added', (snapshot) => {
             let id = snapshot.key; let ini = snapshot.val();
-            let card = document.createElement('div'); 
-            card.className = 'card ini-card'; 
-            card.id = `card-ini-${id}`;
-            
+            let card = document.createElement('div'); card.className = 'card ini-card'; card.id = `card-ini-${id}`;
             let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
-            let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; 
-            let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; 
-            let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
-            
+            let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
             card.innerHTML = `
                 <h3>👾 ${id} <span style="font-size:0.8rem; color:#ccc;">[${ini.tipo || 'meelee'}]</span></h3>
                 <div id="stats-ini-${id}" style="width: 100%; font-size: 0.95rem; margin-bottom: 10px; color: #bdc3c7;">
@@ -908,23 +897,15 @@
         });
 
         db.ref('cenario_inimigos').on('child_changed', (snapshot) => {
-            let id = snapshot.key; let ini = snapshot.val();
-            let statsDiv = document.getElementById(`stats-ini-${id}`);
-            
+            let id = snapshot.key; let ini = snapshot.val(); let statsDiv = document.getElementById(`stats-ini-${id}`);
             if (statsDiv) {
                 let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
-                let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; 
-                let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; 
-                let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
-                
+                let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
                 statsDiv.innerHTML = `❤️ HP: <b style="color: ${hpAtual > 0 ? '#2ecc71' : '#e74c3c'}">${hpAtual} / ${ini.hpMax}</b> | 📍 Pos Atual: <b>X: ${pX} | Y: ${pY} | Z: ${pZ}</b>`;
             }
         });
 
-        db.ref('cenario_inimigos').on('child_removed', (snapshot) => { 
-            let card = document.getElementById(`card-ini-${snapshot.key}`); 
-            if(card) card.remove(); 
-        });
+        db.ref('cenario_inimigos').on('child_removed', (snapshot) => { let card = document.getElementById(`card-ini-${snapshot.key}`); if(card) card.remove(); });
 
         window.carregarEdicaoInimigo = function(id) {
             db.ref('cenario_inimigos/' + id).once('value').then(snap => {
@@ -932,50 +913,35 @@
                 document.getElementById('novo-id').value = id; document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
                 document.getElementById('novo-movimento').value = data.movimento || 'estatico'; document.getElementById('novo-tipo').value = data.tipo || 'meelee';
                 document.getElementById('novo-hp').value = data.hpMax || 50; document.getElementById('novo-dano').value = data.dano || 10;
-                document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; 
-                
-                document.getElementById('novo-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
-
-                document.getElementById('novo-anim-parado').value = data.animParado || '';
-                document.getElementById('novo-anim-andando').value = data.animAndando || ''; document.getElementById('novo-anim-ataque').value = data.animAtaque || '';
-                document.getElementById('novo-anim-morte').value = data.animMorte || ''; document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0;
-                document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0;
-                document.getElementById('novo-aggro-range').value = data.aggroRange || 15; document.getElementById('novo-attack-range').value = data.attackRange || 1.8;
-                document.getElementById('novo-speed').value = data.speed || 0.08; document.getElementById('novo-cooldown').value = data.cooldown || 2000;
-                document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
-                
-                document.getElementById('novo-glb-tiro').value = data.modeloTiroGlb || '';
-                document.getElementById('novo-escala-tiro').value = data.escalaTiro || '0.5 0.5 0.5';
-                document.getElementById('novo-rotacao-tiro').value = data.rotacaoTiro || '0 0 0';
-                document.getElementById('novo-velocidade-tiro').value = data.velocidadeTiro !== undefined ? data.velocidadeTiro : 6.0;
-
-                let formInimigo = document.getElementById('form-inimigo');
-                if(formInimigo) formInimigo.scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; document.getElementById('novo-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
+                document.getElementById('novo-anim-parado').value = data.animParado || ''; document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
+                document.getElementById('novo-anim-ataque').value = data.animAtaque || ''; document.getElementById('novo-anim-morte').value = data.animMorte || ''; 
+                document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0; document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; 
+                document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0; document.getElementById('novo-aggro-range').value = data.aggroRange || 15; 
+                document.getElementById('novo-attack-range').value = data.attackRange || 1.8; document.getElementById('novo-speed').value = data.speed || 0.08; 
+                document.getElementById('novo-cooldown').value = data.cooldown || 2000; document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
+                document.getElementById('novo-glb-tiro').value = data.modeloTiroGlb || ''; document.getElementById('novo-escala-tiro').value = data.escalaTiro || '0.5 0.5 0.5';
+                document.getElementById('novo-rotacao-tiro').value = data.rotacaoTiro || '0 0 0'; document.getElementById('novo-velocidade-tiro').value = data.velocidadeTiro !== undefined ? data.velocidadeTiro : 6.0;
+                let formInimigo = document.getElementById('form-inimigo'); if(formInimigo) formInimigo.scrollIntoView({ behavior: 'smooth' });
             });
         };
 
         window.spawnarNovoInimigo = function() {
             let id = document.getElementById('novo-id').value; if(!id) return;
-
             let escIniArr = document.getElementById('novo-escala').value.split(' ');
             let escIniObj = { x: parseFloat(escIniArr[0])||1, y: parseFloat(escIniArr[1])||1, z: parseFloat(escIniArr[2])||1 };
-
             db.ref('cenario_inimigos/' + id).update({
                 hpMax: parseFloat(document.getElementById('novo-hp').value) || 50, hp: parseFloat(document.getElementById('novo-hp').value) || 50, dano: parseFloat(document.getElementById('novo-dano').value) || 10,
                 spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
                 pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
-                comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, 
-                escala: escIniObj,
+                comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, escala: escIniObj,
                 aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15, attackRange: parseFloat(document.getElementById('novo-attack-range').value) || 1.8,
                 speed: parseFloat(document.getElementById('novo-speed').value) || 0.08, cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
                 respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
                 modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
                 animAtaque: document.getElementById('novo-anim-ataque').value, animMorte: document.getElementById('novo-anim-morte').value,
-                
-                modeloTiroGlb: document.getElementById('novo-glb-tiro').value,
-                escalaTiro: document.getElementById('novo-escala-tiro').value || '0.5 0.5 0.5',
-                rotacaoTiro: document.getElementById('novo-rotacao-tiro').value || '0 0 0',
-                velocidadeTiro: parseFloat(document.getElementById('novo-velocidade-tiro').value) || 6.0
+                modeloTiroGlb: document.getElementById('novo-glb-tiro').value, escalaTiro: document.getElementById('novo-escala-tiro').value || '0.5 0.5 0.5',
+                rotacaoTiro: document.getElementById('novo-rotacao-tiro').value || '0 0 0', velocidadeTiro: parseFloat(document.getElementById('novo-velocidade-tiro').value) || 6.0
             }).then(() => alert(`Monstro atualizado!`));
         };
 
