@@ -223,6 +223,10 @@
                 <div class="input-group"><label>Escala (Mão)</label><input type="text" id="arma-escala" value="1 1 1"></div>
                 <div class="input-group"><label>Rotação (Mão)</label><input type="text" id="arma-rot" value="0 0 0"></div>
                 <div class="input-group"><label>Posição (Mão)</label><input type="text" id="arma-pos" value="0 0 0"></div>
+                
+                <div class="input-group"><label>Escala (Inventário)</label><input type="text" id="arma-inv-escala" value="0.15 0.15 0.15"></div>
+                <div class="input-group"><label>Rotação (Inventário)</label><input type="text" id="arma-inv-rot" value="0 0 0"></div>
+                <div class="input-group"><label>Posição (Inventário)</label><input type="text" id="arma-inv-pos" value="0 0 0.05"></div>
 
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de HP Máx</label><input type="number" id="arma-b-hp" value="0"></div>
                 <div class="input-group grupo-destaque"><label style="color:#2ecc71">Bônus de Vel.</label><input type="number" step="0.1" id="arma-b-vel" value="0"></div>
@@ -290,7 +294,7 @@
 
     <div id="tab-respawns" class="tab-content">
         <h2 class="section-title">🔮 CRISTAIS DE RESPAWN (Checkpoints)</h2>
-        <div id="lista-respawns"></div>
+        <div id="lista-respawns" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;"></div>
         <div class="painel-spawn resp-spawn">
             <h2>📍 Criar ou Editar Ponto de Respawn</h2>
             <div class="grid-spawn">
@@ -306,7 +310,7 @@
 
     <div id="tab-npcs" class="tab-content">
         <h2 class="section-title">🗣️ TAVERNA DOS NPCs</h2>
-        <div id="lista-npcs"></div>
+        <div id="lista-npcs" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;"></div>
         <div class="painel-spawn npc-spawn" id="form-npc">
             <h2>📜 Criar ou Editar NPC</h2>
             <div class="grid-spawn">
@@ -339,6 +343,7 @@
                 <div class="input-group" style="grid-column: span 3;"><label>Diálogo Padrão</label><textarea id="npc-dialogo" placeholder="O que ele fala normalmente?"></textarea></div>
                 <div class="input-group" style="grid-column: span 3;"><label style="color:#f1c40f">Diálogo de Missão</label><textarea id="npc-dialogo-missao" placeholder="O que ele fala ao entregar a missão?"></textarea></div>
                 
+                <div class="input-group"><label style="color:#f1c40f">ID da Missão</label><input type="text" id="npc-missao-id" placeholder="ex: missao_joao_01"></div>
                 <div class="input-group"><label style="color:#f1c40f">Chave de Conclusão</label><input type="text" id="npc-chave-conclusao" placeholder="ex: falei_joao"></div>
                 <div class="input-group"><label style="color:#e74c3c">Requisito P/ Falar</label><input type="text" id="npc-requisito" placeholder="ex: falei_renato"></div>
 
@@ -821,10 +826,51 @@
         db.ref('cenario_respawns').on('child_added', (snapshot) => {
             let id = snapshot.key; let r = snapshot.val();
             let card = document.createElement('div'); card.className = 'card respawn-card'; card.id = `card-resp-${id}`;
-            card.innerHTML = `<h3>🔮 ${id}</h3><div class="action-buttons"><button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button></div>`;
+            card.innerHTML = `
+                <h3>🔮 ${id}</h3>
+                <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
+                    📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
+                    📏 Raio de Ativação: <b>${r.raio || 3}m</b>
+                </div>
+                <div class="action-buttons" style="width: 100%;">
+                    <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
+                    <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
+                </div>
+            `;
             if(listaRespawnsDiv) listaRespawnsDiv.appendChild(card);
         });
+        
+        db.ref('cenario_respawns').on('child_changed', (snapshot) => { 
+            let id = snapshot.key; let r = snapshot.val();
+            let card = document.getElementById(`card-resp-${id}`); 
+            if(card) {
+                card.innerHTML = `
+                    <h3>🔮 ${id}</h3>
+                    <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
+                        📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
+                        📏 Raio de Ativação: <b>${r.raio || 3}m</b>
+                    </div>
+                    <div class="action-buttons" style="width: 100%;">
+                        <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
+                        <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
+                    </div>
+                `;
+            }
+        });
+
         db.ref('cenario_respawns').on('child_removed', (snapshot) => { let card = document.getElementById(`card-resp-${snapshot.key}`); if(card) card.remove(); });
+
+        window.carregarEdicaoRespawn = function(id) {
+            db.ref('cenario_respawns/' + id).once('value').then(snap => {
+                let r = snap.val(); if(!r) return;
+                document.getElementById('resp-id').value = id;
+                document.getElementById('resp-x').value = r.pos.x || 0;
+                document.getElementById('resp-y').value = r.pos.y || 0;
+                document.getElementById('resp-z').value = r.pos.z || 0;
+                document.getElementById('resp-raio').value = r.raio || 3;
+                let formResp = document.querySelector('.resp-spawn'); if(formResp) formResp.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
 
         window.spawnarRespawn = function() {
             let id = document.getElementById('resp-id').value; if(!id) return;
