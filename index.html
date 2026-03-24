@@ -758,12 +758,13 @@
             }
         });
 
-        // ====== DETECTOR DE CORTE FÍSICO DO VR (ENTRA E SAI) ======
+        // ====== DETECTOR DE CORTE FÍSICO DO VR (CAIXA EXATA E ENTRA-SAI) ======
         AFRAME.registerComponent('colisor-arma-vr', {
             schema: { mao: { type: 'string' } },
             init: function() {
-                this.lastPos = new THREE.Vector3();
-                this.el.object3D.getWorldPosition(this.lastPos);
+                this.lastWorldPos = new THREE.Vector3();
+                this.el.object3D.getWorldPosition(this.lastWorldPos);
+                this.lastLocalPos = this.el.object3D.position.clone();
                 this.cortando = false;
                 this.camera = document.querySelector('[camera]');
                 this.inimigosTocando = new Set();
@@ -773,47 +774,46 @@
             tick: function(time, timeDelta) {
                 if (window.GAME_MODE !== 'VR' || !window.playerState.vivo) return;
                 
-                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-                
-                if (this.data.mao === 'esquerda' && armaStats && armaStats.categoria !== 'Luva') {
-                    let cp = new THREE.Vector3(); this.el.object3D.getWorldPosition(cp);
-                    let dt2 = timeDelta / 1000;
-                    if(dt2 > 0) {
-                        this.vel.subVectors(cp, this.lastPos).divideScalar(dt2);
-                        this.speed = this.vel.length();
-                        this.lastPos.copy(cp);
-                    }
-                    return; 
-                }
-                
-                if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) {
-                    let cp = new THREE.Vector3(); this.el.object3D.getWorldPosition(cp);
-                    let dt2 = timeDelta / 1000;
-                    if(dt2 > 0) {
-                        this.vel.subVectors(cp, this.lastPos).divideScalar(dt2);
-                        this.speed = this.vel.length();
-                        this.lastPos.copy(cp);
-                    }
-                    return;
-                }
-
-                let currentPos = new THREE.Vector3();
-                this.el.object3D.getWorldPosition(currentPos);
                 let dt = timeDelta / 1000;
                 if (dt === 0) return;
 
-                let deltaVec = new THREE.Vector3().subVectors(currentPos, this.lastPos);
-                this.vel.copy(deltaVec).divideScalar(dt);
-                this.speed = this.vel.length();
+                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                let currentWorldPos = new THREE.Vector3();
+                this.el.object3D.getWorldPosition(currentWorldPos);
+                let currentLocalPos = this.el.object3D.position.clone();
 
+                // Velocidade Mundial (Para o Rastro do Corte / Ricochete apontarem para o lado certo)
+                let deltaWorld = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
+                this.vel.copy(deltaWorld).divideScalar(dt);
+                this.lastWorldPos.copy(currentWorldPos);
+
+                // Velocidade Local (Ignora o movimento do direcional/andar do jogador)
+                let deltaLocal = new THREE.Vector3().subVectors(currentLocalPos, this.lastLocalPos);
+                this.speed = deltaLocal.length() / dt;
+                this.lastLocalPos.copy(currentLocalPos);
+
+                if (this.data.mao === 'esquerda' && armaStats && armaStats.categoria !== 'Luva') return; 
+                if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
+
+                // Rastro da espada no ar (VR)
                 if (this.speed > 2.0 && !this.cortando) {
                     this.cortando = true;
                     window.tocarSom('snd-sword');
-                    window.gerarSwingVFX(this.vel.clone(), currentPos.clone(), armaStats);
+                    window.gerarSwingVFX(this.vel.clone(), currentWorldPos.clone(), armaStats);
                     setTimeout(() => { this.cortando = false; }, 400); 
                 }
 
-                let boxMao = new THREE.Box3().setFromCenterAndSize(currentPos, new THREE.Vector3(0.3, 0.3, 0.3));
+                // CRIA A CAIXA DE COLISÃO 3D COM O TAMANHO EXATO DA ARMA
+                let boxArma = new THREE.Box3();
+                let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
+                if (visualEl) {
+                    visualEl.object3D.updateMatrixWorld(true);
+                    boxArma.setFromObject(visualEl.object3D);
+                }
+                if (boxArma.isEmpty()) { 
+                    boxArma.setFromCenterAndSize(currentWorldPos, new THREE.Vector3(0.2, 0.2, 0.2));
+                }
+
                 let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
                 
                 inimigosEls.forEach(inimigoEl => {
@@ -829,9 +829,12 @@
                             boxInimigo.setFromObject(inimigoEl.object3D);
                         }
 
-                        if (boxMao.intersectsBox(boxInimigo)) {
+                        // SISTEMA "ENTRA E SAI" NA CAIXA DE COLISÃO
+                        if (boxArma.intersectsBox(boxInimigo)) {
                             if (!this.inimigosTocando.has(inimigoEl)) {
                                 this.inimigosTocando.add(inimigoEl); 
+                                
+                                // Só dá dano se a velocidade LOCAL do braço for alta (não por andar)
                                 if (this.speed > 1.5) { 
                                     syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
                                     let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0;
@@ -845,8 +848,6 @@
                         }
                     }
                 });
-
-                this.lastPos.copy(currentPos);
             }
         });
 
