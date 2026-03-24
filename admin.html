@@ -251,20 +251,22 @@
 
                 <div id="grp-swing" class="dyn-group">
                     <div class="input-group bg-vfx" style="grid-column: span 2;">
-                        <label>VFX: Rastro de Corte / Swing (GLB/GIF/PNG) <span id="status-arma-swing" class="status-extracao"></span></label>
-                        <input type="text" id="arma-swing-anim" placeholder="Ex: Efeitos/rastro_espada.gif">
+                        <label>VFX: Rastro de Corte / Spritesheet <span id="status-arma-swing" class="status-extracao"></span></label>
+                        <input type="text" id="arma-swing-anim" placeholder="Ex: Efeitos/rastro_espada.png">
                         <div style="display: flex; gap: 5px; margin-top: 5px;">
                             <input type="file" id="file-arma-swing" accept=".glb,.gltf,.png,.jpg,.gif" style="width: 130px; font-size:0.75rem;">
                             <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('arma-swing-anim', 'Efeitos/', 'status-arma-swing')">🐙 GitHub</button>
                         </div>
                     </div>
-                    <div class="input-group bg-vfx"><label>VFX Escala / Tam.</label><input type="text" id="arma-swing-escala" value="1 1 1"></div>
+                    <div class="input-group bg-vfx"><label>Frames (Colunas)</label><input type="number" id="arma-swing-cols" value="5" title="Quantos quadros de animação tem a imagem lado a lado."></div>
+                    <div class="input-group bg-vfx"><label>Duração (ms)</label><input type="number" id="arma-swing-duracao" value="300"></div>
+                    <div class="input-group bg-vfx"><label>VFX Escala / Tam.</label><input type="text" id="arma-swing-escala" value="2 2 2"></div>
                     <div class="input-group bg-vfx"><label>VFX Rotação Base</label><input type="text" id="arma-swing-rot" value="0 0 0"></div>
                     <div class="input-group bg-vfx">
                         <label>Efeito Translúcido (Alfa)</label>
                         <select id="arma-swing-additive">
                             <option value="false">Não (Normal)</option>
-                            <option value="true">Sim (Tirar Preto)</option>
+                            <option value="true" selected>Sim (Tirar Preto)</option>
                         </select>
                     </div>
                 </div>
@@ -442,9 +444,9 @@
 
     const armasPadrao = {
         'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
-        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
-        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
-        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
+        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
+        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
+        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
         'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
         'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>', visualEsq: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>' },
         'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>', visualEsq: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>' },
@@ -785,7 +787,10 @@
                 document.getElementById('arma-hit-anim').value = a.hitAnim || ''; document.getElementById('arma-hit-escala').value = a.hitEscala || '1 1 1';
                 document.getElementById('arma-hit-additive').value = a.hitAdditive ? 'true' : 'false';
                 
-                document.getElementById('arma-swing-anim').value = a.swingAnim || ''; document.getElementById('arma-swing-escala').value = a.swingEscala || '1 1 1';
+                document.getElementById('arma-swing-anim').value = a.swingAnim || ''; 
+                document.getElementById('arma-swing-cols').value = a.swingCols || 5; 
+                document.getElementById('arma-swing-duracao').value = a.swingDuracao || 300;
+                document.getElementById('arma-swing-escala').value = a.swingEscala || '2 2 2';
                 document.getElementById('arma-swing-rot').value = a.swingRotacao || '0 0 0';
                 document.getElementById('arma-swing-additive').value = a.swingAdditive ? 'true' : 'false';
                 
@@ -810,7 +815,10 @@
                 escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05',
                 hitAnim: document.getElementById('arma-hit-anim').value, hitEscala: document.getElementById('arma-hit-escala').value || '1 1 1',
                 hitAdditive: document.getElementById('arma-hit-additive').value === 'true',
-                swingAnim: document.getElementById('arma-swing-anim').value, swingEscala: document.getElementById('arma-swing-escala').value || '1 1 1',
+                swingAnim: document.getElementById('arma-swing-anim').value, 
+                swingCols: parseInt(document.getElementById('arma-swing-cols').value) || 5,
+                swingDuracao: parseInt(document.getElementById('arma-swing-duracao').value) || 300,
+                swingEscala: document.getElementById('arma-swing-escala').value || '2 2 2',
                 swingRotacao: document.getElementById('arma-swing-rot').value || '0 0 0',
                 swingAdditive: document.getElementById('arma-swing-additive').value === 'true',
                 projetilGlb: document.getElementById('arma-projetil-glb').value, projetilEscala: document.getElementById('arma-projetil-escala').value || '1 1 1',
