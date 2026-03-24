@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - Mundo Principal</title>
+    <title>RPG MMO - Mundo Principal (Física VR)</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -17,21 +17,26 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; touch-action: none; user-select: none; -webkit-user-select: none;}
         #ui-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 15, 20, 0.95); z-index: 9999999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; pointer-events: all !important; transition: background 0.5s;} 
+        
+        /* MENU 2D DO SISTEMA (Config/Logout) PARA PC E MOBILE */
+        #sys-ui-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); z-index: 9999999; display: none; justify-content: center; align-items: center; pointer-events: all; backdrop-filter: blur(5px); font-family: sans-serif;}
+
         .menu-box { background: #181d23; padding: 40px; border-radius: 10px; border: 2px solid #3a4454; box-shadow: 0 10px 25px rgba(0,0,0,0.8); text-align: center; width: 320px; pointer-events: auto; } 
         .menu-box input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: 1px solid #3a4454; background: #11151a; color: white; box-sizing: border-box; font-size: 1rem;} 
         .btn { padding: 12px 20px; font-size: 1.1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; margin: 5px 0; width: 100%; color: white; transition: 0.2s;} 
         .btn:hover { transform: scale(1.02); }
         .btn:active { transform: scale(0.98); opacity: 0.8; }
         .btn-green { background: #27ae60; } .btn-blue { background: #2980b9; } .btn-orange { background: #d35400; } 
-        .btn-purple { background: #8e44ad; } .btn-purple:hover { background: #9b59b6; }
+        .btn-purple { background: #8e44ad; } .btn-red { background: #e74c3c; } .btn-dark { background: #34495e; }
+        
         #start-menu { display: none; }
         #login-error { color: #e74c3c; font-size: 0.9rem; margin-top: 10px; display: none; font-weight: bold; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px;}
         body.menu-aberto .a-canvas { pointer-events: none !important; }
         #crosshair { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; background: rgba(255,255,255,0.8); border-radius: 50%; z-index: 1000; pointer-events: none;}
 
         /* INTERFACES (MOBILE E PC HUD) */
-        #mobile-ui { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; pointer-events: none; display: none;}
-        #pc-ui { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; pointer-events: none; display: none;}
+        #mobile-ui { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; pointer-events: none; display: none;}
+        #pc-ui { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 10000; pointer-events: none; display: none;}
         
         #joystick-zone { position: absolute; bottom: 30px; left: 30px; width: 130px; height: 130px; background: rgba(255,255,255,0.1); border-radius: 50%; pointer-events: auto; border: 2px solid rgba(255,255,255,0.3); touch-action: none;}
         #joystick-stick { position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; background: rgba(241, 196, 15, 0.8); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); pointer-events: none; transition: transform 0.05s ease-out;}
@@ -39,7 +44,7 @@
         
         .hud-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(24, 29, 35, 0.8); border: 2px solid #3a4454; color: white; font-size: 1.5rem; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-weight: bold; touch-action: none; user-select: none; pointer-events: auto;}
         .hud-btn:active { background: #f1c40f; color: #111; transform: scale(0.95); }
-        .hud-btn-sys { background: #d35400; border-color: #e67e22; width: 50px; height: 50px; font-size: 1.2rem; cursor: pointer; }
+        .hud-btn-sys { background: #d35400; border-color: #e67e22; width: 50px; height: 50px; font-size: 1.2rem; cursor: pointer; pointer-events: auto; position: absolute; top: 20px; right: 20px;}
         
         #btn-atacar { width: 80px; height: 80px; background: rgba(192, 57, 43, 0.8); border-color: #e74c3c; font-size: 2rem; margin-top: 10px;}
         .menu-top-right { position: absolute; top: 20px; right: 20px; display: flex; gap: 15px; pointer-events: auto; align-items: center;}
@@ -107,6 +112,25 @@
             if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
             firestoreDB.collection("jogadores").doc(window.currentUser.uid).set(window.playerState).catch(e => console.error(e)); 
         };
+
+        // ====== FUNÇÕES DO MENU 2D DE SISTEMA ======
+        window.fazerLogout = function() {
+            firebase.auth().signOut().then(() => {
+                window.location.reload();
+            });
+        };
+
+        window.abrirConfiguracoes = function() {
+            let aviso = document.querySelector('#texto-central'); 
+            if(aviso) { 
+                aviso.setAttribute('value', 'Configuracoes em breve...'); 
+                aviso.setAttribute('color', '#f1c40f'); 
+                aviso.setAttribute('visible', 'true'); 
+                setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 2000); 
+            }
+            window.toggleMenu('sys');
+        };
+        // ============================================
 
         window.atualizarArmaVisual = function() { 
             let containerDir = document.querySelector('#arma-visual-dir'); let containerEsq = document.querySelector('#arma-visual-esq'); let containerPC = document.querySelector('#arma-visual-pc'); let escudoPC = document.querySelector('#escudo-visual-pc'); 
@@ -318,14 +342,13 @@
             else menu.setAttribute('scale', '0.65 0.65 0.65');
         };
 
-        // === NOVA LÓGICA DE GERENCIAMENTO DE MENUS ===
         window.toggleMenu = function(tipo) {
             let menuInv = document.querySelector('#menu-inventario-novo'); 
             let menuAtrib = document.querySelector('#menu-atributos');
-            let menuSys = document.querySelector('#menu-sistema');
+            let menuSys3D = document.querySelector('#menu-sistema'); 
+            let menuSys2D = document.querySelector('#sys-ui-layer'); 
             let rig = document.querySelector('#rig');
 
-            // Define o que abre ou fecha de forma excludente
             if (tipo === 'inv') {
                 window.invAberto = !window.invAberto;
                 window.atribAberto = false;
@@ -340,26 +363,39 @@
                 window.atribAberto = false;
             }
 
-            // Atualiza os tamanhos (fecha tudo que não for o ativo)
-            if (menuInv) menuInv.setAttribute('scale', window.invAberto ? '0.65 0.65 0.65' : '0 0 0');
-            if (menuAtrib) menuAtrib.setAttribute('scale', window.atribAberto ? '0.65 0.65 0.65' : '0 0 0');
-            if (menuSys) menuSys.setAttribute('scale', window.sysMenuAberto ? '0.8 0.8 0.8' : '0 0 0');
+            if (menuInv) { 
+                menuInv.setAttribute('scale', window.invAberto ? '0.65 0.65 0.65' : '0 0 0');
+                menuInv.setAttribute('visible', window.invAberto ? 'true' : 'false');
+            }
+            if (menuAtrib) { 
+                menuAtrib.setAttribute('scale', window.atribAberto ? '0.65 0.65 0.65' : '0 0 0');
+                menuAtrib.setAttribute('visible', window.atribAberto ? 'true' : 'false');
+            }
 
-            // Se ALGUM menu estiver aberto, trava movimento e destrava mouse
+            if (window.GAME_MODE === 'VR') {
+                if (menuSys3D) { 
+                    menuSys3D.setAttribute('scale', window.sysMenuAberto ? '0.8 0.8 0.8' : '0 0 0');
+                    menuSys3D.setAttribute('visible', window.sysMenuAberto ? 'true' : 'false');
+                }
+                if (menuSys2D) menuSys2D.style.display = 'none';
+            } else {
+                if (menuSys3D) { 
+                    menuSys3D.setAttribute('scale', '0 0 0'); 
+                    menuSys3D.setAttribute('visible', 'false');
+                }
+                if (menuSys2D) menuSys2D.style.display = window.sysMenuAberto ? 'flex' : 'none';
+            }
+
             if (window.invAberto || window.atribAberto || window.sysMenuAberto) {
                 if (window.invAberto) window.posicionarMenuDeFrente('#menu-inventario-novo');
                 if (window.atribAberto) window.posicionarMenuDeFrente('#menu-atributos');
-                if (window.sysMenuAberto) window.posicionarMenuDeFrente('#menu-sistema');
+                if (window.sysMenuAberto && window.GAME_MODE === 'VR') window.posicionarMenuDeFrente('#menu-sistema');
                 
                 window.destravarMousePC();
-                
-                // Trava a movimentação do Player (Ele só mexe a cabeça)
                 if (rig) rig.setAttribute('movement-controls', 'enabled', 'false');
             } else {
-                // Se tudo fechou, volta ao jogo
                 if(!window.npcAtivo) {
                     window.travarMousePC();
-                    // Destrava movimentação do Player
                     if (rig) rig.setAttribute('movement-controls', 'enabled', 'true');
                 }
             }
@@ -393,20 +429,19 @@
             }
             
             window.posicionarMenuDeFrente('#caixa-dialogo');
+            cx.setAttribute('visible', 'true');
             window.destravarMousePC(); 
             
-            // Trava movimento durante o dialogo
             let rig = document.querySelector('#rig');
             if (rig) rig.setAttribute('movement-controls', 'enabled', 'false');
         };
 
         window.fecharDialogoNPC = function() {
             let cx = document.querySelector('#caixa-dialogo'); 
-            if(cx) cx.setAttribute('scale', '0 0 0'); 
+            if(cx) { cx.setAttribute('scale', '0 0 0'); cx.setAttribute('visible', 'false'); }
             window.npcAtivo = null;
             if (!window.invAberto && !window.atribAberto && !window.sysMenuAberto) {
                 window.travarMousePC();
-                // Destrava movimento pós dialogo
                 let rig = document.querySelector('#rig');
                 if (rig) rig.setAttribute('movement-controls', 'enabled', 'true');
             }
@@ -430,7 +465,6 @@
         };
 
         window.realizarAtaque = function() {
-            // BLOQUEIA ATAQUE SE QUALQUER MENU ESTIVER ABERTO
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
             
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
@@ -518,7 +552,7 @@
                 if(maoEsq) { maoEsq.setAttribute('visible', 'false'); maoEsq.setAttribute('raycaster', 'far', 0); }
                 if(maoDir) { maoDir.setAttribute('visible', 'false'); maoDir.setAttribute('raycaster', 'far', 0); }
                 document.getElementById('crosshair').style.display = 'block';
-                document.getElementById('pc-ui').style.display = 'block'; // Mostra botão de config no PC
+                document.getElementById('pc-ui').style.display = 'block'; 
                 setTimeout(() => { window.travarMousePC(); }, 100); 
                 
             } else if (modo === 'ANDROID') {
@@ -594,7 +628,7 @@
             document.getElementById('btn-vr').addEventListener('click', () => { iniciarJogo('VR'); }); 
             document.getElementById('btn-android').addEventListener('click', () => { iniciarJogo('ANDROID'); }); 
 
-            // BOTÕES DE UI (HTML)
+            // BOTÕES DE UI PC/MOBILE
             document.getElementById('btn-sys-pc').addEventListener('click', () => { window.toggleMenu('sys'); });
             document.getElementById('btn-sys-mobile').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('sys'); }, {passive: false});
 
@@ -659,9 +693,7 @@
             init: function () {
                 const exec = () => {
                     if (this.data.acao === 'logout') {
-                        firebase.auth().signOut().then(() => {
-                            window.location.reload();
-                        });
+                        window.fazerLogout();
                     } else if (this.data.acao === 'config') {
                         let aviso = document.querySelector('#texto-central'); 
                         if(aviso) { aviso.setAttribute('value', 'Configuracoes em breve...'); aviso.setAttribute('color', '#f1c40f'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 2000); }
@@ -718,6 +750,9 @@
                 let velocidadeMovimento = 0;
                 let deslocamento = 0;
                 let oldData = this.posHistory[0];
+                
+                if (!oldData) return;
+
                 let dt = (time - oldData.time) / 1000;
 
                 if (dt > 0.05) { 
@@ -835,11 +870,12 @@
 
         AFRAME.registerComponent('sync-cintura', {
             init: function() {
-                this.visual = document.createElement('a-entity');
-                this.visual.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
-                this.visual.setAttribute('position', '0.2 -0.1 0.15'); 
-                this.visual.setAttribute('scale', '0.8 0.8 0.8');
-                this.el.appendChild(this.visual);
+                this.visualDir = document.createElement('a-entity');
+                this.visualDir.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
+                // Coloca exatamente no lado direito da cintura (x: 0.25)
+                this.visualDir.setAttribute('position', '0.25 -0.1 0.1'); 
+                this.visualDir.setAttribute('scale', '0.8 0.8 0.8');
+                this.el.appendChild(this.visualDir);
             },
             tick: function() {
                 let cam = document.querySelector('[camera]');
@@ -850,19 +886,20 @@
                     this.el.object3D.rotation.set(0, euler.y, 0);
                 }
                 if (window.playerState.shurikens > 0) {
-                    this.visual.setAttribute('visible', 'true');
+                    this.visualDir.setAttribute('visible', 'true');
                 } else {
-                    this.visual.setAttribute('visible', 'false');
+                    this.visualDir.setAttribute('visible', 'false');
                 }
             }
         });
 
+        // NOVA LÓGICA DE PEGAR A SHURIKEN DO CINTO (GRIP) E ARREMESSAR (FÍSICA)
         AFRAME.registerComponent('vr-shuriken-lancar', {
             init: function() {
                 this.segurando = false;
                 this.posHistory = []; 
 
-                this.el.addEventListener('triggerdown', () => {
+                this.el.addEventListener('gripdown', () => {
                     if (window.GAME_MODE !== 'VR' || !window.playerState.vivo || window.playerState.shurikens <= 0) return;
                     
                     let cintura = document.querySelector('#cintura-player');
@@ -871,7 +908,13 @@
                     let posMao = new THREE.Vector3(); this.el.object3D.getWorldPosition(posMao);
                     let posCintura = new THREE.Vector3(); cintura.object3D.getWorldPosition(posCintura);
                     
-                    if (posMao.distanceTo(posCintura) < 0.4) {
+                    // Calcula a posição real do lado direito do cinto baseado na rotação atual
+                    let offsetDir = new THREE.Vector3(0.25, -0.1, 0.1);
+                    offsetDir.applyQuaternion(cintura.object3D.quaternion);
+                    posCintura.add(offsetDir);
+                    
+                    // Se a mão chegou perto do cinto do lado direito (35cm de área)
+                    if (posMao.distanceTo(posCintura) < 0.35) {
                         this.segurando = true;
                         window.tocarSom('snd-magic'); 
 
@@ -887,7 +930,7 @@
                     }
                 });
 
-                this.el.addEventListener('triggerup', () => {
+                this.el.addEventListener('gripup', () => {
                     if (this.segurando) {
                         this.segurando = false;
                         if (this.visualInHand) this.visualInHand.setAttribute('visible', 'false');
@@ -899,30 +942,38 @@
                             window.playerState.shurikens--; 
                             window.atualizarUI();
                             
-                            let quatMao = new THREE.Quaternion();
-                            this.el.object3D.getWorldQuaternion(quatMao);
-                            
-                            let direcaoArremesso = new THREE.Vector3(0, 0, -1);
-                            direcaoArremesso.applyQuaternion(quatMao);
-                            
-                            let setSpeed = 25; 
-                            let finalVel = direcaoArremesso.multiplyScalar(setSpeed);
+                            if (this.posHistory.length > 2) {
+                                let oldData = this.posHistory[0];
+                                let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
+                                let dt = (Date.now() - oldData.time) / 1000;
+                                
+                                let vel = new THREE.Vector3();
+                                if (dt > 0) vel.subVectors(currPos, oldData.pos).divideScalar(dt);
+                                
+                                // FÍSICA NINJA: Pega a velocidade real do braço e amplifica
+                                vel.multiplyScalar(1.8); 
+                                
+                                // Adiciona um bônus direcional para compensar a falta de peso no VR
+                                let quatMao = new THREE.Quaternion();
+                                this.el.object3D.getWorldQuaternion(quatMao);
+                                let forwardAssist = new THREE.Vector3(0, 0, -1).applyQuaternion(quatMao).multiplyScalar(8.0);
+                                vel.add(forwardAssist);
 
-                            let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
-                            let proj = document.createElement('a-entity');
-                            proj.setAttribute('position', `${currPos.x} ${currPos.y} ${currPos.z}`);
-                            
-                            let projVis = document.createElement('a-entity');
-                            projVis.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
-                            projVis.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 200; easing: linear');
-                            proj.appendChild(projVis);
+                                let proj = document.createElement('a-entity');
+                                proj.setAttribute('position', `${currPos.x} ${currPos.y} ${currPos.z}`);
+                                
+                                let projVis = document.createElement('a-entity');
+                                projVis.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
+                                projVis.setAttribute('animation', 'property: rotation; to: 0 360 0; loop: true; dur: 200; easing: linear');
+                                proj.appendChild(projVis);
 
-                            let armaStats = window.bancoDeArmas['Shuriken'];
-                            let danoTiro = window.playerState.forca + (armaStats.danoBonus || 5);
-                            
-                            proj.setAttribute('projetil-fisico', `velocidade: ${finalVel.x} ${finalVel.y} ${finalVel.z}; dano: ${danoTiro}`);
-                            document.querySelector('a-scene').appendChild(proj);
-                            window.tocarSom('snd-sword');
+                                let armaStats = window.bancoDeArmas['Shuriken'];
+                                let danoTiro = window.playerState.forca + (armaStats.danoBonus || 5);
+                                
+                                proj.setAttribute('projetil-fisico', `velocidade: ${vel.x} ${vel.y} ${vel.z}; dano: ${danoTiro}`);
+                                document.querySelector('a-scene').appendChild(proj);
+                                window.tocarSom('snd-sword');
+                            }
                         }
                     }
                 });
@@ -930,8 +981,26 @@
             tick: function() {
                 let pos = new THREE.Vector3(); this.el.object3D.getWorldPosition(pos);
                 this.posHistory.push({pos: pos, time: Date.now()});
-                if (this.posHistory.length > 5) this.posHistory.shift(); 
+                if (this.posHistory.length > 6) this.posHistory.shift(); 
             }
+        });
+
+        // NOVOS ATALHOS VR SEPARADOS POR CONTROLE
+        AFRAME.registerComponent('vr-controles-left', { 
+            init: function () { 
+                this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); 
+                this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); 
+                // Botão MENU (com 3 riscos) no Quest 3 esquerdo
+                this.el.addEventListener('menudown', () => { window.toggleMenu('sys'); });
+            } 
+        });
+
+        AFRAME.registerComponent('vr-controles-right', { 
+            init: function () { 
+                // Backups no controle direito caso o menudown falhe por restrição da Meta
+                this.el.addEventListener('abuttondown', () => { window.toggleMenu('sys'); }); 
+                this.el.addEventListener('bbuttondown', () => { window.toggleMenu('sys'); }); 
+            } 
         });
 
         AFRAME.registerComponent('anti-piscar', { init: function() { this.el.addEventListener('model-loaded', () => { const obj = this.el.getObject3D('mesh'); if (obj) { obj.traverse((node) => { if (node.isMesh) node.frustumCulled = false; }); } }); } });
@@ -1030,7 +1099,6 @@
 
         AFRAME.registerComponent('mobile-movement', {
             tick: function(time, timeDelta) {
-                // TRAVA O MOVIMENTO SE O MENU ESTIVER ABERTO NO ANDROID
                 if (!window.playerState.vivo || window.GAME_MODE !== 'ANDROID' || !window.GAME_STARTED || window.sysMenuAberto) return;
                 
                 let dt = timeDelta / 1000; let speed = 3.0 + (window.playerState.velocidade * 0.1); 
@@ -1085,22 +1153,28 @@
             }
         });
 
-        // ADICIONADO MENU DOWN PARA VR
-        AFRAME.registerComponent('vr-controles-hud', { 
-            init: function () { 
-                this.el.addEventListener('xbuttondown', () => { window.toggleMenu('inv'); }); 
-                this.el.addEventListener('ybuttondown', () => { window.toggleMenu('atrib'); }); 
-                
-                // Botão de Menu (Controle Esquerdo) e Botão B (Controle Direito)
-                this.el.addEventListener('menudown', () => { window.toggleMenu('sys'); });
-                this.el.addEventListener('bbuttondown', () => { window.toggleMenu('sys'); });
-            } 
+        AFRAME.registerComponent('vr-controles-gatilho', {
+            init: function() {
+                let podeAtacarVR = true;
+                this.el.addEventListener('triggerdown', () => { 
+                    window.lastActionTime = Date.now(); 
+                    if(!window.GAME_STARTED || window.GAME_MODE === 'PC' || window.GAME_MODE === 'ANDROID' || !window.playerState.vivo || window.npcAtivo) return; 
+
+                    let shurikenComp = this.el.components['vr-shuriken-lancar'];
+                    if (shurikenComp && shurikenComp.segurando) return;
+
+                    if (!podeAtacarVR) return; 
+                    podeAtacarVR = false; 
+                    setTimeout(() => podeAtacarVR = true, 800); 
+                    window.realizarAtaque(); 
+                });
+            }
         });
 
         AFRAME.registerComponent('projetil-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
             init: function () { 
-                this.gravidade = new THREE.Vector3(0, -1.5, 0); 
+                this.gravidade = new THREE.Vector3(0, -1.2, 0); 
                 this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
             },
             tick: function (time, timeDelta) {
@@ -1560,8 +1634,17 @@
         </div>
     </div>
 
+    <div id="sys-ui-layer">
+        <div class="menu-box">
+            <h2 style="color: #f1c40f;">SYSTEM MENU</h2>
+            <button class="btn btn-blue" onclick="abrirConfiguracoes()">⚙️ Configurações</button>
+            <button class="btn btn-red" onclick="fazerLogout()">🚪 Logout (Desconectar)</button>
+            <button class="btn btn-dark" style="margin-top: 20px;" onclick="window.toggleMenu('sys')">▶️ Voltar ao Jogo</button>
+        </div>
+    </div>
+
     <div id="pc-ui">
-        <div class="hud-btn hud-btn-sys" id="btn-sys-pc" style="position: absolute; top: 20px; right: 20px;">⚙️</div>
+        <button id="btn-sys-pc" class="hud-btn-sys">⚙️</button>
     </div>
 
     <div id="mobile-ui">
@@ -1626,16 +1709,16 @@
             
             <a-entity id="cintura-player" sync-cintura></a-entity>
 
-            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" vr-controles-hud colisor-arma-vr="mao: esquerda" vr-shuriken-lancar>
+            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" vr-controles-left colisor-arma-vr="mao: esquerda" vr-shuriken-lancar>
                 <a-entity id="arma-visual-esq" position="0 0 0" rotation="180 0 0"></a-entity>
             </a-entity>
-            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho colisor-arma-vr="mao: direita" vr-shuriken-lancar>
+            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho vr-controles-right colisor-arma-vr="mao: direita" vr-shuriken-lancar>
                 <a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity>
             </a-entity>
 
         </a-entity>
 
-        <a-entity id="menu-sistema" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
+        <a-entity id="menu-sistema" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
             <a-plane width="1.5" height="1.4" color="#181d23" opacity="0.95"></a-plane>
             <a-plane width="1.45" height="1.35" color="#1c222b" position="0 0 0.005"></a-plane>
             
@@ -1655,7 +1738,7 @@
             </a-box>
         </a-entity>
 
-        <a-entity id="caixa-dialogo" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
+        <a-entity id="caixa-dialogo" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
             <a-plane color="#181d23" width="2.2" height="1.6" opacity="0.95" position="0 0 0"></a-plane>
             <a-plane color="#11151a" width="2.15" height="1.55" position="0 0 0.01"></a-plane>
             
@@ -1679,7 +1762,7 @@
             </a-box>
         </a-entity>
 
-        <a-entity id="menu-inventario-novo" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
+        <a-entity id="menu-inventario-novo" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
             <a-plane width="2.6" height="2.0" color="#181d23" opacity="0.95"></a-plane>
             <a-plane width="2.55" height="1.95" color="#1c222b" position="0 0 0.005"></a-plane>
 
@@ -1711,7 +1794,7 @@
             </a-entity>
         </a-entity>
 
-        <a-entity id="menu-atributos" scale="0 0 0" position="0 1.5 -1.6" rotation="0 0 0">
+        <a-entity id="menu-atributos" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
             <a-plane width="3.4" height="2.2" color="#181d23" opacity="0.95"></a-plane>
             <a-plane width="3.35" height="2.15" color="#1c222b" position="0 0 0.005"></a-plane>
 
