@@ -439,6 +439,7 @@
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
 
+            // VR: Espadas normais são gerenciadas pelo 'colisor-arma-vr' na detecção física de swing.
             if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Luva') { return; }
 
             window.tocarSom('snd-sword');
@@ -451,10 +452,10 @@
             let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
             direcao.applyQuaternion(camQuat);
             
-            let simVel = new THREE.Vector3(1, -1, 0); 
-            simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); 
-            let posSpawn = posCamera.clone().add(direcao.clone().multiplyScalar(1.5)); 
-            window.gerarSwingVFX(simVel, posSpawn, armaStats);
+            // --- GERAÇÃO DO RASTRO/SWING VFX PARA PC E MOBILE (DIAGONAL FIXA) ---
+            let simVel = new THREE.Vector3(1, -1, 0); // Sentido do corte na tela (Diagonal direita p/ baixo)
+            simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); // Converte para o mundo real
+            window.gerarSwingVFX(simVel, armaStats, '[camera]');
 
             let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
             if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
@@ -482,9 +483,10 @@
                         if(syncComp) { 
                             syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
                             
+                            // --- GERA O EFEITO DE HIT (Acerto) NO INIMIGO ---
                             let posHit = new THREE.Vector3();
                             inimigoEl.object3D.getWorldPosition(posHit);
-                            posHit.y += 1.0; 
+                            posHit.y += 1.0; // Levanta para o peito do inimigo
                             window.gerarHitVFX(posHit, armaStats);
                         }
                     }
@@ -654,21 +656,54 @@
         });
 
         // ==========================================
+        // COMPONENTE: EFEITO RASTRO DINÂMICO
+        // (Gruda na câmera/mão e rotaciona perfeitamente)
+        // ==========================================
+        AFRAME.registerComponent('efeito-rastro', {
+            schema: { 
+                alvoId: { type: 'string' }, // Pode ser '#mao-direita' ou '[camera]'
+                offsetZ: { type: 'number', default: -0.8 },
+                angleZ: { type: 'number', default: 0 },
+                rotX: { type: 'number', default: 0 },
+                rotY: { type: 'number', default: 0 }
+            },
+            init: function() {
+                this.alvo = document.querySelector(this.data.alvoId);
+                this.cam = document.querySelector('[camera]');
+            },
+            tick: function() {
+                if (!this.alvo || !this.cam) return;
+                
+                // Segue a posição local/global do alvo mantendo a distância na frente
+                let pos = new THREE.Vector3(0, 0, this.data.offsetZ);
+                pos.applyMatrix4(this.alvo.object3D.matrixWorld);
+                this.el.object3D.position.copy(pos);
+
+                // Encarar a Câmera (Billboard)
+                this.el.object3D.quaternion.copy(this.cam.object3D.getWorldQuaternion(new THREE.Quaternion()));
+                
+                // Aplica rotações da Base (Admin) + Rotação Dinâmica do Corte
+                this.el.object3D.rotateX(THREE.MathUtils.degToRad(this.data.rotX));
+                this.el.object3D.rotateY(THREE.MathUtils.degToRad(this.data.rotY));
+                this.el.object3D.rotateZ(this.data.angleZ);
+            }
+        });
+
+        // ==========================================
         // SISTEMA DE VFX DINÂMICO (CORTE E HIT)
         // ==========================================
 
-        window.gerarSwingVFX = function(vetorVelocidade, posOrigem, armaStats) {
+        window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
             if (!armaStats.swingAnim || armaStats.swingAnim.trim() === '') return;
 
             let scene = document.querySelector('a-scene');
             let vfx = document.createElement('a-entity');
 
-            vfx.setAttribute('position', `${posOrigem.x} ${posOrigem.y} ${posOrigem.z}`);
-
             let cam = document.querySelector('[camera]');
             let camQuat = new THREE.Quaternion();
             if(cam) cam.object3D.getWorldQuaternion(camQuat);
 
+            // Calcula o ângulo baseado na velocidade cruzando a tela
             let velLocal = vetorVelocidade.clone().applyQuaternion(camQuat.clone().invert());
             let angleZ = Math.atan2(velLocal.y, velLocal.x); 
 
@@ -677,12 +712,7 @@
             let rY = parseFloat(rotBaseArr[1]) || 0;
             let rZ = parseFloat(rotBaseArr[2]) || 0;
 
-            vfx.object3D.quaternion.copy(camQuat);
-            vfx.object3D.rotateZ(angleZ);
-            
-            vfx.object3D.rotateX(THREE.MathUtils.degToRad(rX));
-            vfx.object3D.rotateY(THREE.MathUtils.degToRad(rY));
-            vfx.object3D.rotateZ(THREE.MathUtils.degToRad(rZ));
+            let finalAngleZ = angleZ + THREE.MathUtils.degToRad(rZ);
 
             let escBase = (armaStats.swingEscala || '1 1 1').split(' ');
             let sX = parseFloat(escBase[0]) || 1; 
@@ -690,6 +720,9 @@
             let sZ = parseFloat(escBase[2]) || 1;
 
             let additive = armaStats.swingAdditive ? '; blending: additive' : '';
+            let offsetFrente = alvoSelector === '[camera]' ? -1.5 : -0.6; 
+
+            vfx.setAttribute('efeito-rastro', `alvoId: ${alvoSelector}; offsetZ: ${offsetFrente}; angleZ: ${finalAngleZ}; rotX: ${rX}; rotY: ${rY}`);
 
             if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.jpg')) {
                 let imgMaterial = `src: url(${armaStats.swingAnim}); transparent: true; side: double; depthWrite: false${additive}`;
@@ -703,7 +736,7 @@
             }
 
             scene.appendChild(vfx);
-            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 800); 
+            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
         };
 
         window.gerarHitVFX = function(pos, armaStats) {
@@ -744,14 +777,13 @@
             }
 
             scene.appendChild(vfx);
-            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 800);
+            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600);
         };
 
 
         // ==========================================
         // COMPONENTES A-FRAME GERAIS E FÍSICOS (VR)
         // ==========================================
-
         AFRAME.registerComponent('btn-sistema-acao', {
             schema: { acao: { type: 'string' } },
             init: function () {
@@ -804,7 +836,9 @@
                 if (this.speed > 2.0 && !this.cortando) {
                     this.cortando = true;
                     window.tocarSom('snd-sword');
-                    window.gerarSwingVFX(this.vel.clone(), currentWorldPos.clone(), armaStats);
+                    // Chama a geração do VFX fixada na mão que cortou
+                    let maoId = this.data.mao === 'direita' ? '#mao-direita' : '#mao-esquerda';
+                    window.gerarSwingVFX(this.vel.clone(), armaStats, maoId);
                     setTimeout(() => { this.cortando = false; }, 400); 
                 }
 
@@ -850,7 +884,7 @@
             }
         });
 
-        // ====== DEFENDE E RICOCHETEIA PROJÉTEIS ======
+        // ====== DEFENDE E RICOCHETEIA PROJÉTEIS (AGORA COM A ESPADA TBM) ======
         AFRAME.registerComponent('projetil-inimigo-fisico', {
             schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
             init: function () { 
