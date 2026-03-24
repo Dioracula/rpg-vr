@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RPG MMO - 3 Gestos e Mira Ninja</title>
+    <title>RPG MMO - Magia Fluida e Mira Precisa</title>
     
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
@@ -90,23 +90,32 @@
 
         window.bancoDeArmas = {
             'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
-            'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
-            'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
-            'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
-            'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
+            'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
+            'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
+            'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
+            'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRot: '0 0 0', hitAnim: '', hitEscala: '1 1 1', visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
             'Varinha': { 
                 categoria: 'Varinha', danoBonus: 10, defesaBonus: 0, distancia: 15.0, 
                 modeloGlb: '', 
                 escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', 
                 escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', 
+                projetilGlb: '', projetilEscala: '1 1 1', projetilPos: '0 0.45 0', projetilVel: 20,
+                hitAnim: '', hitEscala: '1 1 1',
                 visualDir: `
                     <a-cylinder color="#5C4033" radius="0.015" height="0.4" position="0 0.2 0"></a-cylinder>
                     <a-sphere id="wand-tip-vis" color="#00FFFF" radius="0.04" position="0 0.4 0" material="emissive: #00FFFF; emissiveIntensity: 0.8"></a-sphere>
-                    <a-entity id="wand-tip" position="0 0.45 0"></a-entity> `, 
+                    <a-entity id="wand-tip" position="0 0.45 0"></a-entity>
+                `, 
                 visualEsq: '' 
             },
-            'Shuriken': { categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, distancia: 10.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>', visualEsq: '' },
-            'Escudo de Madeira': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 3, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', visualDir: '', visualEsq: '<a-box color="#8B4513" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"></a-box>' },
+            'Shuriken': { 
+                categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, distancia: 10.0, 
+                modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', 
+                escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', 
+                shurikenGravidade: -1.2, shurikenVel: 2.5, hitAnim: '', hitEscala: '1 1 1',
+                visualDir: '<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>', visualEsq: '' 
+            },
+            'Escudo de Madeira': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 3, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', hitAnim: '', hitEscala: '1 1 1', visualDir: '', visualEsq: '<a-box color="#8B4513" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"></a-box>' },
         };
 
         window.salvarJogoNuvem = function() { 
@@ -437,7 +446,6 @@
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
 
-            // VR: Espadas normais. Shuriken e Varinha têm física e lógica separadas.
             if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Luva') { return; }
 
             window.tocarSom('snd-sword');
@@ -641,7 +649,7 @@
         });
 
         // ==========================================
-        // COMPONENTES A-FRAME GERAIS
+        // COMPONENTES A-FRAME GERAIS E COMBATE VR
         // ==========================================
 
         AFRAME.registerComponent('btn-sistema-acao', {
@@ -654,6 +662,228 @@
                 };
                 this.el.addEventListener('mousedown', exec);
                 this.el.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); exec(); }, {passive: false});
+            }
+        });
+
+        // ====== LÓGICA DE ESPADA (COLISÃO E VFX DE SWING/HIT) ======
+        AFRAME.registerComponent('colisor-arma-vr', {
+            schema: { mao: {type: 'string', default: 'direita'} },
+            init: function() {
+                this.inimigosAtingidos = new Map();
+                this.posHistory = []; 
+                this.vetorMovimento = new THREE.Vector3();
+                this.lastSwingTime = 0;
+            },
+            spawnVFX: function(animSrc, escala, rotacao, pos, dirVector, isSwing) {
+                if (!animSrc || animSrc.trim() === '') return;
+                
+                let el = document.createElement('a-entity');
+                el.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+                
+                let innerEl = document.createElement('a-entity');
+                innerEl.setAttribute('scale', escala || '1 1 1');
+                innerEl.setAttribute('rotation', rotacao || '0 0 0');
+                
+                if (animSrc.endsWith('.png') || animSrc.endsWith('.jpg') || animSrc.endsWith('.gif')) {
+                    innerEl.innerHTML = `<a-image src="${animSrc}" transparent="true" side="double"></a-image>`;
+                } else {
+                    let glbPath = animSrc.startsWith('#') ? animSrc : `url(${animSrc})`;
+                    innerEl.innerHTML = `<a-entity gltf-model="${glbPath}" animation-mixer></a-entity>`;
+                }
+                
+                el.appendChild(innerEl);
+
+                // Lógica Mágica de Orientação 2D/3D baseada no movimento (Ex: Corte de baixo pra cima inverte)
+                if (isSwing && dirVector) {
+                    let cam = document.querySelector('[camera]');
+                    if (cam) {
+                        // 1. Faz a imagem olhar para o jogador (Assim o rastro 2D nunca fica invisível de lado)
+                        let camPos = new THREE.Vector3();
+                        cam.object3D.getWorldPosition(camPos);
+                        el.object3D.lookAt(camPos); 
+                        
+                        // 2. Calcula o ângulo do braço no espaço 2D da tela do jogador
+                        let localDir = dirVector.clone();
+                        let camQuatInv = cam.object3D.quaternion.clone().invert();
+                        localDir.applyQuaternion(camQuatInv); // Transforma vetor 3D do mundo em vetor 2D da tela
+                        
+                        // 3. Aplica a rotação no Z (Faz girar como um ponteiro de relógio)
+                        let angle = Math.atan2(localDir.y, localDir.x);
+                        el.object3D.rotateZ(angle);
+                    }
+                }
+
+                document.querySelector('a-scene').appendChild(el);
+
+                setTimeout(() => {
+                    if (el.parentNode) el.parentNode.removeChild(el);
+                }, 500); // 500ms de duração para o Rastro ou Hit
+            },
+            tick: function(time, timeDelta) {
+                if (window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
+                
+                let armaDirStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado'];
+                let escudoStats = window.playerState.escudoEquipado ? window.bancoDeArmas[window.playerState.nomeEscudo] : null;
+                
+                let itemMao = null;
+                let isEscudo = false;
+
+                if (this.data.mao === 'direita') {
+                    itemMao = armaDirStats;
+                } else if (this.data.mao === 'esquerda') {
+                    if (window.playerState.escudoEquipado && escudoStats) {
+                        itemMao = escudoStats;
+                        isEscudo = true;
+                    } else if (armaDirStats.categoria === 'Luva' || armaDirStats.categoria === 'Arco') {
+                        itemMao = armaDirStats;
+                    } else {
+                        return; 
+                    }
+                }
+                
+                if(!itemMao) return;
+                let categoria = itemMao.categoria;
+
+                this.el.object3D.updateMatrixWorld(true);
+                let posWorldAtual = new THREE.Vector3();
+                this.el.object3D.getWorldPosition(posWorldAtual);
+                let posLocalAtual = this.el.object3D.position.clone();
+                
+                this.posHistory.push({posLocal: posLocalAtual, posWorld: posWorldAtual.clone(), time: time});
+                if (this.posHistory.length > 10) this.posHistory.shift(); 
+
+                let velocidadeMovimento = 0;
+                let deslocamento = 0;
+                let oldData = this.posHistory[0];
+                
+                if (!oldData) return;
+
+                let dt = (time - oldData.time) / 1000;
+
+                if (dt > 0.05) { 
+                    deslocamento = posLocalAtual.distanceTo(oldData.posLocal);
+                    velocidadeMovimento = deslocamento / dt;
+                    this.vetorMovimento.subVectors(posWorldAtual, oldData.posWorld).normalize();
+                }
+
+                let isSwingingAttack = velocidadeMovimento > 1.5 && deslocamento > 0.15; 
+                let isSwingingDefend = velocidadeMovimento > 0.8;
+                
+                // GERA O RASTRO DO CORTE (SWING VFX)
+                if (isSwingingAttack && time - this.lastSwingTime > 400 && !isEscudo) {
+                    this.lastSwingTime = time;
+                    if (itemMao && itemMao.swingAnim) {
+                        this.spawnVFX(itemMao.swingAnim, itemMao.swingEscala, itemMao.swingRot, posWorldAtual, this.vetorMovimento, true);
+                    }
+                }
+
+                let dir = new THREE.Vector3(0, -0.5, -1).normalize(); 
+                let camQuat = new THREE.Quaternion();
+                this.el.object3D.getWorldQuaternion(camQuat);
+                dir.applyQuaternion(camQuat);
+
+                let compArma = 0.2; 
+                if (categoria === 'Espada') compArma = 0.8; 
+                if (isEscudo) compArma = 0.4;
+
+                let ptBase = posWorldAtual;
+                let ptPonta = posWorldAtual.clone().add(dir.clone().multiplyScalar(compArma));
+                
+                let boxArma = new THREE.Box3();
+                boxArma.expandByPoint(ptBase);
+                boxArma.expandByPoint(ptPonta);
+                boxArma.expandByScalar(0.08); 
+
+                if (!isEscudo) { 
+                    let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
+                    inimigos.forEach(parent => {
+                        let syncComp = parent.components['sistema-inimigo-sync'];
+                        if (!syncComp || syncComp.hpAtual <= 0) {
+                            this.inimigosAtingidos.delete(parent);
+                            return;
+                        }
+
+                        let colisorNode = parent.querySelector('.colisao-inimigo');
+                        if (!colisorNode) return;
+                        
+                        colisorNode.object3D.updateMatrixWorld(true);
+                        let boxInimigo = new THREE.Box3().setFromObject(colisorNode.object3D);
+
+                        let intersectandoAgora = boxArma.intersectsBox(boxInimigo);
+                        let registroHit = this.inimigosAtingidos.get(parent);
+
+                        if (intersectandoAgora) {
+                            if (!registroHit) {
+                                this.inimigosAtingidos.set(parent, { tempoUltimoDano: 0 });
+                                registroHit = this.inimigosAtingidos.get(parent);
+                            }
+                            
+                            if (isSwingingAttack) {
+                                if (time - registroHit.tempoUltimoDano > 350) {
+                                    let danoBase = window.playerState.forca + (itemMao.danoBonus || 0);
+                                    let multiplicadorFisico = Math.min(2.0, velocidadeMovimento / 1.5);
+                                    let danoFinal = Math.floor(danoBase * multiplicadorFisico);
+                                    
+                                    syncComp.receberDano(danoFinal, categoria);
+                                    registroHit.tempoUltimoDano = time;
+
+                                    // GERA A EXPLOSÃO DE DANO (HIT VFX)
+                                    if (itemMao && itemMao.hitAnim) {
+                                        // Invoca na ponta da espada (ou meio do inimigo se preferir boxInimigo.getCenter)
+                                        this.spawnVFX(itemMao.hitAnim, itemMao.hitEscala, '0 0 0', ptPonta, null, false);
+                                    }
+                                }
+                            }
+                        } else {
+                            if (registroHit && (time - registroHit.tempoUltimoDano > 350)) {
+                                this.inimigosAtingidos.delete(parent);
+                            }
+                        }
+                    });
+                }
+                
+                let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
+                projeteis.forEach(proj => {
+                    proj.object3D.updateMatrixWorld(true);
+                    let boxProj = new THREE.Box3().setFromObject(proj.object3D);
+
+                    if (boxArma.intersectsBox(boxProj)) { 
+                        if (isEscudo) {
+                            if (velocidadeMovimento > 1.5) { 
+                                let projComp = proj.components['projetil-inimigo-fisico'];
+                                if (projComp && proj.dataset.defletido !== "true") {
+                                    window.tocarSom('snd-hit');
+                                    proj.dataset.defletido = "true";
+                                    let dirPunch = this.vetorMovimento.clone().normalize();
+                                    projComp.vel.copy(dirPunch).multiplyScalar(10); 
+                                }
+                            } else { 
+                                window.tocarSom('snd-hit'); 
+                                proj.remove();
+                            }
+                        }
+                        else if (isSwingingDefend) { 
+                            if (categoria === 'Espada' || categoria === 'Arco') {
+                                window.tocarSom('snd-sword'); 
+                                proj.remove(); 
+                            } else if (categoria === 'Luva') {
+                                let projComp = proj.components['projetil-inimigo-fisico'];
+                                if (projComp && proj.dataset.defletido !== "true") {
+                                    window.tocarSom('snd-hit');
+                                    proj.dataset.defletido = "true";
+                                    
+                                    let dirPunch = this.vetorMovimento.clone().normalize();
+                                    if (velocidadeMovimento > 2.0) {
+                                        projComp.vel.copy(dirPunch).multiplyScalar(10); 
+                                    } else {
+                                        projComp.vel.multiplyScalar(-1.5); 
+                                        projComp.vel.y += 2; 
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
             }
         });
 
@@ -681,6 +911,17 @@
                     
                     if (boxProj.intersectsBox(boxInimigo)) { 
                         syncComp.receberDano(this.data.dano, 'Varinha'); 
+                        
+                        // NOVO: Aplica VFX de HIT da Varinha se existir
+                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                        if (armaStats && armaStats.hitAnim) {
+                            let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
+                            let colisorC = document.querySelector('[colisor-arma-vr]');
+                            if(colisorC && colisorC.components['colisor-arma-vr']) {
+                                colisorC.components['colisor-arma-vr'].spawnVFX(armaStats.hitAnim, armaStats.hitEscala, '0 0 0', currPos, null, false);
+                            }
+                        }
+
                         if(this.el.parentNode) this.el.parentNode.removeChild(this.el); 
                         break; 
                     }
@@ -700,25 +941,16 @@
                     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
                     if (!armaStats || armaStats.categoria !== 'Varinha') return;
 
-                    if (window.playerState.mpAtual < 10) {
-                        window.tocarSom('snd-hit');
-                        return;
-                    }
+                    if (window.playerState.mpAtual < 10) { window.tocarSom('snd-hit'); return; }
 
                     this.gravando = true;
-                    // Marker for origin at triggerdown time
                     const tipMarkerEl = this.el.querySelector('#wand-tip');
-                    if (tipMarkerEl) {
-                        tipMarkerEl.object3D.getWorldPosition(this.posInicio = new THREE.Vector3());
-                    } else {
-                        this.posInicio = new THREE.Vector3(); this.el.object3D.localToWorld(this.posInicio.copy(new THREE.Vector3(0, 0.45, 0)));
-                    }
+                    if (tipMarkerEl) { tipMarkerEl.object3D.getWorldPosition(this.posInicio = new THREE.Vector3()); } 
+                    else { this.posInicio = new THREE.Vector3(); this.el.object3D.localToWorld(this.posInicio.copy(new THREE.Vector3(0, 0.45, 0))); }
                     this.tempoInicio = Date.now();
                     
                     const tipVisEl = this.el.querySelector('#wand-tip-vis');
-                    if (tipVisEl) {
-                        tipVisEl.setAttribute('material', 'emissive: #fff; emissiveIntensity: 1.5'); 
-                    }
+                    if (tipVisEl) { tipVisEl.setAttribute('material', 'emissive: #fff; emissiveIntensity: 1.5'); }
                 });
 
                 this.el.addEventListener('triggerup', () => {
@@ -726,18 +958,12 @@
                     this.gravando = false;
                     
                     const tipVisEl = this.el.querySelector('#wand-tip-vis');
-                    if (tipVisEl) {
-                        tipVisEl.setAttribute('material', 'emissive: #00FFFF; emissiveIntensity: 0.8'); 
-                    }
+                    if (tipVisEl) { tipVisEl.setAttribute('material', 'emissive: #00FFFF; emissiveIntensity: 0.8'); }
                     
                     let posFim = new THREE.Vector3();
-                    // NEW ORIGIN (Tip position at time of release)
                     const tipMarkerEl = this.el.querySelector('#wand-tip');
-                    if (tipMarkerEl) {
-                        tipMarkerEl.object3D.getWorldPosition(posFim);
-                    } else {
-                        this.el.object3D.localToWorld(posFim.copy(new THREE.Vector3(0, 0.45, 0)));
-                    }
+                    if (tipMarkerEl) { tipMarkerEl.object3D.getWorldPosition(posFim); } 
+                    else { this.el.object3D.localToWorld(posFim.copy(new THREE.Vector3(0, 0.45, 0))); }
 
                     let tempoGasto = Date.now() - this.tempoInicio;
                     let deltaWorld = new THREE.Vector3().subVectors(posFim, this.posInicio);
@@ -753,57 +979,49 @@
                         let isHorizontal = Math.abs(localDelta.x) > Math.abs(localDelta.y);
                         
                         let corMagia, custoMP, multDano, scaleMagia;
-                        if (isHorizontal) {
-                            corMagia = '#9b59b6';
-                            custoMP = 10;
-                            multDano = 1.0;
-                            scaleMagia = '1 1 1';
-                        } else {
-                            corMagia = '#00FFFF';
-                            custoMP = 15;
-                            multDano = 1.5;
-                            scaleMagia = '1.5 1.5 1.5';
-                        }
+                        if (isHorizontal) { corMagia = '#9b59b6'; custoMP = 10; multDano = 1.0; scaleMagia = '1 1 1'; } 
+                        else { corMagia = '#00FFFF'; custoMP = 15; multDano = 1.5; scaleMagia = '1.5 1.5 1.5'; }
 
                         if (window.playerState.mpAtual < custoMP) { window.tocarSom('snd-hit'); return; }
                         
                         window.playerState.mpAtual -= custoMP;
                         window.atualizarUI();
 
-                        // NEW DIRECTION (Vector from Hand Base to Tip)
                         let handBasePos = new THREE.Vector3();
                         this.el.object3D.getWorldPosition(handBasePos);
                         let castDir = new THREE.Vector3().subVectors(posFim, handBasePos).normalize();
 
-                        // UPDATED AIM ASSIST (Stronger and Precise)
                         let bestTarget = null;
-                        let smallestAngle = 0.35; // ~20 graus
+                        let smallestAngle = 0.35; 
                         let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
                         inimigosAtuais.forEach(ini => {
                             let syncComp = ini.components['sistema-inimigo-sync'];
                             if(syncComp && syncComp.hpAtual > 0) {
                                 let iniPos = new THREE.Vector3(); ini.object3D.getWorldPosition(iniPos);
-                                iniPos.y += 1.0; // Mira no peito
+                                iniPos.y += 1.0; 
                                 let dirToIni = new THREE.Vector3().subVectors(iniPos, posFim).normalize();
                                 let angle = castDir.angleTo(dirToIni);
                                 if (angle < smallestAngle) { smallestAngle = angle; bestTarget = dirToIni; }
                             }
                         });
-                        if (bestTarget) { castDir.lerp(bestTarget, 0.75).normalize(); } // Pulls 75% (preciso)
+                        if (bestTarget) { castDir.lerp(bestTarget, 0.75).normalize(); } 
 
-                        let speed = 20;
+                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                        let speed = armaStats.projetilVel || 20;
                         let finalVel = castDir.multiplyScalar(speed);
 
                         let proj = document.createElement('a-entity');
                         proj.setAttribute('position', `${posFim.x} ${posFim.y} ${posFim.z}`);
-                        proj.setAttribute('scale', scaleMagia);
+                        proj.setAttribute('scale', armaStats.projetilEscala || scaleMagia);
                         
-                        proj.innerHTML = `
-                            <a-sphere radius="0.1" color="${corMagia}" material="emissive: ${corMagia}; emissiveIntensity: 1"></a-sphere>
-                            <a-light type="point" color="${corMagia}" intensity="0.5" distance="3"></a-light>
-                        `;
+                        if (armaStats.projetilGlb && armaStats.projetilGlb.trim() !== '') {
+                            let glbPath = armaStats.projetilGlb.startsWith('#') ? armaStats.projetilGlb : `url(${armaStats.projetilGlb})`;
+                            proj.innerHTML = `<a-entity gltf-model="${glbPath}" rotation="0 0 0" anti-piscar></a-entity>`;
+                            proj.object3D.lookAt(posFim.clone().add(castDir));
+                        } else {
+                            proj.innerHTML = `<a-sphere radius="0.1" color="${corMagia}" material="emissive: ${corMagia}; emissiveIntensity: 1"></a-sphere><a-light type="point" color="${corMagia}" intensity="0.5" distance="3"></a-light>`;
+                        }
 
-                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
                         let danoFinal = Math.floor((window.playerState.forca + (armaStats.danoBonus || 10)) * multDano);
                         
                         proj.setAttribute('projetil-magia', `velocidade: ${finalVel.x} ${finalVel.y} ${finalVel.z}; dano: ${danoFinal}`);
@@ -853,6 +1071,17 @@
                     
                     if (boxProj.intersectsBox(boxInimigo)) { 
                         syncComp.receberDano(this.data.dano, 'Arco'); 
+
+                        // NOVO: Aplica VFX de Hit na Shuriken
+                        let armaStats = window.bancoDeArmas['Shuriken'];
+                        if (armaStats && armaStats.hitAnim) {
+                            let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
+                            let colisorC = document.querySelector('[colisor-arma-vr]');
+                            if(colisorC && colisorC.components['colisor-arma-vr']) {
+                                colisorC.components['colisor-arma-vr'].spawnVFX(armaStats.hitAnim, armaStats.hitEscala, '0 0 0', currPos, null, false);
+                            }
+                        }
+
                         if(this.el.parentNode) this.el.parentNode.removeChild(this.el); 
                         break; 
                     }
@@ -860,7 +1089,7 @@
             }
         });
 
-        // ====== SISTEMA DO CINTO ======
+        // ====== SISTEMA DO CINTO E SHURIKEN ======
         AFRAME.registerComponent('sync-cintura', {
             init: function() {
                 this.visualDir = document.createElement('a-entity');
@@ -877,21 +1106,14 @@
                     this.el.object3D.position.set(pos.x, pos.y - 0.6, pos.z);
                     this.el.object3D.rotation.set(0, euler.y, 0);
                 }
-                if (window.playerState.shurikens > 0) {
-                    this.visualDir.setAttribute('visible', 'true');
-                } else {
-                    this.visualDir.setAttribute('visible', 'false');
-                }
+                if (window.playerState.shurikens > 0) { this.visualDir.setAttribute('visible', 'true'); } 
+                else { this.visualDir.setAttribute('visible', 'false'); }
             }
         });
 
-        // ====== LÓGICA DE PEGAR (GRIP) E ARREMESSAR SHURIKEN COM AIM ASSIST ======
         AFRAME.registerComponent('vr-shuriken-lancar', {
             init: function() {
-                this.segurando = false;
-                this.posHistory = []; 
-                this.origemGrab = null; 
-                this.scene = document.querySelector('a-scene');
+                this.segurando = false; this.posHistory = []; this.origemGrab = null; this.scene = document.querySelector('a-scene');
 
                 this.el.addEventListener('gripdown', () => {
                     if (window.GAME_MODE !== 'VR' || !window.playerState.vivo) return;
@@ -901,14 +1123,8 @@
                     let shurikensChao = document.querySelectorAll('.shuriken-chao');
                     let pegouChao = false;
                     for(let i=0; i<shurikensChao.length; i++) {
-                        let sChao = shurikensChao[i];
-                        let posS = new THREE.Vector3(); sChao.object3D.getWorldPosition(posS);
-                        if (posMao.distanceTo(posS) < 0.4) {
-                            this.origemGrab = sChao; 
-                            sChao.parentNode.removeChild(sChao); 
-                            pegouChao = true;
-                            break;
-                        }
+                        let sChao = shurikensChao[i]; let posS = new THREE.Vector3(); sChao.object3D.getWorldPosition(posS);
+                        if (posMao.distanceTo(posS) < 0.4) { this.origemGrab = sChao; sChao.parentNode.removeChild(sChao); pegouChao = true; break; }
                     }
 
                     let pegouCinto = false;
@@ -916,28 +1132,15 @@
                         let cintura = document.querySelector('#cintura-player');
                         if (cintura) {
                             let posCintura = new THREE.Vector3(); cintura.object3D.getWorldPosition(posCintura);
-                            let offsetDir = new THREE.Vector3(0.25, -0.1, 0.1);
-                            offsetDir.applyQuaternion(cintura.object3D.quaternion);
-                            posCintura.add(offsetDir);
-                            
-                            if (posMao.distanceTo(posCintura) < 0.35) {
-                                this.origemGrab = 'cinto';
-                                pegouCinto = true;
-                            }
+                            let offsetDir = new THREE.Vector3(0.25, -0.1, 0.1); offsetDir.applyQuaternion(cintura.object3D.quaternion); posCintura.add(offsetDir);
+                            if (posMao.distanceTo(posCintura) < 0.35) { this.origemGrab = 'cinto'; pegouCinto = true; }
                         }
                     }
 
                     if (pegouChao || pegouCinto) {
-                        this.segurando = true;
-                        window.tocarSom('snd-magic'); 
-
-                        if(!this.visualInHand) {
-                            this.visualInHand = document.createElement('a-entity');
-                            this.visualInHand.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
-                            this.el.appendChild(this.visualInHand);
-                        }
+                        this.segurando = true; window.tocarSom('snd-magic'); 
+                        if(!this.visualInHand) { this.visualInHand = document.createElement('a-entity'); this.visualInHand.innerHTML = window.bancoDeArmas['Shuriken'].visualDir; this.el.appendChild(this.visualInHand); }
                         this.visualInHand.setAttribute('visible', 'true');
-                        
                         let armaVis = this.el.querySelector(this.el.id === 'mao-direita' ? '#arma-visual-dir' : '#arma-visual-esq');
                         if(armaVis) armaVis.setAttribute('visible', 'false');
                     }
@@ -951,69 +1154,39 @@
                         let armaVis = this.el.querySelector(this.el.id === 'mao-direita' ? '#arma-visual-dir' : '#arma-visual-esq');
                         if(armaVis) armaVis.setAttribute('visible', 'true');
 
-                        if (this.origemGrab === 'cinto') {
-                            window.playerState.shurikens--; 
-                            window.atualizarUI();
-                        }
+                        if (this.origemGrab === 'cinto') { window.playerState.shurikens--; window.atualizarUI(); }
 
                         let vel = new THREE.Vector3(0,0,0);
                         if (this.posHistory.length > 2) {
-                            let oldData = this.posHistory[0];
-                            let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
+                            let oldData = this.posHistory[0]; let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
                             let dt = (Date.now() - oldData.time) / 1000;
                             if (dt > 0) vel.subVectors(currPos, oldData.pos).divideScalar(dt);
                         }
                         
-                        let speed = vel.length();
-                        let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
+                        let speed = vel.length(); let currPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currPos);
                         
                         if (speed > 1.5) {
                             vel.multiplyScalar(2.5); 
-                            
-                            // SHURIKEN AIM ASSIST (Magnetismo sutil)
-                            let bestTarget = null;
-                            let smallestAngle = 0.3; // ~17 graus
-                            
+                            let bestTarget = null; let smallestAngle = 0.3; 
                             let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
                             inimigosAtuais.forEach(ini => {
                                 let syncComp = ini.components['sistema-inimigo-sync'];
                                 if(syncComp && syncComp.hpAtual > 0) {
-                                    let iniPos = new THREE.Vector3(); ini.object3D.getWorldPosition(iniPos);
-                                    iniPos.y += 1.0; // Mira no peito/cabeça
-                                    
-                                    let dirMao = vel.clone().normalize();
-                                    let dirToIni = new THREE.Vector3().subVectors(iniPos, currPos).normalize();
-                                    
+                                    let iniPos = new THREE.Vector3(); ini.object3D.getWorldPosition(iniPos); iniPos.y += 1.0; 
+                                    let dirMao = vel.clone().normalize(); let dirToIni = new THREE.Vector3().subVectors(iniPos, currPos).normalize();
                                     let angle = dirMao.angleTo(dirToIni);
                                     if (angle < smallestAngle) { smallestAngle = angle; bestTarget = dirToIni; }
                                 }
                             });
-                            
-                            if (bestTarget) {
-                                let forcaReal = vel.length();
-                                let dirAtual = vel.normalize();
-                                dirAtual.lerp(bestTarget, 0.35).normalize();
-                                vel = dirAtual.multiplyScalar(forcaReal);
-                            }
-                        } else {
-                            vel.set(0, 0, 0); 
-                        }
+                            if (bestTarget) { let forcaReal = vel.length(); let dirAtual = vel.normalize(); dirAtual.lerp(bestTarget, 0.35).normalize(); vel = dirAtual.multiplyScalar(forcaReal); }
+                        } else { vel.set(0, 0, 0); }
 
-                        let proj = document.createElement('a-entity');
-                        proj.setAttribute('position', `${currPos.x} ${currPos.y} ${currPos.z}`);
-                        
-                        let projVis = document.createElement('a-entity');
-                        projVis.innerHTML = window.bancoDeArmas['Shuriken'].visualDir;
-                        proj.appendChild(projVis);
-
-                        let armaStats = window.bancoDeArmas['Shuriken'];
-                        let danoTiro = window.playerState.forca + (armaStats.danoBonus || 5);
-                        
+                        let proj = document.createElement('a-entity'); proj.setAttribute('position', `${currPos.x} ${currPos.y} ${currPos.z}`);
+                        let projVis = document.createElement('a-entity'); projVis.innerHTML = window.bancoDeArmas['Shuriken'].visualDir; proj.appendChild(projVis);
+                        let armaStats = window.bancoDeArmas['Shuriken']; let danoTiro = window.playerState.forca + (armaStats.danoBonus || 5);
                         proj.setAttribute('projetil-fisico', `velocidade: ${vel.x} ${vel.y} ${vel.z}; dano: ${danoTiro}`);
                         if(this.scene) this.scene.appendChild(proj);
-                        
                         if (speed > 1.5) window.tocarSom('snd-sword');
-                        
                         this.origemGrab = null;
                     }
                 });
@@ -1200,168 +1373,6 @@
                     window.receberDanoJogador(this.data.dano); 
                     this.el.remove(); 
                 }
-            }
-        });
-
-        AFRAME.registerComponent('colisor-arma-vr', {
-            schema: { mao: {type: 'string', default: 'direita'} },
-            init: function() {
-                this.inimigosAtingidos = new Map();
-                this.posHistory = []; 
-                this.vetorMovimento = new THREE.Vector3();
-            },
-            tick: function(time, timeDelta) {
-                if (window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
-                
-                let armaDirStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado'];
-                let escudoStats = window.playerState.escudoEquipado ? window.bancoDeArmas[window.playerState.nomeEscudo] : null;
-                
-                let itemMao = null;
-                let isEscudo = false;
-
-                if (this.data.mao === 'direita') {
-                    itemMao = armaDirStats;
-                } else if (this.data.mao === 'esquerda') {
-                    if (window.playerState.escudoEquipado && escudoStats) {
-                        itemMao = escudoStats;
-                        isEscudo = true;
-                    } else if (armaDirStats.categoria === 'Luva' || armaDirStats.categoria === 'Arco') {
-                        itemMao = armaDirStats;
-                    } else {
-                        return; 
-                    }
-                }
-                
-                if(!itemMao) return;
-                let categoria = itemMao.categoria;
-
-                this.el.object3D.updateMatrixWorld(true);
-                let posWorldAtual = new THREE.Vector3();
-                this.el.object3D.getWorldPosition(posWorldAtual);
-                
-                let posLocalAtual = this.el.object3D.position.clone();
-                
-                this.posHistory.push({posLocal: posLocalAtual, posWorld: posWorldAtual.clone(), time: time});
-                if (this.posHistory.length > 10) this.posHistory.shift(); 
-
-                let velocidadeMovimento = 0;
-                let deslocamento = 0;
-                let oldData = this.posHistory[0];
-                
-                if (!oldData) return;
-
-                let dt = (time - oldData.time) / 1000;
-
-                if (dt > 0.05) { 
-                    deslocamento = posLocalAtual.distanceTo(oldData.posLocal);
-                    velocidadeMovimento = deslocamento / dt;
-                    this.vetorMovimento.subVectors(posWorldAtual, oldData.posWorld).normalize();
-                }
-
-                let isSwingingAttack = velocidadeMovimento > 1.5 && deslocamento > 0.15; 
-                let isSwingingDefend = velocidadeMovimento > 0.8;
-                
-                let dir = new THREE.Vector3(0, -0.5, -1).normalize(); 
-                let camQuat = new THREE.Quaternion();
-                this.el.object3D.getWorldQuaternion(camQuat);
-                dir.applyQuaternion(camQuat);
-
-                let compArma = 0.2; 
-                if (categoria === 'Espada') compArma = 0.8; 
-                if (isEscudo) compArma = 0.4;
-
-                let ptBase = posWorldAtual;
-                let ptPonta = posWorldAtual.clone().add(dir.clone().multiplyScalar(compArma));
-                
-                let boxArma = new THREE.Box3();
-                boxArma.expandByPoint(ptBase);
-                boxArma.expandByPoint(ptPonta);
-                boxArma.expandByScalar(0.08); 
-
-                if (!isEscudo) { 
-                    let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
-                    inimigos.forEach(parent => {
-                        let syncComp = parent.components['sistema-inimigo-sync'];
-                        if (!syncComp || syncComp.hpAtual <= 0) {
-                            this.inimigosAtingidos.delete(parent);
-                            return;
-                        }
-
-                        let colisorNode = parent.querySelector('.colisao-inimigo');
-                        if (!colisorNode) return;
-                        
-                        colisorNode.object3D.updateMatrixWorld(true);
-                        let boxInimigo = new THREE.Box3().setFromObject(colisorNode.object3D);
-
-                        let intersectandoAgora = boxArma.intersectsBox(boxInimigo);
-                        let registroHit = this.inimigosAtingidos.get(parent);
-
-                        if (intersectandoAgora) {
-                            if (!registroHit) {
-                                this.inimigosAtingidos.set(parent, { tempoUltimoDano: 0 });
-                                registroHit = this.inimigosAtingidos.get(parent);
-                            }
-                            
-                            if (isSwingingAttack) {
-                                if (time - registroHit.tempoUltimoDano > 350) {
-                                    let danoBase = window.playerState.forca + (itemMao.danoBonus || 0);
-                                    let multiplicadorFisico = Math.min(2.0, velocidadeMovimento / 1.5);
-                                    let danoFinal = Math.floor(danoBase * multiplicadorFisico);
-                                    
-                                    syncComp.receberDano(danoFinal, categoria);
-                                    registroHit.tempoUltimoDano = time;
-                                }
-                            }
-                        } else {
-                            if (registroHit && (time - registroHit.tempoUltimoDano > 350)) {
-                                this.inimigosAtingidos.delete(parent);
-                            }
-                        }
-                    });
-                }
-                
-                let projeteis = document.querySelectorAll('[projetil-inimigo-fisico]');
-                projeteis.forEach(proj => {
-                    proj.object3D.updateMatrixWorld(true);
-                    let boxProj = new THREE.Box3().setFromObject(proj.object3D);
-
-                    if (boxArma.intersectsBox(boxProj)) { 
-                        if (isEscudo) {
-                            if (velocidadeMovimento > 1.5) { 
-                                let projComp = proj.components['projetil-inimigo-fisico'];
-                                if (projComp && proj.dataset.defletido !== "true") {
-                                    window.tocarSom('snd-hit');
-                                    proj.dataset.defletido = "true";
-                                    let dirPunch = this.vetorMovimento.clone().normalize();
-                                    projComp.vel.copy(dirPunch).multiplyScalar(10); 
-                                }
-                            } else { 
-                                window.tocarSom('snd-hit'); 
-                                proj.remove();
-                            }
-                        }
-                        else if (isSwingingDefend) { 
-                            if (categoria === 'Espada' || categoria === 'Arco') {
-                                window.tocarSom('snd-sword'); 
-                                proj.remove(); 
-                            } else if (categoria === 'Luva') {
-                                let projComp = proj.components['projetil-inimigo-fisico'];
-                                if (projComp && proj.dataset.defletido !== "true") {
-                                    window.tocarSom('snd-hit');
-                                    proj.dataset.defletido = "true";
-                                    
-                                    let dirPunch = this.vetorMovimento.clone().normalize();
-                                    if (velocidadeMovimento > 2.0) {
-                                        projComp.vel.copy(dirPunch).multiplyScalar(10); 
-                                    } else {
-                                        projComp.vel.multiplyScalar(-1.5); 
-                                        projComp.vel.y += 2; 
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
             }
         });
 
@@ -1686,14 +1697,14 @@
                     let armaAtual = window.bancoDeArmas[window.playerState.armaEquipada];
                     
                     if(itemAlvo.categoria === 'Escudo') { 
-                        if (armaAtual && (armaAtual.categoria === 'Arco' || armaAtual.categoria === 'Luva')) {
+                        if (armaAtual && (armaAtual.categoria === 'Arco' || armaAtual.categoria === 'Luva' || armaAtual.categoria === 'Varinha')) {
                             let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'NÃO PODE USAR ESCUDO\nCOM ARMA DE 2 MÃOS!'); aviso.setAttribute('color', '#FF0000'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 2000); }
                             return;
                         }
                         window.playerState.nomeEscudo = this.data.item; 
                         window.playerState.escudoEquipado = true; 
                     } else { 
-                        if ((itemAlvo.categoria === 'Arco' || itemAlvo.categoria === 'Luva') && window.playerState.escudoEquipado) {
+                        if ((itemAlvo.categoria === 'Arco' || itemAlvo.categoria === 'Luva' || itemAlvo.categoria === 'Varinha') && window.playerState.escudoEquipado) {
                             window.playerState.escudoEquipado = false;
                             window.playerState.nomeEscudo = '';
                         }
@@ -1727,260 +1738,4 @@
             } 
         });
         
-        AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; window.atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 3000); } } }); } });
-    </script>
-</head>
-<body>
-
-    <div id="ui-layer">
-        <div id="login-menu" class="menu-box">
-            <form onsubmit="event.preventDefault();">
-                <h2 style="color: #f1c40f;">MMO Login</h2>
-                <input type="email" id="login-email" placeholder="Email" autocomplete="username">
-                <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password">
-                <button id="btn-login" class="btn btn-blue">Entrar</button>
-                <button id="btn-registrar" class="btn btn-green">Criar Conta</button>
-                <button id="btn-login-teste" class="btn btn-orange" style="display: none; margin-top: 15px;">🧪 Entrar sem Senha (Teste)</button>
-                <p id="login-error"></p>
-            </form>
-        </div>
-
-        <div id="start-menu" class="menu-box">
-            <h2 style="color: #2ecc71;">Logado!</h2>
-            <button id="btn-pc" class="btn btn-orange">Jogar no PC (Mouse)</button>
-            <button id="btn-vr" class="btn btn-blue">Jogar em VR</button>
-            <button id="btn-android" class="btn btn-purple">📱 Jogar no Android (Touch)</button>
-        </div>
-    </div>
-
-    <div id="sys-ui-layer">
-        <div class="menu-box">
-            <h2 style="color: #f1c40f;">SYSTEM MENU</h2>
-            <button class="btn btn-blue" onclick="abrirConfiguracoes()">⚙️ Configurações</button>
-            <button class="btn btn-red" onclick="fazerLogout()">🚪 Logout (Desconectar)</button>
-            <button class="btn btn-dark" style="margin-top: 20px;" onclick="window.toggleMenu('sys')">▶️ Voltar ao Jogo</button>
-        </div>
-    </div>
-
-    <div id="pc-ui">
-        <button id="btn-sys-pc" class="hud-btn-sys">⚙️</button>
-    </div>
-
-    <div id="mobile-ui">
-        <div class="menu-top-right">
-            <div class="hud-btn hud-btn-sys" id="btn-sys-mobile">⚙️</div>
-            <div class="hud-btn" id="btn-inv">🎒</div>
-            <div class="hud-btn" id="btn-status">📈</div>
-        </div>
-        <div id="joystick-zone"><div id="joystick-stick"></div></div>
-        <div id="action-buttons">
-            <div class="hud-btn" id="btn-escudo">🛡️</div>
-            <div class="hud-btn" id="btn-atacar">⚔️</div>
-        </div>
-    </div>
-
-    <a-scene pc-controles sistema-jogo gerenciador-inimigos gerenciador-npcs gerenciador-respawns renderer="colorManagement: true;">
-        
-        <a-entity id="mouse-cursor" cursor="rayOrigin: mouse" raycaster="objects: none"></a-entity>
-
-        <a-assets timeout="3000">
-            <a-asset-item id="modelo-espada-reta" src="Armas/Espadas/espada_reta.glb"></a-asset-item>
-            <a-asset-item id="modelo-espada-grande" src="Armas/Espadas/espada_grande.glb"></a-asset-item>
-            <a-asset-item id="modelo-arco" src="Armas/Arcos/arco.glb"></a-asset-item>
-            <a-asset-item id="modelo-escudo" src="Armas/Escudos/escudo.glb"></a-asset-item>
-            <a-asset-item id="modelo-inimigo" src="Inimigos/atiradora.glb"></a-asset-item>
-            <a-asset-item id="modelo-inimigo2" src="Inimigos/atiradora.glb"></a-asset-item>
-        </a-assets>
-
-        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="0.5" position="-1 2 1"></a-light>
-        <a-entity environment="preset: forest; groundColor: #445; grid: none"></a-entity>
-
-        <a-box class="interativo" sistema-bau position="-3 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow><a-text value="Loot" position="-0.3 0.6 0" color="#FFF" scale="0.8 0.8 0.8"></a-text></a-box>
-
-        <a-entity id="rig" firebase-multiplayer movement-controls="speed: 0.15" mobile-movement position="0 0 0">
-            
-            <a-entity camera mobile-look position="0 1.6 0" look-controls="pointerLockEnabled: true">
-                
-                <a-entity id="cursor-centro" cursor="fuse: false" position="0 0 -1" geometry="primitive: ring; radiusInner: 0.015; radiusOuter: 0.025" material="color: white; shader: flat; opacity: 0.8" raycaster="objects: .interativo; far: 20"></a-entity>
-                
-                <a-entity id="arma-visual-pc" position="0.3 -0.3 -0.6" rotation="-90 0 0" scale="0.7 0.7 0.7"></a-entity>
-                <a-entity id="escudo-visual-pc" position="-0.4 -0.2 -0.5" rotation="180 0 0" scale="0.7 0.7 0.7"></a-entity>
-
-                <a-plane id="dano-tela" position="0 0 -0.5" width="2" height="2" color="#ff0000" opacity="0.3" visible="false"></a-plane>
-                <a-text id="texto-central" value="" position="0 -0.3 -1.5" color="#00FF00" visible="false" scale="0.5 0.5 0.5" align="center"></a-text>
-                
-                <a-entity id="hud-status" position="-0.4 0.8 -1.4" rotation="25 0 0">
-                    <a-plane position="0.05 0 -0.01" width="1.1" height="0.25" color="#1a1a1a" opacity="0.85"></a-plane>
-                    <a-text id="txt-nivel-hud" value="Nivel: 1 | XP: 0/50" position="-0.45 -0.05 0" color="#AAAAAA" scale="0.25 0.25 0.25" align="left"></a-text>
-                    <a-entity position="-0.05 0 0">
-                        <a-plane position="0.3 0.05 0" width="0.6" height="0.04" color="#333"></a-plane>
-                        <a-entity id="hp-wrapper" position="0 0.05 0.01"><a-plane position="0.3 0 0" width="0.6" height="0.04" color="#c0392b"></a-plane></a-entity>
-                        <a-plane position="0.3 -0.01 0" width="0.6" height="0.04" color="#333"></a-plane>
-                        <a-entity id="mp-wrapper" position="0 -0.01 0.01"><a-plane position="0.3 0 0" width="0.6" height="0.04" color="#2980b9"></a-plane></a-entity>
-                        <a-text id="txt-status-hud" value="HP: 100/100   |   MP: 100/100" position="0.3 -0.07 0" color="#FFF" scale="0.2 0.2 0.2" align="center"></a-text>
-                        <a-text id="txt-arma-hud" value="Equipado: Nenhuma" position="-0.45 -0.15 0" color="#FFD700" scale="0.25 0.25 0.25" align="left"></a-text>
-                    </a-entity>
-                </a-entity>
-                
-                <a-text id="contador-online" value="Conectando Servidor..." position="0.6 0.8 -1.2" color="#00FF00" scale="0.4 0.4 0.4" align="right"></a-text>
-            </a-entity> 
-            
-            <a-entity id="cintura-player" sync-cintura></a-entity>
-
-            <a-entity id="mao-esquerda" laser-controls="hand: left" raycaster="objects: .interativo; far: 15" vr-controles-left colisor-arma-vr="mao: esquerda" vr-shuriken-lancar vr-magia-lancar>
-                <a-entity id="arma-visual-esq" position="0 0 0" rotation="180 0 0"></a-entity>
-            </a-entity>
-            <a-entity id="mao-direita" laser-controls="hand: right" raycaster="objects: .interativo; far: 15" vr-controles-gatilho vr-controles-right colisor-arma-vr="mao: direita" vr-shuriken-lancar vr-magia-lancar>
-                <a-entity id="arma-visual-dir" position="0 0 0" rotation="-90 0 0"></a-entity>
-            </a-entity>
-
-        </a-entity>
-
-        <a-entity id="menu-sistema" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane width="1.5" height="1.4" color="#181d23" opacity="0.95"></a-plane>
-            <a-plane width="1.45" height="1.35" color="#1c222b" position="0 0 0.005"></a-plane>
-            
-            <a-plane width="1.45" height="0.2" color="#11151a" position="0 0.575 0.01"></a-plane>
-            <a-text value="SYSTEM MENU" position="0 0.575 0.02" color="#f1c40f" scale="0.6 0.6 0.6" align="center"></a-text>
-
-            <a-box class="interativo" btn-sistema-acao="acao: config" width="1.2" height="0.25" depth="0.02" color="#3498db" position="0 0.2 0.01">
-                <a-text value="Configuracoes" position="0 0 0.02" align="center" scale="0.5 0.5 0.5"></a-text>
-            </a-box>
-
-            <a-box class="interativo" btn-sistema-acao="acao: logout" width="1.2" height="0.25" depth="0.02" color="#e74c3c" position="0 -0.15 0.01">
-                <a-text value="Logout (Desconectar)" position="0 0 0.02" align="center" scale="0.5 0.5 0.5"></a-text>
-            </a-box>
-
-            <a-box class="interativo" btn-sistema-acao="acao: fechar" width="1.2" height="0.15" depth="0.02" color="#7f8c8d" position="0 -0.5 0.01">
-                <a-text value="Voltar ao Jogo" position="0 0 0.02" align="center" scale="0.4 0.4 0.4"></a-text>
-            </a-box>
-        </a-entity>
-
-        <a-entity id="caixa-dialogo" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane color="#181d23" width="2.2" height="1.6" opacity="0.95" position="0 0 0"></a-plane>
-            <a-plane color="#11151a" width="2.15" height="1.55" position="0 0 0.01"></a-plane>
-            
-            <a-plane color="#222831" width="2.15" height="0.25" position="0 0.65 0.02"></a-plane>
-            <a-text id="npc-nome-ui" value="Nome do NPC" position="-1.0 0.65 0.03" color="#f1c40f" scale="0.5 0.5 0.5" baseline="center"></a-text>
-            
-            <a-box id="btn-npc-x" btn-dialogo-fechar class="interativo" color="#e74c3c" width="0.15" height="0.15" depth="0.02" position="1.0 0.65 0.03">
-                <a-text value="X" align="center" position="0 0 0.02" color="#FFF" scale="0.4 0.4 0.4"></a-text>
-            </a-box>
-
-            <a-text id="npc-texto-ui" value="Texto..." position="-1.0 0.4 0.02" color="#bdc3c7" scale="0.4 0.4 0.4" wrap-count="45" baseline="top"></a-text>
-            <a-plane color="#222831" width="2.0" height="0.01" position="0 -0.1 0.02"></a-plane>
-
-            <a-entity id="npc-recompensa-ui" visible="false" position="0 -0.2 0.02">
-                <a-text value="Recompensas da Missao:" position="-1.0 0 0" color="#9b59b6" scale="0.35 0.35 0.35"></a-text>
-                <a-text id="npc-rec-texto" value="" position="-1.0 -0.15 0" color="#2ecc71" scale="0.4 0.4 0.4"></a-text>
-            </a-entity>
-
-            <a-box id="btn-npc-aceitar" btn-dialogo-aceitar class="interativo" color="#27ae60" width="0.8" height="0.2" depth="0.02" position="0 -0.55 0.03" visible="false">
-                <a-text value="ACEITAR MISSAO" align="center" position="0 0 0.02" scale="0.4 0.4 0.4" color="#FFF"></a-text>
-            </a-box>
-        </a-entity>
-
-        <a-entity id="menu-inventario-novo" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane width="2.6" height="2.0" color="#181d23" opacity="0.95"></a-plane>
-            <a-plane width="2.55" height="1.95" color="#1c222b" position="0 0 0.005"></a-plane>
-
-            <a-plane width="2.55" height="0.15" color="#11151a" position="0 0.9 0.01"></a-plane>
-            <a-text value="INVENTORY" position="-1.2 0.9 0.02" color="#f1c40f" scale="0.6 0.6 0.6"></a-text>
-
-            <a-entity id="inv-grid-container" position="0.1 0.1 0.02"></a-entity>
-
-            <a-entity id="inv-tooltip" position="-0.4 0.1 0.05" visible="false">
-                <a-plane width="1.2" height="0.6" color="#0a0c10" opacity="0.95" border="1px solid #34495e"></a-plane>
-                <a-text id="tt-nome" value="Nome do Item" position="-0.5 0.2 0.01" color="#f1c40f" scale="0.45 0.45 0.45"></a-text>
-                <a-text id="tt-forca" value="Forca: 0" position="-0.5 0.05 0.01" color="#e74c3c" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="tt-defesa" value="Defesa: 0" position="-0.5 -0.1 0.01" color="#3498db" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="tt-acao" value="[C] Equipar" position="-0.5 -0.25 0.01" color="#2ecc71" scale="0.4 0.4 0.4"></a-text>
-            </a-entity>
-
-            <a-plane width="2.55" height="0.25" color="#11151a" position="0 -0.85 0.01"></a-plane>
-            
-            <a-entity position="0 -0.85 0.02">
-                <a-text value="Gold:" position="0.3 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
-                <a-circle radius="0.05" position="0.65 0 0" color="#f1c40f"></a-circle>
-                <a-text id="inv-total-ouro" value="0" position="0.75 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
-
-                <a-text value="Arrows:" position="-1.2 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
-                <a-text id="tt-flechas" value="0" position="-0.8 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
-
-                <a-text value="Shurikens:" position="-0.5 0 0" color="#bdc3c7" scale="0.5 0.5 0.5"></a-text>
-                <a-text id="tt-shurikens" value="0" position="-0.0 0 0" color="#FFF" scale="0.6 0.6 0.6"></a-text>
-            </a-entity>
-        </a-entity>
-
-        <a-entity id="menu-atributos" scale="0 0 0" visible="false" position="0 1.5 -1.6" rotation="0 0 0">
-            <a-plane width="3.4" height="2.2" color="#181d23" opacity="0.95"></a-plane>
-            <a-plane width="3.35" height="2.15" color="#1c222b" position="0 0 0.005"></a-plane>
-
-            <a-plane width="3.35" height="0.2" color="#11151a" position="0 0.975 0.01"></a-plane>
-            <a-text value="GEAR & ATTRIBUTES" position="-1.6 0.975 0.02" color="#f1c40f" scale="0.6 0.6 0.6"></a-text>
-            <a-text id="attr-nivel-classe" value="Lv 1 Aventureiro" position="0 0.975 0.02" color="#FFF" scale="0.6 0.6 0.6" align="center"></a-text>
-
-            <a-entity position="-1.2 0.3 0.02">
-                <a-text value="Equipped Gear" position="-0.35 0.45 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 0.2 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Head" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 -0.1 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Body" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="-0.25 -0.4 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Legs" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
-                
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="0.1 0.2 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Hands" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3a4454" position="0.1 -0.1 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text value="Feet" position="0 0 0.02" color="#555" scale="0.3 0.3 0.3" align="center"></a-text></a-box>
-                
-                <a-text value="Main Hand" position="-0.25 -0.65 0" color="#e74c3c" scale="0.3 0.3 0.3" align="center"></a-text>
-                <a-box width="0.25" height="0.25" depth="0.01" color="#e74c3c" position="-0.25 -0.85 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text id="attr-slot-1" value="None" position="0 0 0.02" color="#FFF" scale="0.25 0.25 0.25" align="center"></a-text></a-box>
-
-                <a-text value="Off Hand" position="0.1 -0.65 0" color="#3498db" scale="0.3 0.3 0.3" align="center"></a-text>
-                <a-box width="0.25" height="0.25" depth="0.01" color="#3498db" position="0.1 -0.85 0"><a-plane width="0.22" height="0.22" color="#151a21" position="0 0 0.01"></a-plane><a-text id="attr-slot-2" value="None" position="0 0 0.02" color="#FFF" scale="0.25 0.25 0.25" align="center"></a-text></a-box>
-            </a-entity>
-
-            <a-entity position="0 0 0.02">
-                <a-plane width="1.2" height="1.6" color="#11151a" position="0 0.05 0"></a-plane>
-                <a-text value="CHARACTER PREVIEW" position="0 0.05 0.01" color="#3a4454" scale="0.5 0.5 0.5" align="center"></a-text>
-                
-                <a-plane width="1.2" height="0.15" color="#151a21" position="0 -0.85 0"></a-plane>
-                <a-text value="XP" position="-0.5 -0.82 0.01" color="#f1c40f" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-exp" value="0" position="0 -0.82 0.01" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="/" position="0.05 -0.82 0.01" color="#7f8c8d" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-nextexp" value="50" position="0.1 -0.82 0.01" color="#FFF" scale="0.4 0.4 0.4" align="left"></a-text>
-            </a-entity>
-
-            <a-entity position="0.8 0.4 0.02">
-                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 0.35 0"></a-plane>
-                <a-text value="Health & Mana" position="-0.35 0.35 0.01" color="#FFF" scale="0.4 0.4 0.4"></a-text>
-                
-                <a-text value="HP Max:" position="-0.35 0.2 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-hpmax" value="100" position="0.9 0.2 0" color="#2ecc71" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-text value="MP Max:" position="-0.35 0.05 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-mpmax" value="100" position="0.9 0.05 0" color="#3498db" scale="0.4 0.4 0.4" align="right"></a-text>
-
-                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 -0.15 0"></a-plane>
-                <a-text value="Offensive" position="-0.35 -0.15 0.01" color="#e74c3c" scale="0.4 0.4 0.4"></a-text>
-
-                <a-text value="ATK DMG:" position="-0.35 -0.3 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-atk" value="10" position="0.5 -0.3 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: forca" width="0.08" height="0.08" depth="0.01" color="#e74c3c" position="0.8 -0.3 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
-
-                <a-text value="SPEED (AGI):" position="-0.35 -0.45 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-agi" value="5" position="0.5 -0.45 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: velocidade" width="0.08" height="0.08" depth="0.01" color="#f1c40f" position="0.8 -0.45 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
-
-                <a-plane width="1.4" height="0.12" color="#11151a" position="0.3 -0.75 0"></a-plane>
-                <a-text value="Defensive" position="-0.35 -0.75 0.01" color="#3498db" scale="0.4 0.4 0.4"></a-text>
-
-                <a-text value="DEFENSE:" position="-0.35 -0.9 0" color="#bdc3c7" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-def" value="5" position="0.5 -0.9 0" color="#FFF" scale="0.4 0.4 0.4" align="right"></a-text>
-                <a-box class="interativo" btn-atributo="tipo: defesa" width="0.08" height="0.08" depth="0.01" color="#3498db" position="0.8 -0.9 0"><a-text value="+" position="0 0 0.01" scale="0.4 0.4 0.4" align="center"></a-text></a-box>
-
-                <a-plane width="1.4" height="0.15" color="#151a21" position="0.3 -1.2 0"></a-plane>
-                <a-text value="Available Points:" position="-0.35 -1.2 0.01" color="#f1c40f" scale="0.4 0.4 0.4"></a-text>
-                <a-text id="attr-pts" value="0" position="0.9 -1.2 0.01" color="#f1c40f" scale="0.5 0.5 0.5" align="right"></a-text>
-            </a-entity>
-        </a-entity>
-    </a-scene>
-</body>
-</html>
+        AFRAME.registerComponent('sistema-bau', { init: function() { let aberto = false; this.el.addEventListener('click', () => { if(!aberto) { aberto = true; this.el.setAttribute('color', '#8B4513'); this.el.setAttribute('rotation', '-45 45 0'); window.playerState.flechas += 15; window.playerState.shurikens += 15; window.playerState.ouro += 500; window.playerState.pontos += 3; window.atualizarUI(); let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', '+15 Flechas\n+15 Shurikens\n+500 Ouro\n+3 Pontos!'); aviso.setAttribute('color', '#FFD700'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 30
