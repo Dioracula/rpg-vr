@@ -52,8 +52,6 @@
         .btn-red { background: #c0392b; color: white; } .btn-red:hover { background: #e74c3c; }
         .btn-dark { background: #111; color: #e74c3c; border: 1px solid #e74c3c; } .btn-dark:hover { background: #e74c3c; color: white; }
         .btn-edit { background: #f39c12; color: #111; } .btn-edit:hover { background: #f1c40f; }
-        .btn-orange { background: #d35400; color: white; } .btn-orange:hover { background: #e67e22; }
-        .btn-purple { background: #8e44ad; color: white; } .btn-purple:hover { background: #9b59b6; }
 
         .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .painel-spawn.npc-spawn { background: #2c3e50; border: 2px solid #2ecc71;}
@@ -254,7 +252,7 @@
                 <div id="grp-swing" class="dyn-group">
                     <div class="input-group bg-vfx" style="grid-column: span 2;">
                         <label>VFX: Rastro de Corte / Spritesheet <span id="status-arma-swing" class="status-extracao"></span></label>
-                        <input type="text" id="arma-swing-anim" placeholder="Ex: Efeitos/rastro_espada.png">
+                        <input type="text" id="arma-swing-anim" placeholder="Ex: PROCEDURAL">
                         <div style="display: flex; gap: 5px; margin-top: 5px;">
                             <input type="file" id="file-arma-swing" accept=".glb,.gltf,.png,.jpg,.gif" style="width: 130px; font-size:0.75rem;">
                             <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('arma-swing-anim', 'Efeitos/', 'status-arma-swing')">🐙 GitHub</button>
@@ -450,12 +448,7 @@
             categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, 
             modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', 
             escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', 
-            // CONFIGURAÇÃO DO RASTRO VFX (Adicionado/Modificado aqui)
-            swingAnim: 'Efeitos/rastro_espada.png', // CAMINHO DA TEXTURA
-            swingCols: 5, // Número de frames na horizontal
-            swingDuracao: 300, // Duração do rastro em ms
-            swingEscala: '1 1 1', swingRotacao: '0 0 0', 
-            swingAdditive: true, // Faz brilhar
+            swingAnim: 'PROCEDURAL', swingEscala: '1.2 1.2 1.2', swingRotacao: '0 0 0', swingAdditive: true, 
             hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' 
         },
         'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
