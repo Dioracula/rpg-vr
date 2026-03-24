@@ -52,6 +52,8 @@
         .btn-red { background: #c0392b; color: white; } .btn-red:hover { background: #e74c3c; }
         .btn-dark { background: #111; color: #e74c3c; border: 1px solid #e74c3c; } .btn-dark:hover { background: #e74c3c; color: white; }
         .btn-edit { background: #f39c12; color: #111; } .btn-edit:hover { background: #f1c40f; }
+        .btn-orange { background: #d35400; color: white; } .btn-orange:hover { background: #e67e22; }
+        .btn-purple { background: #8e44ad; color: white; } .btn-purple:hover { background: #9b59b6; }
 
         .painel-spawn { background: #8e44ad; padding: 20px; border-radius: 8px; margin-top: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .painel-spawn.npc-spawn { background: #2c3e50; border: 2px solid #2ecc71;}
@@ -430,13 +432,13 @@
 
 <script>
     const firebaseConfig = {
-         apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
-         authDomain: "rpg-vr-online.firebaseapp.com",
-         databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
-         projectId: "rpg-vr-online",
-         storageBucket: "rpg-vr-online.firebasestorage.app",
-         messagingSenderId: "676174796336",
-         appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
+          apiKey: "AIzaSyCdsfW1ALz-8ktkYl_rACiY6tu0M2wqkH0",
+          authDomain: "rpg-vr-online.firebaseapp.com",
+          databaseURL: "https://rpg-vr-online-default-rtdb.firebaseio.com",
+          projectId: "rpg-vr-online",
+          storageBucket: "rpg-vr-online.firebasestorage.app",
+          messagingSenderId: "676174796336",
+          appId: "1:676174796336:web:7a91d19a758d29ef247ff5",
     };
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database(); 
@@ -444,7 +446,18 @@
 
     const armasPadrao = {
         'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
-        'Espada Reta': { categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' },
+        'Espada Reta': { 
+            categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, 
+            modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', 
+            escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', 
+            // CONFIGURAÇÃO DO RASTRO VFX (Adicionado/Modificado aqui)
+            swingAnim: 'Efeitos/rastro_espada.png', // CAMINHO DA TEXTURA
+            swingCols: 5, // Número de frames na horizontal
+            swingDuracao: 300, // Duração do rastro em ms
+            swingEscala: '1 1 1', swingRotacao: '0 0 0', 
+            swingAdditive: true, // Faz brilhar
+            hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' 
+        },
         'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
         'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
         'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
