@@ -439,7 +439,6 @@
             if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
             let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
 
-            // VR: Espadas normais são gerenciadas pelo 'colisor-arma-vr' na detecção física de swing.
             if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Luva') { return; }
 
             window.tocarSom('snd-sword');
@@ -452,10 +451,9 @@
             let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
             direcao.applyQuaternion(camQuat);
             
-            // --- GERAÇÃO DO RASTRO/SWING VFX PARA PC E MOBILE (DIAGONAL FIXA) ---
-            let simVel = new THREE.Vector3(1, -1, 0); // Sentido do corte na tela (Diagonal direita p/ baixo)
-            simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); // Converte para o mundo real
-            let posSpawn = posCamera.clone().add(direcao.clone().multiplyScalar(1.5)); // Nasce 1.5m na frente
+            let simVel = new THREE.Vector3(1, -1, 0); 
+            simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); 
+            let posSpawn = posCamera.clone().add(direcao.clone().multiplyScalar(1.5)); 
             window.gerarSwingVFX(simVel, posSpawn, armaStats);
 
             let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
@@ -484,10 +482,9 @@
                         if(syncComp) { 
                             syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
                             
-                            // --- GERA O EFEITO DE HIT (Acerto) NO INIMIGO ---
                             let posHit = new THREE.Vector3();
                             inimigoEl.object3D.getWorldPosition(posHit);
-                            posHit.y += 1.0; // Levanta para o peito do inimigo
+                            posHit.y += 1.0; 
                             window.gerarHitVFX(posHit, armaStats);
                         }
                     }
@@ -694,16 +691,19 @@
 
             let additive = armaStats.swingAdditive ? '; blending: additive' : '';
 
-            if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.gif') || armaStats.swingAnim.endsWith('.jpg')) {
+            if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.jpg')) {
+                let imgMaterial = `src: url(${armaStats.swingAnim}); transparent: true; side: double; depthWrite: false${additive}`;
+                vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
+            } else if (armaStats.swingAnim.endsWith('.gif')) {
                 let imgMaterial = `shader: gif; src: url(${armaStats.swingAnim}); transparent: true; side: double; depthWrite: false${additive}`;
-                vfx.innerHTML = `<a-plane material="${imgMaterial}" scale="${sX} ${sY} ${sZ}"></a-plane>`;
+                vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
             } else {
                 let glbPath = armaStats.swingAnim.startsWith('#') ? armaStats.swingAnim : `url(${armaStats.swingAnim})`;
                 vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
             }
 
             scene.appendChild(vfx);
-            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
+            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 800); 
         };
 
         window.gerarHitVFX = function(pos, armaStats) {
@@ -725,19 +725,26 @@
                 vfx.object3D.quaternion.copy(camQuat); 
             }
 
-            let escBase = armaStats.hitEscala || '1 1 1';
+            let escBase = (armaStats.hitEscala || '1 1 1').split(' ');
+            let sX = parseFloat(escBase[0]) || 1; 
+            let sY = parseFloat(escBase[1]) || 1;
+            let sZ = parseFloat(escBase[2]) || 1;
+
             let additive = armaStats.hitAdditive ? '; blending: additive' : '';
 
-            if (armaStats.hitAnim.endsWith('.png') || armaStats.hitAnim.endsWith('.gif') || armaStats.hitAnim.endsWith('.jpg')) {
+            if (armaStats.hitAnim.endsWith('.png') || armaStats.hitAnim.endsWith('.jpg')) {
+                let imgMaterial = `src: url(${armaStats.hitAnim}); transparent: true; side: double; depthWrite: false${additive}`;
+                vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
+            } else if (armaStats.hitAnim.endsWith('.gif')) {
                 let imgMaterial = `shader: gif; src: url(${armaStats.hitAnim}); transparent: true; side: double; depthWrite: false${additive}`;
-                vfx.innerHTML = `<a-plane material="${imgMaterial}" scale="${escBase}"></a-plane>`;
+                vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
             } else {
                 let glbPath = armaStats.hitAnim.startsWith('#') ? armaStats.hitAnim : `url(${armaStats.hitAnim})`;
-                vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${escBase}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
+                vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
             }
 
             scene.appendChild(vfx);
-            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600);
+            setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 800);
         };
 
 
@@ -758,7 +765,7 @@
             }
         });
 
-        // ====== DETECTOR DE CORTE FÍSICO DO VR (CAIXA EXATA E ENTRA-SAI) ======
+        // ====== DETECTOR DE CORTE FÍSICO DO VR (CAIXA EXATA E ENTRA-SAI C/ COOLDOWN) ======
         AFRAME.registerComponent('colisor-arma-vr', {
             schema: { mao: { type: 'string' } },
             init: function() {
@@ -767,7 +774,7 @@
                 this.lastLocalPos = this.el.object3D.position.clone();
                 this.cortando = false;
                 this.camera = document.querySelector('[camera]');
-                this.inimigosTocando = new Set();
+                this.lastHits = new Map(); // Controle de tempo do dano por inimigo para permitir estocadas fluidas
                 this.vel = new THREE.Vector3();
                 this.speed = 0;
             },
@@ -782,12 +789,11 @@
                 this.el.object3D.getWorldPosition(currentWorldPos);
                 let currentLocalPos = this.el.object3D.position.clone();
 
-                // Velocidade Mundial (Para o Rastro do Corte / Ricochete apontarem para o lado certo)
                 let deltaWorld = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
                 this.vel.copy(deltaWorld).divideScalar(dt);
                 this.lastWorldPos.copy(currentWorldPos);
 
-                // Velocidade Local (Ignora o movimento do direcional/andar do jogador)
+                // Velocidade Local do controle, ignorando a andada geral do player
                 let deltaLocal = new THREE.Vector3().subVectors(currentLocalPos, this.lastLocalPos);
                 this.speed = deltaLocal.length() / dt;
                 this.lastLocalPos.copy(currentLocalPos);
@@ -795,7 +801,6 @@
                 if (this.data.mao === 'esquerda' && armaStats && armaStats.categoria !== 'Luva') return; 
                 if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
 
-                // Rastro da espada no ar (VR)
                 if (this.speed > 2.0 && !this.cortando) {
                     this.cortando = true;
                     window.tocarSom('snd-sword');
@@ -803,7 +808,7 @@
                     setTimeout(() => { this.cortando = false; }, 400); 
                 }
 
-                // CRIA A CAIXA DE COLISÃO 3D COM O TAMANHO EXATO DA ARMA
+                // Caixa Bounding Box Baseada na Malha Visual (Pega até o comprimento da espada para estocadas)
                 let boxArma = new THREE.Box3();
                 let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
                 if (visualEl) {
@@ -815,6 +820,7 @@
                 }
 
                 let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+                let agora = Date.now();
                 
                 inimigosEls.forEach(inimigoEl => {
                     let syncComp = inimigoEl.components['sistema-inimigo-sync'];
@@ -829,25 +835,116 @@
                             boxInimigo.setFromObject(inimigoEl.object3D);
                         }
 
-                        // SISTEMA "ENTRA E SAI" NA CAIXA DE COLISÃO
                         if (boxArma.intersectsBox(boxInimigo)) {
-                            if (!this.inimigosTocando.has(inimigoEl)) {
-                                this.inimigosTocando.add(inimigoEl); 
-                                
-                                // Só dá dano se a velocidade LOCAL do braço for alta (não por andar)
-                                if (this.speed > 1.5) { 
-                                    syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
-                                    let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0;
-                                    window.gerarHitVFX(posHit, armaStats); 
-                                }
-                            }
-                        } else {
-                            if (this.inimigosTocando.has(inimigoEl)) {
-                                this.inimigosTocando.delete(inimigoEl); 
+                            let lastHit = this.lastHits.get(inimigoEl) || 0;
+                            // Dá dano se tiver velocidade suficiente e o último hit tiver sido há mais de 400ms (funciona com estocadas)
+                            if (this.speed > 1.5 && (agora - lastHit > 400)) { 
+                                syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
+                                let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0;
+                                window.gerarHitVFX(posHit, armaStats); 
+                                this.lastHits.set(inimigoEl, agora);
                             }
                         }
                     }
                 });
+            }
+        });
+
+        // ====== DEFENDE E RICOCHETEIA PROJÉTEIS ======
+        AFRAME.registerComponent('projetil-inimigo-fisico', {
+            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
+            init: function () { 
+                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
+                this.camera = document.querySelector('[camera]'); 
+            },
+            tick: function (time, timeDelta) {
+                let dt = timeDelta / 1000; 
+                if (dt === 0 || !window.GAME_STARTED) return; 
+
+                if (!window.playerState.vivo) {
+                    this.el.remove(); return;
+                }
+
+                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
+                
+                if (this.el.object3D.position.y < -1) { 
+                    this.el.remove(); return; 
+                }
+
+                let posProj = new THREE.Vector3(); 
+                this.el.object3D.getWorldPosition(posProj);
+
+                if (this.el.dataset.defletido !== "true") {
+                    let maos = [];
+                    let maoEsq = document.querySelector('#mao-esquerda');
+                    let maoDir = document.querySelector('#mao-direita');
+                    if (maoEsq) maos.push({el: maoEsq, esq: true});
+                    if (maoDir) maos.push({el: maoDir, esq: false});
+
+                    for (let i = 0; i < maos.length; i++) {
+                        let mao = maos[i].el;
+                        let isEsq = maos[i].esq;
+
+                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+                        let isEscudo = isEsq && window.playerState.escudoEquipado;
+                        let isLuva = (armaStats && armaStats.categoria === 'Luva');
+                        let isEspada = (!isEsq && armaStats && armaStats.categoria === 'Espada');
+                        
+                        if (isEscudo || isLuva || isEspada) {
+                            let posMao = new THREE.Vector3();
+                            mao.object3D.getWorldPosition(posMao);
+                            
+                            // Espadas ganham uma folga no raio para compensar a lâmina longa
+                            let raioColisao = isEspada ? 0.8 : 0.4;
+                            
+                            if (posProj.distanceTo(posMao) < raioColisao) {
+                                let colisorComp = mao.components['colisor-arma-vr'];
+                                let handSpeed = colisorComp ? colisorComp.speed : 0;
+                                
+                                if (handSpeed > 1.5 && !isEscudo) {
+                                    this.el.dataset.defletido = "true";
+                                    let handVel = colisorComp ? colisorComp.vel.clone().normalize() : new THREE.Vector3(0, 1, -1).normalize();
+                                    if (handVel.lengthSq() === 0) handVel.set(0, 1, -1).normalize();
+                                    
+                                    this.vel.copy(handVel).multiplyScalar(20); 
+                                    window.tocarSom('snd-sword');
+                                    return; 
+                                } else if (isEscudo) {
+                                    window.tocarSom('snd-hit'); 
+                                    this.el.remove();
+                                    return; 
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (this.el.dataset.defletido === "true") {
+                    let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
+                    for(let i=0; i<inimigos.length; i++) {
+                        let ini = inimigos[i];
+                        let sync = ini.components['sistema-inimigo-sync'];
+                        if(sync && sync.hpAtual > 0) {
+                            let posIni = new THREE.Vector3();
+                            ini.object3D.getWorldPosition(posIni);
+                            if (posProj.distanceTo(posIni) < 1.5) {
+                                sync.receberDano(this.data.dano * 2, 'Luva'); 
+                                this.el.remove();
+                                return;
+                            }
+                        }
+                    }
+                    return; 
+                }
+                
+                if(!this.camera) return; 
+                let posPlayer = new THREE.Vector3(); 
+                this.camera.object3D.getWorldPosition(posPlayer); 
+                
+                if (posProj.distanceTo(posPlayer) < 0.3) { 
+                    window.receberDanoJogador(this.data.dano); 
+                    this.el.remove(); 
+                }
             }
         });
 
@@ -1347,100 +1444,6 @@
                     let rotY = euler.y; let dirX = window.joystickVector.x; let dirZ = window.joystickVector.y; 
                     let moveX = (dirX * Math.cos(rotY) + dirZ * Math.sin(rotY)) * speed * dt; let moveZ = (-dirX * Math.sin(rotY) + dirZ * Math.cos(rotY)) * speed * dt;
                     rigObj.position.x += moveX; rigObj.position.z += moveZ;
-                }
-            }
-        });
-
-        // ====== DEFENDE E RICOCHETEIA PROJÉTEIS ======
-        AFRAME.registerComponent('projetil-inimigo-fisico', {
-            schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10} },
-            init: function () { 
-                this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
-                this.camera = document.querySelector('[camera]'); 
-            },
-            tick: function (time, timeDelta) {
-                let dt = timeDelta / 1000; 
-                if (dt === 0 || !window.GAME_STARTED) return; 
-
-                if (!window.playerState.vivo) {
-                    this.el.remove(); return;
-                }
-
-                this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt));
-                
-                if (this.el.object3D.position.y < -1) { 
-                    this.el.remove(); return; 
-                }
-
-                let posProj = new THREE.Vector3(); 
-                this.el.object3D.getWorldPosition(posProj);
-
-                if (this.el.dataset.defletido !== "true") {
-                    let maos = [];
-                    let maoEsq = document.querySelector('#mao-esquerda');
-                    let maoDir = document.querySelector('#mao-direita');
-                    if (maoEsq) maos.push({el: maoEsq, esq: true});
-                    if (maoDir) maos.push({el: maoDir, esq: false});
-
-                    for (let i = 0; i < maos.length; i++) {
-                        let mao = maos[i].el;
-                        let isEsq = maos[i].esq;
-
-                        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-                        let isEscudo = isEsq && window.playerState.escudoEquipado;
-                        let isLuva = (armaStats && armaStats.categoria === 'Luva');
-                        
-                        if (isEscudo || isLuva) {
-                            let posMao = new THREE.Vector3();
-                            mao.object3D.getWorldPosition(posMao);
-                            
-                            if (posProj.distanceTo(posMao) < 0.4) {
-                                let colisorComp = mao.components['colisor-arma-vr'];
-                                let handSpeed = colisorComp ? colisorComp.speed : 0;
-                                
-                                if (handSpeed > 1.5) {
-                                    this.el.dataset.defletido = "true";
-                                    let handVel = colisorComp ? colisorComp.vel.clone().normalize() : new THREE.Vector3(0, 1, -1).normalize();
-                                    if (handVel.lengthSq() === 0) handVel.set(0, 1, -1).normalize();
-                                    
-                                    this.vel.copy(handVel).multiplyScalar(20); 
-                                    window.tocarSom('snd-sword');
-                                    return; 
-                                } else if (isEscudo) {
-                                    window.tocarSom('snd-hit'); 
-                                    this.el.remove();
-                                    return; 
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (this.el.dataset.defletido === "true") {
-                    let inimigos = document.querySelectorAll('[sistema-inimigo-sync]');
-                    for(let i=0; i<inimigos.length; i++) {
-                        let ini = inimigos[i];
-                        let sync = ini.components['sistema-inimigo-sync'];
-                        if(sync && sync.hpAtual > 0) {
-                            let posIni = new THREE.Vector3();
-                            ini.object3D.getWorldPosition(posIni);
-                            if (posProj.distanceTo(posIni) < 1.5) {
-                                sync.receberDano(this.data.dano * 2, 'Luva'); 
-                                this.el.remove();
-                                return;
-                            }
-                        }
-                    }
-                    return; 
-                }
-                
-                if(!this.camera) return; 
-                let posPlayer = new THREE.Vector3(); 
-                this.camera.object3D.getWorldPosition(posPlayer); 
-                
-                if (posProj.distanceTo(posPlayer) < 0.3) { 
-                    window.receberDanoJogador(this.data.dano); 
-                    this.el.remove(); 
                 }
             }
         });
