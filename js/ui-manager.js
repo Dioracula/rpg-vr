@@ -354,22 +354,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function mostrarErroLogin(msg) {
         let errBox = document.getElementById('login-error');
-        errBox.style.display = 'block'; errBox.innerText = msg;
+        if (errBox) { errBox.style.display = 'block'; errBox.innerText = msg; }
     }
 
-    document.getElementById('btn-registrar').addEventListener('click', function(e) { 
+    // Usando o "?." (Optional Chaining) para evitar erro se o botão não existir na tela
+    document.getElementById('btn-registrar')?.addEventListener('click', function(e) { 
         e.preventDefault(); let btn = document.getElementById('btn-registrar'); let errBox = document.getElementById('login-error');
         let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value; 
         if(!email || !senha) { mostrarErroLogin("⚠️ Preencha e-mail e senha!"); return; }
-        btn.innerText = "Processando..."; errBox.style.display = 'none'; 
+        btn.innerText = "Processando..."; if(errBox) errBox.style.display = 'none'; 
         window.auth.createUserWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; window.iniciarTelaSelecaoModo(); }).catch((error) => { btn.innerText = "Criar Conta"; mostrarErroLogin("Erro: " + error.message); }); 
     }); 
     
-    document.getElementById('btn-login').addEventListener('click', function(e) { 
+    document.getElementById('btn-login')?.addEventListener('click', function(e) { 
         e.preventDefault(); let btn = document.getElementById('btn-login'); let errBox = document.getElementById('login-error');
         let email = document.getElementById('login-email').value; let senha = document.getElementById('login-senha').value; 
         if(!email || !senha) { mostrarErroLogin("⚠️ Preencha e-mail e senha!"); return; }
-        btn.innerText = "Conectando..."; errBox.style.display = 'none'; 
+        btn.innerText = "Conectando..."; if(errBox) errBox.style.display = 'none'; 
         window.auth.signInWithEmailAndPassword(email, senha).then((userCredential) => { window.currentUser = userCredential.user; window.iniciarTelaSelecaoModo(); }).catch((error) => { btn.innerText = "Entrar"; mostrarErroLogin("Erro: " + error.message); }); 
     }); 
 
@@ -382,25 +383,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (btnTeste) { btnTeste.style.display = ativo ? 'block' : 'none'; }
     });
 
-    document.getElementById('btn-login-teste').addEventListener('click', function(e) {
-        e.preventDefault(); let errBox = document.getElementById('login-error'); errBox.style.display = 'none';
+    document.getElementById('btn-login-teste')?.addEventListener('click', function(e) {
+        e.preventDefault(); let errBox = document.getElementById('login-error'); if(errBox) errBox.style.display = 'none';
         let fakeId = 'teste_' + Math.random().toString(36).substr(2, 5);
         window.currentUser = { uid: fakeId, email: fakeId + '@teste.com' };
         window.iniciarTelaSelecaoModo();
     });
     
-    document.getElementById('btn-pc').addEventListener('click', () => { window.iniciarJogo('PC'); }); 
-    document.getElementById('btn-vr').addEventListener('click', () => { window.iniciarJogo('VR'); }); 
-    document.getElementById('btn-android').addEventListener('click', () => { window.iniciarJogo('ANDROID'); }); 
+    document.getElementById('btn-pc')?.addEventListener('click', () => { window.iniciarJogo('PC'); }); 
+    document.getElementById('btn-vr')?.addEventListener('click', () => { window.iniciarJogo('VR'); }); 
+    document.getElementById('btn-android')?.addEventListener('click', () => { window.iniciarJogo('ANDROID'); }); 
 
-    document.getElementById('btn-sys-pc').addEventListener('click', () => { window.toggleMenu('sys'); });
-    document.getElementById('btn-sys-mobile').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('sys'); }, {passive: false});
+    document.getElementById('btn-sys-pc')?.addEventListener('click', () => { window.toggleMenu('sys'); });
+    document.getElementById('btn-sys-mobile')?.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('sys'); }, {passive: false});
 
     let podeAtacarMobile = true;
-    document.getElementById('btn-inv').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('inv'); }, {passive: false});
-    document.getElementById('btn-status').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('atrib'); }, {passive: false});
+    document.getElementById('btn-inv')?.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('inv'); }, {passive: false});
+    document.getElementById('btn-status')?.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); window.toggleMenu('atrib'); }, {passive: false});
     
-    document.getElementById('btn-escudo').addEventListener('touchstart', (e) => { 
+    document.getElementById('btn-escudo')?.addEventListener('touchstart', (e) => { 
         e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); 
         let armaAtual = window.bancoDeArmas[window.playerState.armaEquipada];
         if (!window.playerState.escudoEquipado && armaAtual && (armaAtual.categoria === 'Arco' || armaAtual.categoria === 'Luva')) {
@@ -414,18 +415,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } 
     }, {passive: false});
     
-    document.getElementById('btn-atacar').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); if (!podeAtacarMobile) return; podeAtacarMobile = false; setTimeout(() => podeAtacarMobile = true, 800); window.realizarAtaque(); }, {passive: false});
+    document.getElementById('btn-atacar')?.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); if (!podeAtacarMobile) return; podeAtacarMobile = false; setTimeout(() => podeAtacarMobile = true, 800); window.realizarAtaque(); }, {passive: false});
 
-    // Joystick Mobile
-    const zone = document.getElementById('joystick-zone'); const stick = document.getElementById('joystick-stick');
-    let isDraggingJoy = false; let joyTouchId = null; let centerX, centerY, maxRadius = 40;
+    // Joystick Mobile (Protegido por if)
+    const zone = document.getElementById('joystick-zone'); 
+    const stick = document.getElementById('joystick-stick');
     
-    zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if(isDraggingJoy) return; isDraggingJoy = true; let touch = e.changedTouches[0]; joyTouchId = touch.identifier; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(touch); }, {passive: false});
-    zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDraggingJoy) { for(let i=0; i<e.touches.length; i++) { if(e.touches[i].identifier === joyTouchId) { handleTouch(e.touches[i]); break; } } } }, {passive: false});
-    const releaseJoystick = (e) => { if(e) { let found = false; for(let i=0; i<e.changedTouches.length; i++) { if(e.changedTouches[i].identifier === joyTouchId) { found = true; break; } } if(!found) return; } isDraggingJoy = false; joyTouchId = null; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
-    zone.addEventListener('touchend', releaseJoystick, {passive: false}); zone.addEventListener('touchcancel', releaseJoystick, {passive: false});
-    
-    function handleTouch(touch) { window.lastActionTime = Date.now(); let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let distance = Math.sqrt(dx*dx + dy*dy); if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; } stick.style.transform = `translate(${dx}px, ${dy}px)`; window.joystickVector.x = dx / maxRadius; window.joystickVector.y = dy / maxRadius; }
+    if (zone && stick) {
+        let isDraggingJoy = false; let joyTouchId = null; let centerX, centerY, maxRadius = 40;
+        
+        zone.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); if(isDraggingJoy) return; isDraggingJoy = true; let touch = e.changedTouches[0]; joyTouchId = touch.identifier; let rect = zone.getBoundingClientRect(); centerX = rect.left + rect.width / 2; centerY = rect.top + rect.height / 2; handleTouch(touch); }, {passive: false});
+        zone.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); if(isDraggingJoy) { for(let i=0; i<e.touches.length; i++) { if(e.touches[i].identifier === joyTouchId) { handleTouch(e.touches[i]); break; } } } }, {passive: false});
+        const releaseJoystick = (e) => { if(e) { let found = false; for(let i=0; i<e.changedTouches.length; i++) { if(e.changedTouches[i].identifier === joyTouchId) { found = true; break; } } if(!found) return; } isDraggingJoy = false; joyTouchId = null; stick.style.transform = `translate(0px, 0px)`; window.joystickVector = { x: 0, y: 0 }; };
+        zone.addEventListener('touchend', releaseJoystick, {passive: false}); zone.addEventListener('touchcancel', releaseJoystick, {passive: false});
+        
+        function handleTouch(touch) { window.lastActionTime = Date.now(); let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; let distance = Math.sqrt(dx*dx + dy*dy); if (distance > maxRadius) { dx = (dx / distance) * maxRadius; dy = (dy / distance) * maxRadius; } stick.style.transform = `translate(${dx}px, ${dy}px)`; window.joystickVector.x = dx / maxRadius; window.joystickVector.y = dy / maxRadius; }
+    }
 
     // Sistema AFK e Kick
     setInterval(() => {
