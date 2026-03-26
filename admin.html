@@ -367,12 +367,14 @@
             <h2>🪄 Invocar ou Editar Inimigo</h2>
             <div class="grid-spawn">
                 <div class="input-group"><label>ID Único</label><input type="text" id="novo-id" placeholder="ex: orc_01"></div>
+                
                 <div class="input-group grupo-especial"><label style="color:#e74c3c">Comportamento</label>
                     <select id="novo-comportamento">
                         <option value="hostil">Hostil (Ataca ao ver)</option>
                         <option value="pacifico">Pacífico (Só revida)</option>
                     </select>
                 </div>
+                
                 <div class="input-group grupo-especial"><label style="color:#2ecc71">Movimento Base</label>
                     <select id="novo-movimento">
                         <option value="estatico">Estático (Parado)</option>
@@ -380,6 +382,13 @@
                     </select>
                 </div>
                 
+                <div class="input-group grupo-especial"><label style="color:#e74c3c">Rank / Tipo</label>
+                    <select id="novo-rank">
+                        <option value="comum">Comum (Normal)</option>
+                        <option value="boss">Boss (Chefe - Efeito de Luz)</option>
+                    </select>
+                </div>
+
                 <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
                 
                 <div class="input-group" style="grid-column: span 2;">
@@ -429,35 +438,6 @@
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database(); 
     const firestoreDB = firebase.firestore();
-
-    const armasPadrao = {
-        'Desarmado': { categoria: 'Luva', danoBonus: 0, defesaBonus: 0, distancia: 2.0, modeloGlb: '', visualDir: '', visualEsq: '' },
-        'Espada Reta': { 
-            categoria: 'Espada', danoBonus: 5, defesaBonus: 1, distancia: 3.0, 
-            modeloGlb: '#modelo-espada-reta', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', 
-            escalaInv: '0.15 0.15 0.15', rotInv: '45 45 0', posInv: '0 0 0.05', 
-            swingAnim: 'PROCEDURAL', swingEscala: '1.2 1.2 1.2', swingRotacao: '0 0 0', swingAdditive: true, 
-            hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#8B4513" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-box color="#DAA520" width="0.15" height="0.05" depth="0.05" position="0 0.075 0"></a-box><a-cylinder color="#aaa" radius="0.02" height="0.8" position="0 0.5 0"></a-cylinder>', visualEsq: '' 
-        },
-        'Espada Curva': { categoria: 'Espada', danoBonus: 7, defesaBonus: 0, distancia: 3.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#444" radius="0.02" height="0.15" position="0 0 0"></a-cylinder><a-cylinder color="#C0C0C0" radius="0.02" height="0.8" position="0.08 0.5 0" rotation="0 0 15"></a-cylinder>', visualEsq: '' },
-        'Espada Grande': { categoria: 'Espada', danoBonus: 15, defesaBonus: -2, distancia: 4.0, modeloGlb: '#modelo-espada-grande', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', swingAnim: '', swingCols: 5, swingDuracao: 300, swingEscala: '2 2 2', swingRotacao: '0 0 0', swingAdditive: true, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#333" radius="0.03" height="0.2" position="0 0 0"></a-cylinder><a-box color="#555" width="0.3" height="0.06" depth="0.06" position="0 0.1 0"></a-box><a-box color="#999" width="0.1" height="1.2" depth="0.02" position="0 0.7 0"></a-box>', visualEsq: '' },
-        'Luva de Boxe': { categoria: 'Luva', danoBonus: 3, defesaBonus: 2, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>', visualEsq: '<a-sphere color="#cc0000" radius="0.15" position="0 0.1 0"></a-sphere>' },
-        'Soco Ingles': { categoria: 'Luva', danoBonus: 6, defesaBonus: 0, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>', visualEsq: '<a-torus color="#B8860B" radius="0.08" radius-tubular="0.02" position="0 0.1 0" rotation="90 0 0"></a-torus>' },
-        'Garras': { categoria: 'Luva', danoBonus: 9, defesaBonus: -1, distancia: 2.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', swingAnim: '', swingEscala: '1 1 1', swingRotacao: '0 0 0', swingAdditive: false, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>', visualEsq: '<a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="0.05 0.2 0"></a-cone><a-cone color="#ddd" radius-bottom="0.02" radius-top="0" height="0.3" position="-0.05 0.2 0"></a-cone>' },
-        'Varinha': { categoria: 'Varinha', danoBonus: 10, defesaBonus: 0, distancia: 15.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', projetilGlb: '', projetilEscala: '1 1 1', projetilPos: '0 0.45 0', projetilVel: 20, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-cylinder color="#5C4033" radius="0.015" height="0.4" position="0 0.2 0"></a-cylinder><a-sphere id="wand-tip-vis" color="#00FFFF" radius="0.04" position="0 0.4 0" material="emissive: #00FFFF; emissiveIntensity: 0.8"></a-sphere><a-entity id="wand-tip" position="0 0.45 0"></a-entity>', visualEsq: '' },
-        'Arco': { categoria: 'Arco', danoBonus: 12, defesaBonus: 0, distancia: 20.0, modeloGlb: '#modelo-arco', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '45 45 0', posInv: '0 0 0.05', hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '', visualEsq: 'ARCO_ESPECIAL' },
-        'Shuriken': { categoria: 'Shuriken', danoBonus: 5, defesaBonus: 0, distancia: 10.0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', shurikenGravidade: -1.2, shurikenVel: 2.5, hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '<a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 0 0"></a-box><a-box color="#555" width="0.15" height="0.01" depth="0.15" position="0 0.05 0" rotation="0 45 0"></a-box>', visualEsq: '' },
-        'Escudo de Madeira': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 3, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '', visualEsq: '<a-box color="#8B4513" width="0.4" height="0.5" depth="0.05" position="0 0.1 0" rotation="-90 0 0"></a-box>' },
-        'Escudo de Ferro': { categoria: 'Escudo', danoBonus: 0, defesaBonus: 6, distancia: 0, modeloGlb: '', escalaMao: '1 1 1', rotMao: '0 0 0', posMao: '0 0 0', escalaInv: '0.1 0.1 0.1', rotInv: '0 0 0', posInv: '0 0 0.05', hitAnim: '', hitEscala: '1 1 1', hitAdditive: false, visualDir: '', visualEsq: '<a-box color="#7F8C8D" width="0.45" height="0.55" depth="0.05" position="0 0.1 0" rotation="-90 0 0"><a-box color="#BDC3C7" width="0.4" height="0.5" depth="0.06" position="0 0 0"></a-box></a-box>' }
-    };
-
-    window.importarArmasPadrao = function() {
-        if(confirm("Isso vai salvar todas as armas padrão no Banco de Dados para que você possa editá-las. Deseja continuar?")) {
-            db.ref('banco_armas').update(armasPadrao)
-            .then(() => alert("✅ Armas Padrão carregadas no banco de dados com sucesso!"))
-            .catch(e => alert("❌ Erro ao importar: " + e.message));
-        }
-    };
 
     let modoTesteAtivo = false;
     db.ref('server_config/modoTeste').on('value', snap => {
@@ -572,7 +552,6 @@
         }
     };
 
-
     function extrairBonesEAnimacoes(gltf, datalistAnimId, datalistBonesId, statusTextId) {
         const animations = gltf.animations; 
         const datalistAnim = document.getElementById(datalistAnimId); 
@@ -599,7 +578,6 @@
         }
         setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
     }
-
 
     let contadorAtaques = 0;
 
@@ -753,7 +731,6 @@
             
             querySnapshot.forEach((doc) => {
                 let p = doc.data(); 
-                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
                 if(listaJogadores) {
                     listaJogadores.innerHTML += `
                     <div class="card player-card">
@@ -1025,8 +1002,9 @@
             let card = document.createElement('div'); card.className = 'card ini-card'; card.id = `card-ini-${id}`;
             let hpAtual = ini.hp !== undefined ? ini.hp : ini.hpMax;
             let pX = ini.pos ? ini.pos.x.toFixed(1) : 0; let pY = ini.pos ? ini.pos.y.toFixed(1) : 0; let pZ = ini.pos ? ini.pos.z.toFixed(1) : 0;
+            let tagRank = ini.rank === 'boss' ? '👑 BOSS' : '';
             card.innerHTML = `
-                <h3>👾 ${id}</h3>
+                <h3>👾 ${id} <span style="font-size:0.8rem; color:#f1c40f;">${tagRank}</span></h3>
                 <div id="stats-ini-${id}" style="width: 100%; font-size: 0.95rem; margin-bottom: 10px; color: #bdc3c7;">
                     ❤️ HP: <b style="color: ${hpAtual > 0 ? '#2ecc71' : '#e74c3c'}">${hpAtual} / ${ini.hpMax}</b> | 📍 Pos Atual: <b>X: ${pX} | Y: ${pY} | Z: ${pZ}</b><br>
                     ⚔️ Qtd. Ataques: <b>${ini.ataques ? ini.ataques.length : 1}</b>
@@ -1053,8 +1031,10 @@
         window.carregarEdicaoInimigo = function(id) {
             db.ref('cenario_inimigos/' + id).once('value').then(snap => {
                 let data = snap.val(); if(!data) return; window.abrirAba('tab-inimigos', null);
-                document.getElementById('novo-id').value = id; document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
-                document.getElementById('novo-movimento').value = data.movimento || 'estatico';
+                document.getElementById('novo-id').value = id; 
+                document.getElementById('novo-comportamento').value = data.comportamento || 'hostil';
+                document.getElementById('novo-movimento').value = data.movimento || 'estatico'; 
+                document.getElementById('novo-rank').value = data.rank || 'comum';
                 document.getElementById('novo-hp').value = data.hpMax || 50; 
                 document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; document.getElementById('novo-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
                 document.getElementById('novo-anim-parado').value = data.animParado || ''; document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
@@ -1072,8 +1052,7 @@
                     ataques.push({
                         animacao: data.animAtaque, tipo: data.tipo || 'meelee', alcance: data.attackRange || 1.8,
                         dano: data.dano || 10, freqAtaque: data.cooldown || 2000, hitStart: 400, hitEnd: 800, duracao: 1000, osso: data.ossoAtaque || 'hand_r',
-                        glbTiro: data.modeloTiroGlb || '', escalaTiro: data.escalaTiro || '0.5 0.5 0.5', rotTiro: data.rotacaoTiro || '0 0 0', velTiro: data.velocidadeTiro || 6.0,
-                        movimentoAtaque: data.movimentoAtaque || 'parado'
+                        glbTiro: data.modeloTiroGlb || '', escalaTiro: data.escalaTiro || '0.5 0.5 0.5', rotTiro: data.rotacaoTiro || '0 0 0', velTiro: data.velocidadeTiro || 6.0, movimentoAtaque: data.movimentoAtaque || 'parado'
                     });
                 }
 
@@ -1114,6 +1093,7 @@
 
             db.ref('cenario_inimigos/' + id).update({
                 hpMax: parseFloat(document.getElementById('novo-hp').value) || 50, hp: parseFloat(document.getElementById('novo-hp').value) || 50,
+                rank: document.getElementById('novo-rank').value,
                 spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
                 pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
                 comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, escala: escIniObj,
