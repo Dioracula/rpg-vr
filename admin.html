@@ -70,12 +70,10 @@
         .tag-chave { background: #f39c12; color: #111; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-right: 5px; display: inline-block; margin-bottom: 5px;}
         .status-extracao { font-size: 0.75rem; font-weight: bold; margin-left: 5px; }
 
-        /* Estilos do Navegador GitHub */
         .gh-item { padding: 10px; margin-bottom: 5px; background: #2c3e50; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
         .gh-item:hover { background: #34495e; transform: translateX(5px); }
         .gh-icon { font-size: 1.2rem; }
 
-        /* Estilo para campos Dinâmicos de Armas */
         .dyn-group { display: none; }
         .dyn-group.active { display: contents; }
         .bg-vfx { background: rgba(155, 89, 182, 0.1); padding: 10px; border-radius: 5px; border: 1px solid rgba(155, 89, 182, 0.3); }
@@ -127,8 +125,8 @@
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
-        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos & Vestuário</button>
-        <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Arsenal (Itens)</button>
+        <button class="tab-btn" onclick="abrirAba('tab-cosmeticos', this)">🎭 Cosméticos</button>
+        <button class="tab-btn" onclick="abrirAba('tab-armas', this)">🗡️ Armas</button>
         <button class="tab-btn" onclick="abrirAba('tab-respawns', this)">🔮 Respawns</button>
         <button class="tab-btn" onclick="abrirAba('tab-npcs', this)">🗣️ NPCs</button>
         <button class="tab-btn" onclick="abrirAba('tab-inimigos', this)">⚔️ Inimigos</button>
@@ -537,7 +535,6 @@
         }
     };
 
-    // Adaptação da leitura do GLB via Github
     window.selecionarArquivoGitHub = async function(downloadUrl, fileName) {
         document.getElementById('github-modal').style.display = 'none';
         
@@ -576,8 +573,6 @@
         }
     };
 
-
-    // === EXTRAÇÃO DE OSSOS DINÂMICA ===
     function extrairBonesEAnimacoes(gltf, datalistAnimId, datalistBonesId, statusTextId) {
         const animations = gltf.animations; 
         const datalistAnim = document.getElementById(datalistAnimId); 
@@ -605,8 +600,6 @@
         setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
     }
 
-
-    // === GERENCIAMENTO DE MÚLTIPLOS ATAQUES E HITBOX CONTÍNUA ===
     let contadorAtaques = 0;
 
     window.adicionarFormAtaque = function(dados = null) {
@@ -667,12 +660,8 @@
         document.getElementById(`atk-glb-in-${index}`).value = `Magias/${inputEl.files[0].name}`;
     };
 
-    // ==========================================
-    // CARREGAMENTOS E EVENTOS INICIAIS
-    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
 
-        // Logica Auxiliar Arquivos Locais Extras
         function processarArquivoLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
             let fileInput = document.getElementById(fileInputId);
             if (!fileInput) return;
@@ -735,7 +724,6 @@
         }
         document.getElementById('arma-cat').addEventListener('change', atualizarCamposArma);
 
-        // Lógica Inimigos Arquivo Local
         let fIni = document.getElementById('file-ini-glb');
         if(fIni) fIni.addEventListener('change', function(e) {
             const file = e.target.files[0]; if (!file) return;
@@ -756,7 +744,6 @@
             
             querySnapshot.forEach((doc) => {
                 let p = doc.data(); 
-                let chavesHtml = Object.keys(p.chaves||{}).map(k => `<span class="tag-chave">${k}</span>`).join('');
                 if(listaJogadores) {
                     listaJogadores.innerHTML += `
                     <div class="card player-card">
@@ -766,12 +753,262 @@
                             <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
                             🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
                         </div>
+                        
+                        <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
+                            <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
+                            <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
+                        </div>
                     </div>`;
                 }
             });
         });
 
-        // === INIMIGOS DB ===
+        window.darShurikensAdmin = function(uid) {
+            let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
+            if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
+            firestoreDB.collection("jogadores").doc(uid).update({ shurikens: firebase.firestore.FieldValue.increment(qtd) })
+            .then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`)).catch(e => alert("Erro ao enviar: " + e.message));
+        };
+
+        // === COSMÉTICOS ===
+        const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
+        db.ref('banco_cosmeticos').on('value', snap => {
+            if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML = ''; 
+            let cosmeticos = snap.val(); if(!cosmeticos) return;
+            
+            for(let id in cosmeticos) {
+                let c = cosmeticos[id];
+                let icone = '✨';
+                if(c.tipo === 'rosto') icone = '😀'; else if(c.tipo === 'cabelo') icone = '💇'; else if(c.tipo === 'corpo') icone = '🧍';
+                else if(c.tipo === 'capacete') icone = '⛑️'; else if(c.tipo === 'armadura') icone = '🦺'; else if(c.tipo === 'luvas') icone = '🧤'; else if(c.tipo === 'botas') icone = '👢';
+
+                let tagGen = c.genero === 'Ambos' ? 'M/F' : (c.genero === 'M' ? '♂️ Masc' : '♀️ Fem');
+                
+                if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML += `
+                    <div class="card cosm-card">
+                        <h3>${icone} ${c.nome || id} <span style="font-size:0.8rem; color:#ccc;">[${c.tipo.toUpperCase()}]</span></h3>
+                        <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px;">
+                            🆔 <b>ID:</b> ${id} <br>
+                            🚻 <b>Gênero:</b> ${tagGen} <br>
+                            📁 <b>Arquivo:</b> <span style="color:#bdc3c7; font-size:0.8rem;">${c.arquivo || ''}</span>
+                        </div>
+                        <div class="action-buttons" style="width: 100%;">
+                            <button class="btn btn-edit" onclick="carregarEdicaoCosmetico('${id}')">✏️ Editar</button>
+                            <button class="btn btn-dark" onclick="excluirCosmetico('${id}')">🗑️ Excluir</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        window.salvarCosmetico = function() {
+            let id = document.getElementById('cosm-id').value.trim(); 
+            if(!id) { alert("Dê um ID único para a peça! (Ex: capacete_ferro_01)"); return; }
+            db.ref('banco_cosmeticos/' + id).set({
+                nome: document.getElementById('cosm-nome').value.trim() || id, tipo: document.getElementById('cosm-tipo').value,
+                genero: document.getElementById('cosm-genero').value, arquivo: document.getElementById('cosm-arquivo').value.trim(),
+                escala: document.getElementById('cosm-escala').value || '1 1 1', posicao: document.getElementById('cosm-pos').value || '0 0 0',
+                rotacao: document.getElementById('cosm-rot').value || '0 0 0'
+            }).then(() => {
+                alert("🎭 Peça registrada no banco com sucesso!");
+                document.getElementById('cosm-id').value = ''; document.getElementById('cosm-nome').value = ''; document.getElementById('cosm-arquivo').value = '';
+            }).catch(e => alert("Erro ao salvar: " + e.message));
+        };
+
+        window.carregarEdicaoCosmetico = function(id) {
+            db.ref('banco_cosmeticos/' + id).once('value').then(snap => {
+                let c = snap.val(); if(!c) return;
+                document.getElementById('cosm-id').value = id; document.getElementById('cosm-nome').value = c.nome || '';
+                document.getElementById('cosm-tipo').value = c.tipo || 'corpo'; document.getElementById('cosm-genero').value = c.genero || 'Ambos';
+                document.getElementById('cosm-arquivo').value = c.arquivo || ''; document.getElementById('cosm-escala').value = c.escala || '1 1 1';
+                document.getElementById('cosm-pos').value = c.posicao || '0 0 0'; document.getElementById('cosm-rot').value = c.rotacao || '0 0 0';
+                let formCosm = document.getElementById('form-cosmetico'); if(formCosm) formCosm.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
+
+        window.excluirCosmetico = function(id) { 
+            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) { db.ref('banco_cosmeticos/' + id).remove(); }
+        };
+
+        // === ARMAS ===
+        const listaArmasDiv = document.getElementById('lista-armas');
+        db.ref('banco_armas').on('value', snap => {
+            if(listaArmasDiv) listaArmasDiv.innerHTML = ''; 
+            let armas = snap.val(); if(!armas) return;
+            for(let id in armas) {
+                let a = armas[id];
+                let corCard = a.categoria === 'Escudo' ? '#3498db' : (a.categoria === 'Varinha' || a.categoria === 'Arco' ? '#9b59b6' : '#e74c3c');
+                if(listaArmasDiv) listaArmasDiv.innerHTML += `
+                    <div class="card arma-card" style="border-left-color: ${corCard}">
+                        <h3>${id} <span style="font-size:0.8rem; color:#ccc;">[${a.categoria}]</span></h3>
+                        <div style="width: 100%; font-size: 0.9rem;">
+                            🗡️ Dano: <b>${a.danoBonus||0}</b> | 🛡️ Defesa: <b>${a.defesaBonus||0}</b> | 📏 Alcance: <b>${a.distancia||3}m</b><br>
+                            ❤️ Bônus HP: <b>${a.bonusHP||0}</b> | 👟 Bônus Vel: <b>${a.bonusVelocidade||0}</b>
+                        </div>
+                        <div class="action-buttons" style="width: 100%;">
+                            <button class="btn btn-edit" onclick="carregarEdicaoArma('${id}')">✏️ Editar</button>
+                            <button class="btn btn-dark" onclick="excluirArma('${id}')">🗑️ Excluir</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        window.carregarEdicaoArma = function(id) {
+            db.ref('banco_armas/' + id).once('value').then(snap => {
+                let a = snap.val(); if(!a) return;
+                document.getElementById('arma-id').value = id; document.getElementById('arma-cat').value = a.categoria || 'Espada';
+                document.getElementById('arma-glb').value = a.modeloGlb || ''; document.getElementById('arma-dano').value = a.danoBonus || 0;
+                document.getElementById('arma-defesa').value = a.defesaBonus || 0; document.getElementById('arma-dist').value = a.distancia || 3.0;
+                document.getElementById('arma-b-hp').value = a.bonusHP || 0; document.getElementById('arma-b-vel').value = a.bonusVelocidade || 0;
+                document.getElementById('arma-b-sorte').value = a.bonusSorte || 0; document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
+                document.getElementById('arma-rot').value = a.rotMao || '0 0 0'; document.getElementById('arma-pos').value = a.posMao || '0 0 0';
+                document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15'; document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
+                document.getElementById('arma-inv-pos').value = a.posInv || '0 0 0.05';
+                
+                document.getElementById('arma-hit-anim').value = a.hitAnim || ''; document.getElementById('arma-hit-escala').value = a.hitEscala || '1 1 1';
+                document.getElementById('arma-hit-additive').value = a.hitAdditive ? 'true' : 'false';
+                
+                document.getElementById('arma-swing-anim').value = a.swingAnim || ''; 
+                document.getElementById('arma-swing-cols').value = a.swingCols || 5; 
+                document.getElementById('arma-swing-duracao').value = a.swingDuracao || 300;
+                document.getElementById('arma-swing-escala').value = a.swingEscala || '2 2 2';
+                document.getElementById('arma-swing-rot').value = a.swingRotacao || '0 0 0';
+                document.getElementById('arma-swing-additive').value = a.swingAdditive ? 'true' : 'false';
+                
+                document.getElementById('arma-projetil-glb').value = a.projetilGlb || ''; document.getElementById('arma-projetil-escala').value = a.projetilEscala || '1 1 1';
+                document.getElementById('arma-projetil-pos').value = a.projetilPos || '0 0.45 0'; document.getElementById('arma-projetil-vel').value = a.projetilVel || 20;
+                
+                document.getElementById('arma-shuriken-gravidade').value = a.shurikenGravidade || -1.2; document.getElementById('arma-shuriken-vel').value = a.shurikenVel || 2.5;
+
+                atualizarCamposArma();
+                let formArma = document.getElementById('form-arma'); if(formArma) formArma.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
+
+        window.forjarArma = function() {
+            let id = document.getElementById('arma-id').value; if(!id) { alert("Dê um nome para a arma!"); return; }
+            db.ref('banco_armas/' + id).set({
+                categoria: document.getElementById('arma-cat').value, modeloGlb: document.getElementById('arma-glb').value,
+                danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0, defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
+                distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0, bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
+                bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0, bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
+                escalaMao: document.getElementById('arma-escala').value || '1 1 1', rotMao: document.getElementById('arma-rot').value || '0 0 0', posMao: document.getElementById('arma-pos').value || '0 0 0',
+                escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05',
+                hitAnim: document.getElementById('arma-hit-anim').value, hitEscala: document.getElementById('arma-hit-escala').value || '1 1 1',
+                hitAdditive: document.getElementById('arma-hit-additive').value === 'true',
+                swingAnim: document.getElementById('arma-swing-anim').value, 
+                swingCols: parseInt(document.getElementById('arma-swing-cols').value) || 5,
+                swingDuracao: parseInt(document.getElementById('arma-swing-duracao').value) || 300,
+                swingEscala: document.getElementById('arma-swing-escala').value || '2 2 2',
+                swingRotacao: document.getElementById('arma-swing-rot').value || '0 0 0',
+                swingAdditive: document.getElementById('arma-swing-additive').value === 'true',
+                projetilGlb: document.getElementById('arma-projetil-glb').value, projetilEscala: document.getElementById('arma-projetil-escala').value || '1 1 1',
+                projetilPos: document.getElementById('arma-projetil-pos').value || '0 0.45 0', projetilVel: parseFloat(document.getElementById('arma-projetil-vel').value) || 20,
+                shurikenGravidade: parseFloat(document.getElementById('arma-shuriken-gravidade').value) || -1.2, shurikenVel: parseFloat(document.getElementById('arma-shuriken-vel').value) || 2.5
+            }).then(() => alert("Item forjado e enviado para os jogadores!"));
+        };
+
+        window.excluirArma = function(id) { if(confirm(`DESTRUIR o item ${id}? Ele sumirá do inventário de todos!`)) db.ref('banco_armas/' + id).remove(); };
+
+        // === RESPAWNS ===
+        const listaRespawnsDiv = document.getElementById('lista-respawns');
+        db.ref('cenario_respawns').on('child_added', (snapshot) => {
+            let id = snapshot.key; let r = snapshot.val();
+            let card = document.createElement('div'); card.className = 'card respawn-card'; card.id = `card-resp-${id}`;
+            card.innerHTML = `
+                <h3>🔮 ${id}</h3>
+                <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
+                    📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
+                    📏 Raio de Ativação: <b>${r.raio || 3}m</b>
+                </div>
+                <div class="action-buttons" style="width: 100%;">
+                    <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
+                    <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
+                </div>
+            `;
+            if(listaRespawnsDiv) listaRespawnsDiv.appendChild(card);
+        });
+        
+        db.ref('cenario_respawns').on('child_changed', (snapshot) => { 
+            let id = snapshot.key; let r = snapshot.val();
+            let card = document.getElementById(`card-resp-${id}`); 
+            if(card) {
+                card.innerHTML = `
+                    <h3>🔮 ${id}</h3>
+                    <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
+                        📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
+                        📏 Raio de Ativação: <b>${r.raio || 3}m</b>
+                    </div>
+                    <div class="action-buttons" style="width: 100%;">
+                        <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
+                        <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
+                    </div>
+                `;
+            }
+        });
+
+        db.ref('cenario_respawns').on('child_removed', (snapshot) => { let card = document.getElementById(`card-resp-${snapshot.key}`); if(card) card.remove(); });
+
+        window.carregarEdicaoRespawn = function(id) {
+            db.ref('cenario_respawns/' + id).once('value').then(snap => {
+                let r = snap.val(); if(!r) return;
+                document.getElementById('resp-id').value = id;
+                document.getElementById('resp-x').value = r.pos.x || 0;
+                document.getElementById('resp-y').value = r.pos.y || 0;
+                document.getElementById('resp-z').value = r.pos.z || 0;
+                document.getElementById('resp-raio').value = r.raio || 3;
+                let formResp = document.querySelector('.resp-spawn'); if(formResp) formResp.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
+
+        window.spawnarRespawn = function() {
+            let id = document.getElementById('resp-id').value; if(!id) return;
+            db.ref('cenario_respawns/' + id).set({ pos: { x: parseFloat(document.getElementById('resp-x').value)||0, y: parseFloat(document.getElementById('resp-y').value)||0, z: parseFloat(document.getElementById('resp-z').value)||0 }, raio: parseFloat(document.getElementById('resp-raio').value) || 3 });
+        };
+
+        // === NPCS ===
+        const listaNpcsDiv = document.getElementById('lista-npcs');
+        db.ref('cenario_npcs').on('child_added', (snapshot) => {
+            let id = snapshot.key; let npc = snapshot.val();
+            let card = document.createElement('div'); card.className = 'card npc-card'; card.id = `card-npc-${id}`;
+            card.innerHTML = `<h3>🧑‍🌾 ${npc.nome || id}</h3><div class="action-buttons"><button class="btn btn-edit" onclick="carregarEdicaoNpc('${id}')">✏️ Editar</button><button class="btn btn-dark" onclick="db.ref('cenario_npcs/${id}').remove()">🗑️ Excluir</button></div>`;
+            if(listaNpcsDiv) listaNpcsDiv.appendChild(card);
+        });
+        db.ref('cenario_npcs').on('child_removed', (snapshot) => { let card = document.getElementById(`card-npc-${snapshot.key}`); if(card) card.remove(); });
+
+        window.carregarEdicaoNpc = function(id) {
+            db.ref('cenario_npcs/' + id).once('value').then(snap => {
+                let data = snap.val(); if(!data) return; window.abrirAba('tab-npcs', null);
+                document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
+                document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; document.getElementById('npc-glb').value = data.modeloGlb || '';
+                document.getElementById('npc-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
+                document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
+                document.getElementById('npc-x').value = data.pos ? data.pos.x : 0; document.getElementById('npc-y').value = data.pos ? data.pos.y : 0; document.getElementById('npc-z').value = data.pos ? data.pos.z : 0;
+                document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; 
+                document.getElementById('npc-missao-id').value = data.idMissao || ''; document.getElementById('npc-chave-conclusao').value = data.chaveConclusao || ''; 
+                document.getElementById('npc-requisito').value = data.requisito || ''; document.getElementById('npc-rec-xp').value = data.recXP || 0;
+                document.getElementById('npc-rec-ouro').value = data.recOuro || 0; document.getElementById('npc-rec-item').value = data.recItem || '';
+                let formNpc = document.getElementById('form-npc'); if(formNpc) formNpc.scrollIntoView({ behavior: 'smooth' });
+            });
+        };
+
+        window.spawnarNovoNpc = function() {
+            let id = document.getElementById('npc-id').value; if(!id) return;
+            let escNpcArr = document.getElementById('npc-escala').value.split(' ');
+            let escNpcObj = { x: parseFloat(escNpcArr[0])||1, y: parseFloat(escNpcArr[1])||1, z: parseFloat(escNpcArr[2])||1 };
+            db.ref('cenario_npcs/' + id).update({
+                nome: document.getElementById('npc-nome').value, tipo: document.getElementById('npc-tipo').value,
+                pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
+                escala: escNpcObj, modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
+                dialogoPadrao: document.getElementById('npc-dialogo').value, dialogoMissao: document.getElementById('npc-dialogo-missao').value,
+                idMissao: document.getElementById('npc-missao-id').value, chaveConclusao: document.getElementById('npc-chave-conclusao').value,
+                requisito: document.getElementById('npc-requisito').value, recXP: parseFloat(document.getElementById('npc-rec-xp').value) || 0,
+                recOuro: parseFloat(document.getElementById('npc-rec-ouro').value) || 0, recItem: document.getElementById('npc-rec-item').value
+            }).then(() => alert(`NPC atualizado!`));
+        };
+
+        // === INIMIGOS ===
         const listaInimigosDiv = document.getElementById('lista-inimigos');
         db.ref('cenario_inimigos').on('child_added', (snapshot) => {
             let id = snapshot.key; let ini = snapshot.val();
@@ -821,7 +1058,6 @@
                 document.getElementById('container-lista-ataques').innerHTML = '';
                 let ataques = data.ataques || [];
                 
-                // Retrocompatibilidade
                 if(ataques.length === 0 && data.animAtaque) {
                     ataques.push({
                         animacao: data.animAtaque, tipo: data.tipo || 'meelee', alcance: data.attackRange || 1.8,
@@ -877,7 +1113,6 @@
             }).then(() => alert(`Monstro ${id} atualizado com ${listaAtksExtraidos.length} ataque(s)!`));
         };
         
-        atualizarCamposArma();
     }); 
 </script>
 </body>
