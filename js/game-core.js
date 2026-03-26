@@ -299,7 +299,6 @@ window.aceitarMissaoNPC = function() {
 };
 
 window.gerarParticulaRastro = function(pos, vel, corHex = '#00FFFF') {
-    // Mantido por retrocompatibilidade caso alguma outra função use
     let scene = document.querySelector('a-scene'); let p = document.createElement('a-entity');
     let rX = pos.x + (Math.random() - 0.5) * 0.2; let rY = pos.y + (Math.random() - 0.5) * 0.2; let rZ = pos.z + (Math.random() - 0.5) * 0.2;
     p.setAttribute('position', `${rX} ${rY} ${rZ}`);
@@ -308,28 +307,6 @@ window.gerarParticulaRastro = function(pos, vel, corHex = '#00FFFF') {
     if (vel && vel.lengthSq() > 0.01) { p.object3D.lookAt(new THREE.Vector3(rX, rY, rZ).add(vel)); }
     p.setAttribute('animation__scale', 'property: scale; to: 0 0 0; dur: 400; easing: linear');
     scene.appendChild(p); setTimeout(() => { if(p && p.parentNode) p.parentNode.removeChild(p); }, 400);
-};
-
-window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
-    if (!armaStats.swingAnim || armaStats.swingAnim.trim() === '') return;
-    let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
-    let cam = document.querySelector('[camera]'); let camQuat = new THREE.Quaternion(); if(cam) cam.object3D.getWorldQuaternion(camQuat);
-    let velLocal = vetorVelocidade.clone().applyQuaternion(camQuat.clone().invert()); let angleZ = Math.atan2(velLocal.y, velLocal.x); 
-    let rotBaseArr = (armaStats.swingRotacao || '0 0 0').split(' '); let rX = parseFloat(rotBaseArr[0]) || 0; let rY = parseFloat(rotBaseArr[1]) || 0; let rZ = parseFloat(rotBaseArr[2]) || 0;
-    let finalAngleZ = angleZ + THREE.MathUtils.degToRad(rZ);
-    let escBase = (armaStats.swingEscala || '1 1 1').split(' '); let sX = parseFloat(escBase[0]) || 1; let sY = parseFloat(escBase[1]) || 1; let sZ = parseFloat(escBase[2]) || 1;
-    let additive = armaStats.swingAdditive ? '; blending: additive' : ''; let offsetFrente = alvoSelector === '[camera]' ? -1.5 : -0.6; 
-    vfx.setAttribute('efeito-rastro', `alvoId: ${alvoSelector}; offsetZ: ${offsetFrente}; angleZ: ${finalAngleZ}; rotX: ${rX}; rotY: ${rY}`);
-
-    if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.jpg') || armaStats.swingAnim.endsWith('.gif')) {
-        let shader = armaStats.swingAnim.endsWith('.gif') ? 'gif' : 'flat';
-        let imgMaterial = `shader: ${shader}; src: url(${armaStats.swingAnim}); transparent: true; alphaTest: 0.5; side: double; depthWrite: false${additive}`;
-        vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
-    } else {
-        let glbPath = armaStats.swingAnim.startsWith('#') ? armaStats.swingAnim : `url(${armaStats.swingAnim})`;
-        vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
-    }
-    scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
 };
 
 window.gerarHitVFX = function(pos, armaStats) {
@@ -365,35 +342,36 @@ window.realizarAtaque = function() {
     let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
-    
-    let simVel = new THREE.Vector3(1, -1, 0); 
-    simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); 
-    window.gerarSwingVFX(simVel, armaStats, '[camera]');
 
-    // --- NOVO: INTEGRAÇÃO DO RASTRO SAO PARA O PC/MOBILE ---
+    // SISTEMA RASTRO 3D TIPO SWORD ART ONLINE NO PC/MOBILE
     let corRastro = '#00FFFF';
     if (armaStats && armaStats.danoBonus) {
         if(armaStats.danoBonus >= 15) corRastro = '#ff0055'; 
         else if(armaStats.danoBonus >= 7) corRastro = '#f1c40f'; 
     }
     let rastroEntidade = document.createElement('a-entity');
-    rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 250`);
+    rastroEntidade.setAttribute('position', '0 0 0');
     document.querySelector('a-scene').appendChild(rastroEntidade);
+    rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
 
     let count = 0;
+    let maxCount = 12; 
     let arcInt = setInterval(() => {
-        if(count > 6) { 
+        if(count > maxCount) { 
             clearInterval(arcInt); 
             if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
             return; 
         }
         
-        // Simula uma curva de corte no ar
-        let offX = 0.5 - (count * 0.15); 
-        let offY = 0.2 - (count * 0.1);  
+        let progresso = count / maxCount;
+        let angulo = (progresso * Math.PI) - (Math.PI / 2); // De -90 a +90 graus (Meia Lua)
         
-        let offVectorBase = new THREE.Vector3(offX, offY, -0.5).applyQuaternion(camQuat);
-        let offVectorPonta = new THREE.Vector3(offX + 0.3, offY + 0.2, -1.8).applyQuaternion(camQuat);
+        let offX = 1.5 * Math.sin(angulo); 
+        let offY = 0.2 - (progresso * 0.4);  
+        let offZ = -1.2 + (Math.cos(angulo) * 0.8);
+        
+        let offVectorBase = new THREE.Vector3(offX * 0.2, offY, offZ * 0.4).applyQuaternion(camQuat);
+        let offVectorPonta = new THREE.Vector3(offX, offY + 0.3, offZ).applyQuaternion(camQuat);
         
         let pBase = posCamera.clone().add(offVectorBase);
         let pPonta = posCamera.clone().add(offVectorPonta);
@@ -403,7 +381,7 @@ window.realizarAtaque = function() {
         }
         
         count++;
-    }, 30);
+    }, 20); // Intervalo apertado de 20ms para a malha ficar contínua
 
     let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
     if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
