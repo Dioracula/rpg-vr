@@ -2,92 +2,57 @@
 // COMPONENTES A-FRAME (FÍSICA, VR, MOBILE E UI)
 // ==========================================
 
-// --- NOVO: GERADOR DE RASTRO 3D ESTILO SWORD ART ONLINE ---
 AFRAME.registerComponent('rastro-espada-sao', {
-    schema: {
-        color: { type: 'color', default: '#00FFFF' },
-        duracao: { type: 'number', default: 300 }
-    },
+    schema: { color: { type: 'color', default: '#00FFFF' }, duracao: { type: 'number', default: 300 } },
     init: function() {
         this.pontos = [];
         this.geometry = new THREE.BufferGeometry();
-        this.material = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            vertexColors: true,
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.9,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+        this.material = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, vertexColors: true, side: THREE.DoubleSide, 
+            transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false 
         });
         this.mesh = new THREE.Mesh(this.geometry, this.material);
         this.mesh.frustumCulled = false;
-        this.el.sceneEl.object3D.add(this.mesh);
+        this.el.object3D.add(this.mesh); 
         this.ativo = true;
-        this.tempoInicio = Date.now();
     },
     addPonto: function(base, ponta) {
         if(!this.ativo) return;
         this.pontos.push({ base: base.clone(), ponta: ponta.clone(), tempo: Date.now() });
-        if(this.pontos.length > 20) this.pontos.shift();
+        if(this.pontos.length > 30) this.pontos.shift();
         this.atualizarMalha();
     },
-    finalizar: function() {
-        this.ativo = false;
-    },
+    finalizar: function() { this.ativo = false; },
     tick: function() {
         let agora = Date.now();
         if (!this.ativo) {
-            if (this.pontos.length > 0) {
-                this.pontos.shift(); // Encolhe a cauda suavemente
-                this.atualizarMalha();
-            } else {
-                if (this.el.parentNode) this.el.parentNode.removeChild(this.el);
-            }
+            if (this.pontos.length > 0) { this.pontos.shift(); this.atualizarMalha(); } 
+            else { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); }
         } else {
-            while(this.pontos.length > 0 && agora - this.pontos[0].tempo > this.data.duracao) {
-                this.pontos.shift();
-            }
+            while(this.pontos.length > 0 && agora - this.pontos[0].tempo > this.data.duracao) { this.pontos.shift(); }
             this.atualizarMalha();
         }
     },
     atualizarMalha: function() {
-        if (this.pontos.length < 2) {
-            this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
-            return;
-        }
-        let positions = [];
-        let colors = [];
-        let baseColor = new THREE.Color(this.data.color);
-        
+        if (this.pontos.length < 2) { this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); return; }
+        let positions = []; let colors = []; let baseColor = new THREE.Color(this.data.color);
         for (let i = 0; i < this.pontos.length; i++) {
             let p = this.pontos[i];
-            positions.push(p.base.x, p.base.y, p.base.z);
-            positions.push(p.ponta.x, p.ponta.y, p.ponta.z);
-            
-            // Efeito Fade (A ponta da espada é forte, o rastro de trás vai escurecendo)
+            positions.push(p.base.x, p.base.y, p.base.z); positions.push(p.ponta.x, p.ponta.y, p.ponta.z);
             let fade = i / (this.pontos.length - 1); 
             colors.push(baseColor.r * fade, baseColor.g * fade, baseColor.b * fade);
             colors.push(baseColor.r * fade, baseColor.g * fade, baseColor.b * fade);
         }
-
         let indices = [];
         for (let i = 0; i < this.pontos.length - 1; i++) {
-            let idx = i * 2;
-            indices.push(idx, idx + 1, idx + 2);
-            indices.push(idx + 1, idx + 3, idx + 2);
+            let idx = i * 2; indices.push(idx, idx + 1, idx + 2); indices.push(idx + 1, idx + 3, idx + 2);
         }
-
         this.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         this.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         this.geometry.setIndex(indices);
         this.geometry.computeVertexNormals();
     },
-    remove: function() {
-        this.el.sceneEl.object3D.remove(this.mesh);
-        this.geometry.dispose();
-        this.material.dispose();
-    }
+    remove: function() { this.el.object3D.remove(this.mesh); this.geometry.dispose(); this.material.dispose(); }
 });
 
 AFRAME.registerComponent('efeito-rastro', {
@@ -140,17 +105,15 @@ AFRAME.registerComponent('colisor-arma-vr', {
 
         if (this.speed > 2.0 && !this.cortando) {
             this.cortando = true; this.tempoCorte = time; window.tocarSom('snd-sword');
-            let maoId = this.data.mao === 'direita' ? '#mao-direita' : '#mao-esquerda';
-            window.gerarSwingVFX(this.vel.clone(), armaStats, maoId);
             
-            // GERA O RASTRO SAO
             let corRastro = '#00FFFF';
             if(armaStats.danoBonus > 10) corRastro = '#ff0055'; 
             else if(armaStats.danoBonus > 6) corRastro = '#f1c40f';
             
             this.rastroEntidade = document.createElement('a-entity');
-            this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 250`);
+            this.rastroEntidade.setAttribute('position', '0 0 0');
             document.querySelector('a-scene').appendChild(this.rastroEntidade);
+            this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
         }
 
         if (this.cortando) {
@@ -158,19 +121,14 @@ AFRAME.registerComponent('colisor-arma-vr', {
                 this.cortando = false; 
                 if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
                     this.rastroEntidade.components['rastro-espada-sao'].finalizar();
-                    this.rastroEntidade = null;
                 }
+                this.rastroEntidade = null;
             } else {
-                let basePos = currentWorldPos.clone();
-                let tipPos = currentWorldPos.clone();
-                
+                let basePos = currentWorldPos.clone(); let tipPos = currentWorldPos.clone();
                 if (armaStats.categoria === 'Espada') { 
                     let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
-                    tipPos.add(dirPonta.clone().multiplyScalar(0.9)); 
-                    basePos.add(dirPonta.clone().multiplyScalar(0.1)); 
-                } else {
-                    tipPos.y += 0.3; // Luvas
-                }
+                    tipPos.add(dirPonta.clone().multiplyScalar(0.9)); basePos.add(dirPonta.clone().multiplyScalar(0.1)); 
+                } else { tipPos.y += 0.3; }
                 
                 if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
                     this.rastroEntidade.components['rastro-espada-sao'].addPonto(basePos, tipPos);
