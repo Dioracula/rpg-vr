@@ -92,15 +92,35 @@ AFRAME.registerComponent('projetil-jogador', {
 
         let hit = false;
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+        
         for (let i = 0; i < inimigosEls.length; i++) {
             let inimigoEl = inimigosEls[i]; let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if (syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
-                let distX = Math.abs(this.posAtual.x - posInimigo.x); let distZ = Math.abs(this.posAtual.z - posInimigo.z); let distY = this.posAtual.y - posInimigo.y;
-                if (distX < 0.8 && distZ < 0.8 && distY > 0 && distY < 2.5) {
-                    syncComp.receberDano(this.data.dano, this.data.arma);
-                    window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada]);
-                    hit = true; break;
+                
+                // Pré-checagem rápida: Só calcula colisão 3D complexa se o projétil estiver num raio de 15m do bicho
+                if (this.posAtual.distanceTo(posInimigo) < 15.0) {
+                    let visual = inimigoEl.querySelector('.modelo-visual');
+                    
+                    if (visual && visual.getObject3D('mesh')) {
+                        // HITBOX PERFEITA DA SHURIKEN NO GLB
+                        let box = new THREE.Box3().setFromObject(visual.getObject3D('mesh'));
+                        box.expandByScalar(0.3); // Deixa o tiro mais perdoável (ajuda a acertar asas finas)
+                        
+                        if (box.containsPoint(this.posAtual) || box.distanceToPoint(this.posAtual) < 0.2) {
+                            syncComp.receberDano(this.data.dano, this.data.arma);
+                            window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Shuriken']);
+                            hit = true; break;
+                        }
+                    } else {
+                        // Fallback Antigo caso não carregue o GLB
+                        let distX = Math.abs(this.posAtual.x - posInimigo.x); let distZ = Math.abs(this.posAtual.z - posInimigo.z); let distY = this.posAtual.y - posInimigo.y;
+                        if (distX < 0.8 && distZ < 0.8 && distY > 0 && distY < 2.5) {
+                            syncComp.receberDano(this.data.dano, this.data.arma);
+                            window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada]);
+                            hit = true; break;
+                        }
+                    }
                 }
             }
         }
@@ -159,7 +179,6 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
 
             if (morreuAgora) {
                 this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); 
-                
                 this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                 
                 let posVFX = new THREE.Vector3(); this.el.object3D.getWorldPosition(posVFX);
@@ -168,16 +187,12 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                 let escala = this.dadosBD ? (this.dadosBD.escala || {x:1, y:1, z:1}) : {x:1, y:1, z:1};
 
                 let localOffset = new THREE.Vector3(parseFloat(offsetBD.x)||0, parseFloat(offsetBD.y)||0, parseFloat(offsetBD.z)||0);
-                if (localOffset.lengthSq() === 0) {
-                    localOffset.y = (escala.y || 1) * 1.2; 
-                }
+                if (localOffset.lengthSq() === 0) { localOffset.y = (escala.y || 1) * 1.2; }
                 localOffset.applyQuaternion(this.el.object3D.quaternion); 
                 posVFX.add(localOffset); 
 
                 let beams = null;
-                if (isBoss && window.gerarFeixesBoss) {
-                    beams = window.gerarFeixesBoss(posVFX, escala);
-                }
+                if (isBoss && window.gerarFeixesBoss) { beams = window.gerarFeixesBoss(posVFX, escala); }
                 
                 setTimeout(() => { 
                     if(this.hpAtual <= 0 && this.el) {
@@ -199,19 +214,29 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
 
         this.receberDano = (dano, tipoCategoria = '') => { 
             if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
+            
+            // Preditivo do Cliente (Evita os múltiplos Hits da Shuriken no mesmo milissegundo de atraso do servidor)
+            let preHitHp = this.hpAtual;
+            this.hpAtual -= dano;
+            if(this.hpAtual <= 0) this.hpAtual = 0;
+
             this.dbRef.child('hp').transaction(currentHp => { 
-                let numHp = currentHp === null ? this.hpAtual : Number(currentHp); if (isNaN(numHp) || numHp <= 0) return; return Math.max(0, numHp - dano); 
+                let numHp = currentHp === null ? preHitHp : Number(currentHp); 
+                if (isNaN(numHp) || numHp <= 0) return; 
+                return Math.max(0, numHp - dano); 
             }, (error, committed, snapshot) => {
                 if (committed) {
                     let novoHp = snapshot.val(); this.dbRef.update({ ultimoAtacante: window.meuIdMultiplayer });
-                    if (novoHp === 0) {
+                    // Apenas se o HP foi para ZERO nesta transação exata (Bug do Respawn Consertado!)
+                    if (novoHp === 0 && preHitHp > 0) {
                         this.hpAtual = 0; window.playerState.xp += this.data.xpDrop; let textoHp = this.el.querySelector('.hp-texto'); 
                         if(textoHp) { textoHp.setAttribute('value', `+ ${this.data.xpDrop} XP!`); textoHp.setAttribute('color', '#00ff00'); } this.el.classList.remove('interativo');
                         if (window.playerState.xp >= window.playerState.xpProxNivel) { 
                             window.playerState.nivel++; window.playerState.pontos++; window.playerState.xp -= window.playerState.xpProxNivel; window.playerState.xpProxNivel = Math.floor(window.playerState.xpProxNivel * 1.5); 
                             let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'LEVEL UP! (Aperte C/Y)'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 4000); } 
                         } 
-                        window.atualizarUI(); this.dbRef.update({ mortoEm: Date.now() }); 
+                        window.atualizarUI(); 
+                        // O servidor agora detecta isso e marca o tempo de morte perfeitamente
                     }
                 }
             });
