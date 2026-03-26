@@ -421,6 +421,7 @@ window.gerarFeixesBoss = function(pos, escala) {
     window.tocarSom('snd-magic'); 
     
     let beams = document.createElement('a-entity');
+    // A luz nasce exatamente no ponto central calibrado pelo Offset do admin
     beams.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     
     for(let i=0; i<6; i++) {
@@ -453,6 +454,7 @@ window.gerarParticulasSAO = function(pos, isBoss, escala) {
     for (let i = 0; i < count; i++) {
         let p = document.createElement('a-entity');
         
+        // As partículas nascem aglomeradas na origem milimétrica da luz (pos) e do Offset
         let px = pos.x + (Math.random() - 0.5) * spreadX;
         let py = pos.y + (Math.random() - 0.5) * spreadY;
         let pz = pos.z + (Math.random() - 0.5) * spreadZ;
@@ -490,7 +492,7 @@ window.realizarAtaque = function() {
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    // === ATAQUES CORPO-A-CORPO (Meelee) COM FÍSICA MATEMÁTICA PERFEITA ===
+    // === ATAQUES CORPO-A-CORPO (Meelee) com HITBOX PRECISA NA MALHA GLB ===
     if (armaStats.categoria === 'Luva' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Escudo') {
         window.tocarSom('snd-sword');
         let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
@@ -520,19 +522,26 @@ window.realizarAtaque = function() {
                         if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
                         return; 
                     }
+                    
                     let progresso = count / maxCount;
                     let angulo = (progresso * Math.PI) - (Math.PI / 2); 
+                    
                     let offX = 1.5 * Math.sin(angulo); 
                     if (window.comboAtaque === 1) offX = -offX; 
+
                     let offY = 0.2 - (progresso * 0.4);  
                     let offZ = -1.2 + (Math.cos(angulo) * 0.8);
                     
                     let offVectorBase = new THREE.Vector3(offX * 0.2, offY, offZ * 0.4).applyQuaternion(camQuat);
                     let offVectorPonta = new THREE.Vector3(offX, offY + 0.3, offZ).applyQuaternion(camQuat);
+                    
                     let pBase = posCamera.clone().add(offVectorBase);
                     let pPonta = posCamera.clone().add(offVectorPonta);
                     
-                    if(rastroEntidade.components['rastro-espada-sao']) { rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta); }
+                    if(rastroEntidade.components['rastro-espada-sao']) {
+                        rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta);
+                    }
+                    
                     count++;
                 }, 20);
             }
@@ -546,37 +555,34 @@ window.realizarAtaque = function() {
             let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp && syncComp.hpAtual <= 0) return;
             
             let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
-            let scale = inimigoEl.object3D.scale;
+            let visual = inimigoEl.querySelector('.modelo-visual');
             let hit = false;
 
-            // Hitbox Matemática Baseada no Tamanho do Monstro!
-            let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
-            let dx = posInimigo.x - posCamera.x; 
-            let dz = posInimigo.z - posCamera.z; 
-            let dist2D = Math.hypot(dx, dz);
+            // Nova Colisão Perfeita: Cria uma Bounding Box 3D baseada no modelo (Asas, Cauda, etc)
+            if (visual && visual.getObject3D('mesh')) {
+                let box = new THREE.Box3().setFromObject(visual.getObject3D('mesh'));
+                box.expandByScalar(0.2); // Expande a caixa de colisão em 20cm pra não falhar cortes justos
 
-            // Calcula a distância até a borda do monstro (não precisa entrar nele)
-            let distanciaAteBorda = dist2D - raioInimigo;
-
-            if (distanciaAteBorda <= alcanceArma) { 
-                let dirInimigo2D = new THREE.Vector2(dx, dz); 
-                if (dist2D > 0.001) dirInimigo2D.normalize();
-                
-                let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                
-                let anguloMinimo = 0.0;
-                if (raioInimigo >= 1.5) anguloMinimo = -0.5; // Dragões aceitam golpes bem na lateral da tela
-                if (raioInimigo >= 3.0) anguloMinimo = -0.8; 
-
-                // Se tiver de frente pra ele OU estiver literalmente no meio das asas/corpo (dist2D <= raioInimigo)
-                if (anguloAcerto > anguloMinimo || dist2D <= raioInimigo) { 
-                    hit = true; 
+                if (box.distanceToPoint(posCamera) <= alcanceArma) {
+                    let center = new THREE.Vector3(); box.getCenter(center);
+                    let dirInimigo2D = new THREE.Vector2(center.x - posCamera.x, center.z - posCamera.z).normalize();
+                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
+                    // Tolerância bem maior de ângulo para permitir acertar asas de dragões grandes sem olhar pro centro
+                    if (anguloAcerto > -0.3) { hit = true; } 
                 }
+            } else {
+                // Fallback de colisão caso a malha não exista
+                let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z; let dist2D = Math.hypot(dx, dz);
+                if (dist2D <= alcanceArma) { 
+                    let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
+                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
+                    if (anguloAcerto > 0.0) { hit = true; }
+                } 
             }
 
             if (hit) { 
                 syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
-                let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += (1.0 * scale.y); 
+                let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0; 
                 window.gerarHitVFX(posHit, armaStats, dirImpacto); 
             }
         });
@@ -595,10 +601,9 @@ window.realizarAtaque = function() {
             let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if(syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
-                let scale = inimigoEl.object3D.scale;
-                posInimigo.y += (1.0 * scale.y); 
-                
+                posInimigo.y += 1.0; // Mira no peito do monstro
                 let dist = posCamera.distanceTo(posInimigo);
+                
                 if (dist <= maxDist) {
                     let dirToEnemy = posInimigo.clone().sub(posCamera).normalize();
                     let angleDot = dirCam.dot(dirToEnemy);
@@ -611,7 +616,11 @@ window.realizarAtaque = function() {
         });
 
         let targetPoint = new THREE.Vector3();
-        if (bestTarget) { targetPoint.copy(bestTarget); } else { targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); }
+        if (bestTarget) { 
+            targetPoint.copy(bestTarget); 
+        } else { 
+            targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); 
+        }
 
         let proj = document.createElement('a-entity');
         let spawnPos = posCamera.clone().add(dirCam.clone().multiplyScalar(0.5));
@@ -619,6 +628,7 @@ window.realizarAtaque = function() {
         proj.setAttribute('position', `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
         
         let shootDir = targetPoint.clone().sub(spawnPos).normalize();
+        
         let projVel = armaStats.categoria === 'Shuriken' ? (armaStats.shurikenVel * 8 || 15) : (armaStats.projetilVel || 20);
         let danoFinal = Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5);
         
