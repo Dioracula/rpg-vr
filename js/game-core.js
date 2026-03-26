@@ -334,7 +334,6 @@ window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
     scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
 };
 
-// ADICIONADO: 'direcaoImpacto' para calcular o angulo do corte 3D
 window.gerarHitVFX = function(pos, armaStats, direcaoImpacto = null) {
     let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
     let offsetX = (Math.random() - 0.5) * 0.4; let offsetY = (Math.random() - 0.5) * 0.4; let offsetZ = (Math.random() - 0.5) * 0.4;
@@ -691,5 +690,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if(dados) { window.bancoDeArmas = Object.assign(window.bancoDeArmas, dados); }
         if(window.renderizarInventario) window.renderizarInventario();
         if(window.GAME_STARTED) window.atualizarUI();
+    });
+
+    // === NOVOS ATALHOS DE TECLADO PARA PC ===
+    window.addEventListener('keydown', (e) => {
+        if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.npcAtivo) {
+            let key = e.key.toLowerCase();
+            
+            if (key === 'i') {
+                e.preventDefault();
+                window.toggleMenu('inv');
+            } else if (key === 'o') {
+                e.preventDefault();
+                window.toggleMenu('atrib');
+            }
+        }
     });
 });
