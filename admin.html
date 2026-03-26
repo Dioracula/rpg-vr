@@ -400,6 +400,7 @@
                 <div class="input-group"><label>Anim. Andando</label><input type="text" id="novo-anim-andando" list="lista-animacoes" value="chr784_armature|chr784_br01"></div>
                 <div class="input-group"><label>Anim. Ataque</label><input type="text" id="novo-anim-ataque" list="lista-animacoes" value="chr784_armature|chr784_ba01"></div>
                 <div class="input-group"><label>Anim. Morte</label><input type="text" id="novo-anim-morte" list="lista-animacoes" value="chr784_armature|chr784_bd02"></div>
+                <div class="input-group grupo-especial"><label style="color: #e74c3c;">Osso de Ataque</label><input type="text" id="novo-osso-ataque" placeholder="Ex: hand_r" title="Deixe em branco para usar o padrão"></div>
                 
                 <div class="input-group">
                     <label style="color: #9b59b6;">GLB do Tiro <span id="status-tiro-glb" class="status-extracao"></span></label>
@@ -972,6 +973,7 @@
                 document.getElementById('novo-glb-caminho').value = data.modeloGlb || ''; document.getElementById('novo-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
                 document.getElementById('novo-anim-parado').value = data.animParado || ''; document.getElementById('novo-anim-andando').value = data.animAndando || ''; 
                 document.getElementById('novo-anim-ataque').value = data.animAtaque || ''; document.getElementById('novo-anim-morte').value = data.animMorte || ''; 
+                document.getElementById('novo-osso-ataque').value = data.ossoAtaque || '';
                 document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0; document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; 
                 document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0; document.getElementById('novo-aggro-range').value = data.aggroRange || 15; 
                 document.getElementById('novo-attack-range').value = data.attackRange || 1.8; document.getElementById('novo-speed').value = data.speed || 0.08; 
@@ -996,6 +998,7 @@
                 respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, tipo: document.getElementById('novo-tipo').value,
                 modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
                 animAtaque: document.getElementById('novo-anim-ataque').value, animMorte: document.getElementById('novo-anim-morte').value,
+                ossoAtaque: document.getElementById('novo-osso-ataque').value.trim(),
                 modeloTiroGlb: document.getElementById('novo-glb-tiro').value, escalaTiro: document.getElementById('novo-escala-tiro').value || '0.5 0.5 0.5',
                 rotacaoTiro: document.getElementById('novo-rotacao-tiro').value || '0 0 0', velocidadeTiro: parseFloat(document.getElementById('novo-velocidade-tiro').value) || 6.0
             }).then(() => alert(`Monstro atualizado!`));
