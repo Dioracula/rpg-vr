@@ -78,7 +78,6 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
-// NOVA COLISÃO PERFEITA E LEVE PARA PROJÉTEIS
 AFRAME.registerComponent('projetil-jogador', {
     schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
     init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
@@ -99,24 +98,28 @@ AFRAME.registerComponent('projetil-jogador', {
             if (syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
                 
-                // Pré-checagem rápida: Só processa colisão se a shuriken estiver num raio de 20m
-                if (this.posAtual.distanceTo(posInimigo) < 20.0) {
+                // Pré-checagem rápida: Só calcula colisão 3D complexa se o projétil estiver num raio de 15m do bicho
+                if (this.posAtual.distanceTo(posInimigo) < 15.0) {
+                    let visual = inimigoEl.querySelector('.modelo-visual');
                     
-                    // Cria uma hit-box cilíndrica matemática baseada 100% na escala que você colocou no admin.html
-                    let scale = inimigoEl.object3D.scale;
-                    let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
-                    let alturaInimigo = 2.5 * scale.y;
-                    
-                    let dx = this.posAtual.x - posInimigo.x; 
-                    let dz = this.posAtual.z - posInimigo.z; 
-                    let dist2D = Math.hypot(dx, dz);
-                    let distY = this.posAtual.y - posInimigo.y;
-
-                    // Acerta se passar dentro do raio do bicho (+0.5 de "gordura" pra hitbox da shuriken)
-                    if (dist2D <= (raioInimigo + 0.5) && distY > -0.5 && distY < alturaInimigo) {
-                        syncComp.receberDano(this.data.dano, this.data.arma);
-                        window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Shuriken']);
-                        hit = true; break;
+                    if (visual && visual.getObject3D('mesh')) {
+                        // HITBOX PERFEITA DA SHURIKEN NO GLB
+                        let box = new THREE.Box3().setFromObject(visual.getObject3D('mesh'));
+                        box.expandByScalar(0.3); // Deixa o tiro mais perdoável (ajuda a acertar asas finas)
+                        
+                        if (box.containsPoint(this.posAtual) || box.distanceToPoint(this.posAtual) < 0.2) {
+                            syncComp.receberDano(this.data.dano, this.data.arma);
+                            window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Shuriken']);
+                            hit = true; break;
+                        }
+                    } else {
+                        // Fallback Antigo caso não carregue o GLB
+                        let distX = Math.abs(this.posAtual.x - posInimigo.x); let distZ = Math.abs(this.posAtual.z - posInimigo.z); let distY = this.posAtual.y - posInimigo.y;
+                        if (distX < 0.8 && distZ < 0.8 && distY > 0 && distY < 2.5) {
+                            syncComp.receberDano(this.data.dano, this.data.arma);
+                            window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada]);
+                            hit = true; break;
+                        }
                     }
                 }
             }
@@ -176,11 +179,8 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
 
             if (morreuAgora) {
                 this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); 
-                
-                // === INICIA ANIMAÇÃO DE MORTE ===
                 this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                 
-                // === CÁLCULO DE POSIÇÃO CORRIGIDA (OFFSET) ===
                 let posVFX = new THREE.Vector3(); this.el.object3D.getWorldPosition(posVFX);
                 let offsetBD = (this.dadosBD && this.dadosBD.vfxOffset) ? this.dadosBD.vfxOffset : {x:0, y:0, z:0};
                 let isBoss = (this.dadosBD && this.dadosBD.rank === 'boss');
@@ -215,7 +215,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
         this.receberDano = (dano, tipoCategoria = '') => { 
             if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
             
-            // Preditivo do Cliente (Evita múltiplos Hits simultâneos das armas)
+            // Preditivo do Cliente (Evita os múltiplos Hits da Shuriken no mesmo milissegundo de atraso do servidor)
             let preHitHp = this.hpAtual;
             this.hpAtual -= dano;
             if(this.hpAtual <= 0) this.hpAtual = 0;
@@ -227,6 +227,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
             }, (error, committed, snapshot) => {
                 if (committed) {
                     let novoHp = snapshot.val(); this.dbRef.update({ ultimoAtacante: window.meuIdMultiplayer });
+                    // Apenas se o HP foi para ZERO nesta transação exata (Bug do Respawn Consertado!)
                     if (novoHp === 0 && preHitHp > 0) {
                         this.hpAtual = 0; window.playerState.xp += this.data.xpDrop; let textoHp = this.el.querySelector('.hp-texto'); 
                         if(textoHp) { textoHp.setAttribute('value', `+ ${this.data.xpDrop} XP!`); textoHp.setAttribute('color', '#00ff00'); } this.el.classList.remove('interativo');
@@ -235,6 +236,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                             let aviso = document.querySelector('#texto-central'); if(aviso) { aviso.setAttribute('value', 'LEVEL UP! (Aperte C/Y)'); aviso.setAttribute('color', '#00FF00'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 4000); } 
                         } 
                         window.atualizarUI(); 
+                        // O servidor agora detecta isso e marca o tempo de morte perfeitamente
                     }
                 }
             });
