@@ -160,32 +160,29 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
             if (morreuAgora) {
                 this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); 
                 
-                // === INICIA ANIMAÇÃO DE MORTE ===
                 this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                 
-                // === CÁLCULO DE POSIÇÃO CORRIGIDA (OFFSET) ===
                 let posVFX = new THREE.Vector3(); this.el.object3D.getWorldPosition(posVFX);
                 let offsetBD = (this.dadosBD && this.dadosBD.vfxOffset) ? this.dadosBD.vfxOffset : {x:0, y:0, z:0};
                 let isBoss = (this.dadosBD && this.dadosBD.rank === 'boss');
                 let escala = this.dadosBD ? (this.dadosBD.escala || {x:1, y:1, z:1}) : {x:1, y:1, z:1};
 
-                let localOffset = new THREE.Vector3(offsetBD.x, offsetBD.y, offsetBD.z);
-                localOffset.applyQuaternion(this.el.object3D.quaternion); // Alinha com o lado que o monstro está olhando
-                posVFX.add(localOffset);
+                let localOffset = new THREE.Vector3(parseFloat(offsetBD.x)||0, parseFloat(offsetBD.y)||0, parseFloat(offsetBD.z)||0);
+                if (localOffset.lengthSq() === 0) {
+                    localOffset.y = (escala.y || 1) * 1.2; 
+                }
+                localOffset.applyQuaternion(this.el.object3D.quaternion); 
+                posVFX.add(localOffset); 
 
-                // === FEIXES DE LUZ IMEDIATOS (DURANTE A ANIMAÇÃO) ===
                 let beams = null;
                 if (isBoss && window.gerarFeixesBoss) {
                     beams = window.gerarFeixesBoss(posVFX, escala);
                 }
                 
-                // === FINAL DA ANIMAÇÃO: SOME O CORPO E EXPLODE AS PARTÍCULAS ===
                 setTimeout(() => { 
                     if(this.hpAtual <= 0 && this.el) {
                         this.el.setAttribute('visible', 'false'); 
-                        
                         if (beams && beams.parentNode) beams.parentNode.removeChild(beams);
-                        
                         if (window.gerarParticulasSAO) window.gerarParticulasSAO(posVFX, isBoss, escala);
                     }
                 }, 1500); 
