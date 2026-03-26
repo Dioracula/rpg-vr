@@ -82,8 +82,8 @@
         .bg-vfx label { color: #d2b4de !important; }
 
         /* Blocos de Múltiplos Ataques */
-        .bloco-ataque { background: rgba(0, 0, 0, 0.2); border: 1px dashed #e74c3c; padding: 15px; border-radius: 8px; position: relative; }
-        .btn-rm-atk { position: absolute; top: 10px; right: 10px; background: #c0392b; border:none; color: white; border-radius: 5px; cursor: pointer;}
+        .bloco-ataque { background: rgba(0, 0, 0, 0.2); border: 1px dashed #e74c3c; padding: 15px; border-radius: 8px; position: relative; margin-top: 10px;}
+        .btn-rm-atk { position: absolute; top: 10px; right: 10px; background: #c0392b; border:none; color: white; border-radius: 5px; cursor: pointer; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -123,6 +123,7 @@
     </div>
 
     <datalist id="lista-animacoes"></datalist>
+    <datalist id="lista-ossos"></datalist>
 
     <div class="admin-tabs">
         <button class="tab-btn active" onclick="abrirAba('tab-jogadores', this)">🎒 Jogadores</button>
@@ -364,6 +365,7 @@
     <div id="tab-inimigos" class="tab-content">
         <h2 class="section-title">⚔️ QUARTEL GENERAL DOS INIMIGOS</h2>
         <div id="lista-inimigos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px;"></div>
+        
         <div class="painel-spawn ini-spawn" id="form-inimigo">
             <h2>🪄 Invocar ou Editar Inimigo</h2>
             <div class="grid-spawn">
@@ -383,7 +385,7 @@
                 
                 <div class="input-group"><label>HP Máximo</label><input type="number" id="novo-hp" value="50"></div>
                 
-                <div class="input-group">
+                <div class="input-group" style="grid-column: span 2;">
                     <label>Caminho GLB (Inimigo) <span id="status-ini-glb" class="status-extracao"></span></label>
                     <input type="text" id="novo-glb-caminho" value="#modelo-inimigo">
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
@@ -399,7 +401,6 @@
 
                 <div class="input-group grupo-especial"><label style="color:#3498db">Visão / Radar (m)</label><input type="number" id="novo-aggro-range" value="15"></div>
                 <div class="input-group grupo-especial"><label style="color:#3498db">Velocidade Mov.</label><input type="number" step="0.01" id="novo-speed" value="0.08"></div>
-                <div class="input-group grupo-especial"><label style="color:#3498db">Freq. Ataque (ms)</label><input type="number" step="100" id="novo-cooldown" value="2000" title="Tempo de espera entre qualquer ataque"></div>
                 <div class="input-group grupo-especial"><label style="color:#2ecc71">Respawn (Seg.)</label><input type="number" id="novo-respawn-time" value="60"></div>
 
                 <div class="input-group grupo-destaque"><label style="color:#f1c40f">Pos Inicial X</label><input type="number" step="0.1" id="novo-spawn-x" value="0"></div>
@@ -461,15 +462,6 @@
         }
     };
 
-    window.kickarTodos = function() {
-        if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
-            db.ref('players').remove()
-                .then(() => db.ref('server_commands/kick_all').set(Date.now()))
-                .then(() => alert("Sinal de KICK enviado!"))
-                .catch(e => alert("Erro ao kickar: " + e.message));
-        }
-    };
-
     let modoTesteAtivo = false;
     db.ref('server_config/modoTeste').on('value', snap => {
         modoTesteAtivo = snap.val() || false;
@@ -484,6 +476,15 @@
     });
 
     window.toggleModoTeste = function() { db.ref('server_config/modoTeste').set(!modoTesteAtivo); };
+
+    window.kickarTodos = function() {
+        if(confirm("🚨 ALERTA MÁXIMO:\nDesconectar TODOS os jogadores?")) {
+            db.ref('players').remove()
+                .then(() => db.ref('server_commands/kick_all').set(Date.now()))
+                .then(() => alert("Sinal de KICK enviado!"))
+                .catch(e => alert("Erro ao kickar: " + e.message));
+        }
+    };
 
     window.abrirAba = function(abaId, btnSelecionado) {
         let abas = document.getElementsByClassName("tab-content");
@@ -536,44 +537,37 @@
         }
     };
 
+    // Adaptação da leitura do GLB via Github
     window.selecionarArquivoGitHub = async function(downloadUrl, fileName) {
         document.getElementById('github-modal').style.display = 'none';
         
         let subPasta = "";
-        if (ghSelectCatId) {
-            let cat = document.getElementById(ghSelectCatId).value;
-            if(cat === "Espada") subPasta = "Espadas/"; else if(cat === "Luva") subPasta = "Luvas/"; else if(cat === "Arco") subPasta = "Arcos/";
-            else if(cat === "Varinha") subPasta = "Varinhas/"; else if(cat === "Shuriken") subPasta = "Shurikens/"; else if(cat === "Escudo") subPasta = "Escudos/";
-            else if(cat === "cabelo") subPasta = "Cabelos/"; else if(cat === "rosto") subPasta = "Rostos/"; else if(cat === "corpo") subPasta = "Corpos/";
-            else if(cat === "capacete") subPasta = "Capacetes/"; else if(cat === "armadura") subPasta = "Armaduras/"; else if(cat === "luvas") subPasta = "Manoplas/";
-            else if(cat === "botas") subPasta = "Botas/"; else subPasta = "Outros/";
-        }
+        if (ghTargetInput === 'novo-glb-caminho') subPasta = "Inimigos/";
+        else if (ghTargetInput.includes('atk-glb-in')) subPasta = "Magias/";
+        else if (ghTargetInput === 'arma-glb') subPasta = "Armas/";
+        else if (ghTargetInput === 'npc-glb') subPasta = "Npcs/";
+        else if (ghTargetInput === 'cosm-arquivo') subPasta = "Cosmeticos/";
 
         let targetInput = document.getElementById(ghTargetInput);
         if (targetInput) targetInput.value = `${ghPastaBase}${subPasta}${fileName}`;
 
         let statusText = document.getElementById(ghStatusId);
         
-        if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.gif')) {
+        if (fileName.endsWith('.png') || fileName.endsWith('.jpg') || fileName.endsWith('.gif')) { 
             if (statusText) { statusText.innerText = "(✅ Imagem carregada)"; statusText.style.color = "#2ecc71"; }
-            setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000); return;
+            setTimeout(() => { if(statusText) statusText.innerText = ""; }, 3000);
+            return; 
         }
 
-        if (statusText) { statusText.innerText = "(⏳ Lendo GLB do GitHub...)"; statusText.style.color = "#f39c12"; }
+        if (statusText) { statusText.innerText = "(⏳ Lendo GLB/Esqueleto do GitHub...)"; statusText.style.color = "#f39c12"; }
         
         try {
             const res = await fetch(downloadUrl); const blob = await res.blob(); const urlTemporaria = URL.createObjectURL(blob);
             const loader = new THREE.GLTFLoader(); 
             loader.load(urlTemporaria, function(gltf) {
-                const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); 
-                if (animations && animations.length > 0) {
-                    if(datalist) datalist.innerHTML = ''; 
-                    animations.forEach(anim => { if(datalist) { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); }});
-                    if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações extraídas)`; statusText.style.color = "#2ecc71"; }
-                } else { 
-                    if(statusText) { statusText.innerText = `(✅ Carregado. Sem animações)`; statusText.style.color = "#3498db"; }
+                if (ghTargetInput === 'novo-glb-caminho') {
+                    extrairBonesEAnimacoes(gltf, 'lista-animacoes', 'lista-ossos', ghStatusId);
                 }
-                setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
             }, undefined, function(error) { 
                 if(statusText) { statusText.innerText = '(❌ Erro ao ler GLB do GitHub)'; statusText.style.color = "#e74c3c"; }
             });
@@ -582,7 +576,37 @@
         }
     };
 
-    // === GERENCIAMENTO DE MULTIPLOS ATAQUES NO HTML ===
+
+    // === EXTRAÇÃO DE OSSOS DINÂMICA ===
+    function extrairBonesEAnimacoes(gltf, datalistAnimId, datalistBonesId, statusTextId) {
+        const animations = gltf.animations; 
+        const datalistAnim = document.getElementById(datalistAnimId); 
+        const datalistBones = document.getElementById(datalistBonesId);
+        const statusText = document.getElementById(statusTextId);
+
+        let ossosCarregados = 0;
+        if(datalistBones) datalistBones.innerHTML = '';
+        gltf.scene.traverse((node) => {
+            if (node.isBone) {
+                if(datalistBones) {
+                    let option = document.createElement('option'); option.value = node.name; datalistBones.appendChild(option);
+                    ossosCarregados++;
+                }
+            }
+        });
+
+        if (animations && animations.length > 0) {
+            if(datalistAnim) datalistAnim.innerHTML = ''; 
+            animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalistAnim.appendChild(option); });
+            if(statusText) { statusText.innerText = `(✅ ${animations.length} Animações | ${ossosCarregados} Ossos)`; statusText.style.color = "#2ecc71"; }
+        } else {
+            if(statusText) { statusText.innerText = `(✅ ${ossosCarregados} Ossos mapeados. Sem animações)`; statusText.style.color = "#3498db"; }
+        }
+        setTimeout(() => { if(statusText) statusText.innerText = ""; }, 5000);
+    }
+
+
+    // === GERENCIAMENTO DE MÚLTIPLOS ATAQUES E HITBOX CONTÍNUA ===
     let contadorAtaques = 0;
 
     window.adicionarFormAtaque = function(dados = null) {
@@ -592,7 +616,7 @@
         div.className = "bloco-ataque";
         div.id = `atk-bloco-${index}`;
         
-        let d = dados || { animacao: '', tipo: 'meelee', alcance: 1.8, dano: 10, tempoHit: 400, duracao: 1000, osso: 'hand_r', glbTiro: '', escalaTiro: '0.5 0.5 0.5', rotTiro: '0 0 0', velTiro: 6.0 };
+        let d = dados || { animacao: '', tipo: 'meelee', alcance: 1.8, dano: 10, freqAtaque: 2000, hitStart: 400, hitEnd: 800, duracao: 1000, osso: '', glbTiro: '', escalaTiro: '0.5 0.5 0.5', rotTiro: '0 0 0', velTiro: 6.0 };
 
         div.innerHTML = `
             <button class="btn-rm-atk" onclick="document.getElementById('atk-bloco-${index}').remove()">X</button>
@@ -607,20 +631,21 @@
                 <div class="input-group"><label style="color:#f1c40f;">Alcance (m)</label><input type="number" step="0.1" class="atk-alcance" value="${d.alcance}" title="1.8 = Espada, 3 = Lança, 15 = Magia"></div>
                 <div class="input-group"><label style="color:#e74c3c;">Dano / Força</label><input type="number" class="atk-dano" value="${d.dano}"></div>
                 
-                <div class="input-group"><label style="color:#3498db;">Momento do Hit (ms)</label><input type="number" class="atk-tempohit" value="${d.tempoHit}" title="Tempo exato para dar dano / atirar o projétil"></div>
-                <div class="input-group"><label style="color:#3498db;">Duração Total (ms)</label><input type="number" class="atk-duracao" value="${d.duracao}" title="Espera da animação terminar antes de andar de novo"></div>
+                <div class="input-group grupo-especial"><label style="color:#f39c12;">Freq. Ataque (ms)</label><input type="number" class="atk-freq" value="${d.freqAtaque}" title="Trava o inimigo de usar qualquer outro ataque por este tempo!"></div>
+                <div class="input-group"><label style="color:#3498db;">Início do Hit (ms)</label><input type="number" class="atk-hitstart" value="${d.hitStart}" title="Tempo exato que a espada começa a cortar ou a magia sai"></div>
+                <div class="input-group"><label style="color:#3498db;">Fim do Hit (ms)</label><input type="number" class="atk-hitend" value="${d.hitEnd}" title="Tempo exato que a espada termina de cortar o vento"></div>
+                <div class="input-group"><label style="color:#3498db;">Duração Animação (ms)</label><input type="number" class="atk-duracao" value="${d.duracao}" title="Espera da animação terminar antes de voltar a patrulhar"></div>
                 
-                <div class="input-group grupo-especial m-campo-${index}" style="display: ${d.tipo === 'meelee' ? 'flex' : 'none'};">
-                    <label style="color:#e74c3c;">Osso do Golpe</label>
-                    <input type="text" class="atk-osso" value="${d.osso}" placeholder="ex: espada, hand_r">
+                <div class="input-group m-campo-${index}" style="display: ${d.tipo === 'meelee' ? 'flex' : 'none'};">
+                    <label style="color:#e74c3c;">Osso do Golpe (Lista)</label>
+                    <input type="text" class="atk-osso" list="lista-ossos" value="${d.osso}" placeholder="ex: hand_r" title="A colisão vai sair em tempo real desse osso!">
                 </div>
 
                 <div class="input-group grupo-especial r-campo-${index}" style="display: ${d.tipo === 'atirador' ? 'flex' : 'none'}; grid-column: span 2;">
-                    <label style="color:#9b59b6;">GLB Magia/Tiro <span id="status-atk-${index}"></span></label>
+                    <label style="color:#9b59b6;">GLB Magia/Tiro</label>
                     <input type="text" class="atk-glb" id="atk-glb-in-${index}" value="${d.glbTiro}">
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
                         <input type="file" id="atk-file-${index}" accept=".glb,.gltf" style="width: 130px; font-size:0.75rem;" onchange="lerUploadAtk(this, ${index})">
-                        <button class="btn btn-dark" style="margin:0; padding:2px 8px; font-size:0.8rem; flex:1;" onclick="abrirGitHubModal('atk-glb-in-${index}', 'Magias/', 'status-atk-${index}')">🐙 GitHub</button>
                     </div>
                 </div>
                 <div class="input-group grupo-especial r-campo-${index}" style="display: ${d.tipo === 'atirador' ? 'flex' : 'none'};"><label style="color:#9b59b6;">Escala Magia</label><input type="text" class="atk-esc-tiro" value="${d.escalaTiro}"></div>
@@ -642,8 +667,12 @@
         document.getElementById(`atk-glb-in-${index}`).value = `Magias/${inputEl.files[0].name}`;
     };
 
+    // ==========================================
+    // CARREGAMENTOS E EVENTOS INICIAIS
+    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
 
+        // Logica Auxiliar Arquivos Locais Extras
         function processarArquivoLocal(fileInputId, targetInputId, pastaBase, statusId, selectCatId = null) {
             let fileInput = document.getElementById(fileInputId);
             if (!fileInput) return;
@@ -689,13 +718,11 @@
 
         processarArquivoLocal('file-arma-glb', 'arma-glb', 'Armas/', 'status-arma-glb', 'arma-cat');
         processarArquivoLocal('file-npc-glb', 'npc-glb', 'Npcs/', 'status-npc-glb');
-        processarArquivoLocal('file-ini-glb', 'novo-glb-caminho', 'Inimigos/', 'status-ini-glb');
         processarArquivoLocal('file-cosm-arquivo', 'cosm-arquivo', 'Cosmeticos/', 'status-cosm-arquivo', 'cosm-tipo');
         processarArquivoLocal('file-arma-hit', 'arma-hit-anim', 'Efeitos/', 'status-arma-hit', 'arma-cat');
         processarArquivoLocal('file-arma-swing', 'arma-swing-anim', 'Efeitos/', 'status-arma-swing', 'arma-cat');
         processarArquivoLocal('file-arma-proj', 'arma-projetil-glb', 'Magias/', 'status-arma-proj', 'arma-cat');
 
-        // Lógica Dinâmica da Forja de Armas
         function atualizarCamposArma() {
             let cat = document.getElementById('arma-cat').value;
             let isMelee = (cat === 'Espada' || cat === 'Luva');
@@ -707,6 +734,20 @@
             document.getElementById('grp-shuriken').className = isShuriken ? 'dyn-group active' : 'dyn-group';
         }
         document.getElementById('arma-cat').addEventListener('change', atualizarCamposArma);
+
+        // Lógica Inimigos Arquivo Local
+        let fIni = document.getElementById('file-ini-glb');
+        if(fIni) fIni.addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
+            const loader = new THREE.GLTFLoader(); 
+            document.getElementById('status-ini-glb').innerText = "(⏳ Lendo GLB e Esqueleto...)";
+            loader.load(URL.createObjectURL(file), function(gltf) {
+                extrairBonesEAnimacoes(gltf, 'lista-animacoes', 'lista-ossos', 'status-ini-glb');
+            });
+        });
+        
+        if (document.getElementById('container-lista-ataques').innerHTML === '') adicionarFormAtaque();
 
         // === JOGADORES ===
         firestoreDB.collection("jogadores").onSnapshot((querySnapshot) => {
@@ -725,262 +766,12 @@
                             <b>Inventário:</b> Arma: ${p.armaEquipada} | Escudo: ${p.nomeEscudo||'Nenhum'} <br>
                             🥷 <b>Munição:</b> ${p.shurikens || 0} Shurikens | 🏹 ${p.flechas || 0} Flechas
                         </div>
-                        
-                        <div style="margin-top: 10px; display: flex; gap: 5px; width: 100%; border-top: 1px solid #34495e; padding-top: 10px;">
-                            <input type="number" id="qtd-shuriken-${doc.id}" placeholder="Qtd" value="5" style="width: 60px; background: #34495e; color: white; border: 1px solid #7f8c8d; border-radius: 4px; padding: 5px;">
-                            <button class="btn btn-blue" style="margin: 0; padding: 5px 10px;" onclick="darShurikensAdmin('${doc.id}')">➕ Dar Shurikens</button>
-                        </div>
                     </div>`;
                 }
             });
         });
 
-        window.darShurikensAdmin = function(uid) {
-            let qtd = parseInt(document.getElementById(`qtd-shuriken-${uid}`).value);
-            if(isNaN(qtd) || qtd === 0) return alert("Insira uma quantidade válida!");
-            firestoreDB.collection("jogadores").doc(uid).update({ shurikens: firebase.firestore.FieldValue.increment(qtd) })
-            .then(() => alert(`${qtd > 0 ? '+' : ''}${qtd} Shurikens aplicadas ao jogador!`)).catch(e => alert("Erro ao enviar: " + e.message));
-        };
-
-        // === COSMÉTICOS ===
-        const listaCosmeticosDiv = document.getElementById('lista-cosmeticos');
-        db.ref('banco_cosmeticos').on('value', snap => {
-            if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML = ''; 
-            let cosmeticos = snap.val(); if(!cosmeticos) return;
-            
-            for(let id in cosmeticos) {
-                let c = cosmeticos[id];
-                let icone = '✨';
-                if(c.tipo === 'rosto') icone = '😀'; else if(c.tipo === 'cabelo') icone = '💇'; else if(c.tipo === 'corpo') icone = '🧍';
-                else if(c.tipo === 'capacete') icone = '⛑️'; else if(c.tipo === 'armadura') icone = '🦺'; else if(c.tipo === 'luvas') icone = '🧤'; else if(c.tipo === 'botas') icone = '👢';
-
-                let tagGen = c.genero === 'Ambos' ? 'M/F' : (c.genero === 'M' ? '♂️ Masc' : '♀️ Fem');
-                
-                if(listaCosmeticosDiv) listaCosmeticosDiv.innerHTML += `
-                    <div class="card cosm-card">
-                        <h3>${icone} ${c.nome || id} <span style="font-size:0.8rem; color:#ccc;">[${c.tipo.toUpperCase()}]</span></h3>
-                        <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px;">
-                            🆔 <b>ID:</b> ${id} <br>
-                            🚻 <b>Gênero:</b> ${tagGen} <br>
-                            📁 <b>Arquivo:</b> <span style="color:#bdc3c7; font-size:0.8rem;">${c.arquivo || ''}</span>
-                        </div>
-                        <div class="action-buttons" style="width: 100%;">
-                            <button class="btn btn-edit" onclick="carregarEdicaoCosmetico('${id}')">✏️ Editar</button>
-                            <button class="btn btn-dark" onclick="excluirCosmetico('${id}')">🗑️ Excluir</button>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-
-        window.salvarCosmetico = function() {
-            let id = document.getElementById('cosm-id').value.trim(); 
-            if(!id) { alert("Dê um ID único para a peça! (Ex: capacete_ferro_01)"); return; }
-            db.ref('banco_cosmeticos/' + id).set({
-                nome: document.getElementById('cosm-nome').value.trim() || id, tipo: document.getElementById('cosm-tipo').value,
-                genero: document.getElementById('cosm-genero').value, arquivo: document.getElementById('cosm-arquivo').value.trim(),
-                escala: document.getElementById('cosm-escala').value || '1 1 1', posicao: document.getElementById('cosm-pos').value || '0 0 0',
-                rotacao: document.getElementById('cosm-rot').value || '0 0 0'
-            }).then(() => {
-                alert("🎭 Peça registrada no banco com sucesso!");
-                document.getElementById('cosm-id').value = ''; document.getElementById('cosm-nome').value = ''; document.getElementById('cosm-arquivo').value = '';
-            }).catch(e => alert("Erro ao salvar: " + e.message));
-        };
-
-        window.carregarEdicaoCosmetico = function(id) {
-            db.ref('banco_cosmeticos/' + id).once('value').then(snap => {
-                let c = snap.val(); if(!c) return;
-                document.getElementById('cosm-id').value = id; document.getElementById('cosm-nome').value = c.nome || '';
-                document.getElementById('cosm-tipo').value = c.tipo || 'corpo'; document.getElementById('cosm-genero').value = c.genero || 'Ambos';
-                document.getElementById('cosm-arquivo').value = c.arquivo || ''; document.getElementById('cosm-escala').value = c.escala || '1 1 1';
-                document.getElementById('cosm-pos').value = c.posicao || '0 0 0'; document.getElementById('cosm-rot').value = c.rotacao || '0 0 0';
-                let formCosm = document.getElementById('form-cosmetico'); if(formCosm) formCosm.scrollIntoView({ behavior: 'smooth' });
-            });
-        };
-
-        window.excluirCosmetico = function(id) { 
-            if(confirm(`DESTRUIR a peça ${id}? Ela será removida de todos os jogadores!`)) { db.ref('banco_cosmeticos/' + id).remove(); }
-        };
-
-        // === ARMAS ===
-        const listaArmasDiv = document.getElementById('lista-armas');
-        db.ref('banco_armas').on('value', snap => {
-            if(listaArmasDiv) listaArmasDiv.innerHTML = ''; 
-            let armas = snap.val(); if(!armas) return;
-            for(let id in armas) {
-                let a = armas[id];
-                let corCard = a.categoria === 'Escudo' ? '#3498db' : (a.categoria === 'Varinha' || a.categoria === 'Arco' ? '#9b59b6' : '#e74c3c');
-                if(listaArmasDiv) listaArmasDiv.innerHTML += `
-                    <div class="card arma-card" style="border-left-color: ${corCard}">
-                        <h3>${id} <span style="font-size:0.8rem; color:#ccc;">[${a.categoria}]</span></h3>
-                        <div style="width: 100%; font-size: 0.9rem;">
-                            🗡️ Dano: <b>${a.danoBonus||0}</b> | 🛡️ Defesa: <b>${a.defesaBonus||0}</b> | 📏 Alcance: <b>${a.distancia||3}m</b><br>
-                            ❤️ Bônus HP: <b>${a.bonusHP||0}</b> | 👟 Bônus Vel: <b>${a.bonusVelocidade||0}</b>
-                        </div>
-                        <div class="action-buttons" style="width: 100%;">
-                            <button class="btn btn-edit" onclick="carregarEdicaoArma('${id}')">✏️ Editar</button>
-                            <button class="btn btn-dark" onclick="excluirArma('${id}')">🗑️ Excluir</button>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-
-        window.carregarEdicaoArma = function(id) {
-            db.ref('banco_armas/' + id).once('value').then(snap => {
-                let a = snap.val(); if(!a) return;
-                document.getElementById('arma-id').value = id; document.getElementById('arma-cat').value = a.categoria || 'Espada';
-                document.getElementById('arma-glb').value = a.modeloGlb || ''; document.getElementById('arma-dano').value = a.danoBonus || 0;
-                document.getElementById('arma-defesa').value = a.defesaBonus || 0; document.getElementById('arma-dist').value = a.distancia || 3.0;
-                document.getElementById('arma-b-hp').value = a.bonusHP || 0; document.getElementById('arma-b-vel').value = a.bonusVelocidade || 0;
-                document.getElementById('arma-b-sorte').value = a.bonusSorte || 0; document.getElementById('arma-escala').value = a.escalaMao || '1 1 1';
-                document.getElementById('arma-rot').value = a.rotMao || '0 0 0'; document.getElementById('arma-pos').value = a.posMao || '0 0 0';
-                document.getElementById('arma-inv-escala').value = a.escalaInv || '0.15 0.15 0.15'; document.getElementById('arma-inv-rot').value = a.rotInv || '0 0 0';
-                document.getElementById('arma-inv-pos').value = a.posInv || '0 0 0.05';
-                
-                document.getElementById('arma-hit-anim').value = a.hitAnim || ''; document.getElementById('arma-hit-escala').value = a.hitEscala || '1 1 1';
-                document.getElementById('arma-hit-additive').value = a.hitAdditive ? 'true' : 'false';
-                
-                document.getElementById('arma-swing-anim').value = a.swingAnim || ''; 
-                document.getElementById('arma-swing-cols').value = a.swingCols || 5; 
-                document.getElementById('arma-swing-duracao').value = a.swingDuracao || 300;
-                document.getElementById('arma-swing-escala').value = a.swingEscala || '2 2 2';
-                document.getElementById('arma-swing-rot').value = a.swingRotacao || '0 0 0';
-                document.getElementById('arma-swing-additive').value = a.swingAdditive ? 'true' : 'false';
-                
-                document.getElementById('arma-projetil-glb').value = a.projetilGlb || ''; document.getElementById('arma-projetil-escala').value = a.projetilEscala || '1 1 1';
-                document.getElementById('arma-projetil-pos').value = a.projetilPos || '0 0.45 0'; document.getElementById('arma-projetil-vel').value = a.projetilVel || 20;
-                
-                document.getElementById('arma-shuriken-gravidade').value = a.shurikenGravidade || -1.2; document.getElementById('arma-shuriken-vel').value = a.shurikenVel || 2.5;
-
-                atualizarCamposArma();
-                let formArma = document.getElementById('form-arma'); if(formArma) formArma.scrollIntoView({ behavior: 'smooth' });
-            });
-        };
-
-        window.forjarArma = function() {
-            let id = document.getElementById('arma-id').value; if(!id) { alert("Dê um nome para a arma!"); return; }
-            db.ref('banco_armas/' + id).set({
-                categoria: document.getElementById('arma-cat').value, modeloGlb: document.getElementById('arma-glb').value,
-                danoBonus: parseFloat(document.getElementById('arma-dano').value) || 0, defesaBonus: parseFloat(document.getElementById('arma-defesa').value) || 0,
-                distancia: parseFloat(document.getElementById('arma-dist').value) || 3.0, bonusHP: parseFloat(document.getElementById('arma-b-hp').value) || 0,
-                bonusVelocidade: parseFloat(document.getElementById('arma-b-vel').value) || 0, bonusSorte: parseFloat(document.getElementById('arma-b-sorte').value) || 0,
-                escalaMao: document.getElementById('arma-escala').value || '1 1 1', rotMao: document.getElementById('arma-rot').value || '0 0 0', posMao: document.getElementById('arma-pos').value || '0 0 0',
-                escalaInv: document.getElementById('arma-inv-escala').value || '0.15 0.15 0.15', rotInv: document.getElementById('arma-inv-rot').value || '0 0 0', posInv: document.getElementById('arma-inv-pos').value || '0 0 0.05',
-                hitAnim: document.getElementById('arma-hit-anim').value, hitEscala: document.getElementById('arma-hit-escala').value || '1 1 1',
-                hitAdditive: document.getElementById('arma-hit-additive').value === 'true',
-                swingAnim: document.getElementById('arma-swing-anim').value, 
-                swingCols: parseInt(document.getElementById('arma-swing-cols').value) || 5,
-                swingDuracao: parseInt(document.getElementById('arma-swing-duracao').value) || 300,
-                swingEscala: document.getElementById('arma-swing-escala').value || '2 2 2',
-                swingRotacao: document.getElementById('arma-swing-rot').value || '0 0 0',
-                swingAdditive: document.getElementById('arma-swing-additive').value === 'true',
-                projetilGlb: document.getElementById('arma-projetil-glb').value, projetilEscala: document.getElementById('arma-projetil-escala').value || '1 1 1',
-                projetilPos: document.getElementById('arma-projetil-pos').value || '0 0.45 0', projetilVel: parseFloat(document.getElementById('arma-projetil-vel').value) || 20,
-                shurikenGravidade: parseFloat(document.getElementById('arma-shuriken-gravidade').value) || -1.2, shurikenVel: parseFloat(document.getElementById('arma-shuriken-vel').value) || 2.5
-            }).then(() => alert("Item forjado e enviado para os jogadores!"));
-        };
-
-        window.excluirArma = function(id) { if(confirm(`DESTRUIR o item ${id}? Ele sumirá do inventário de todos!`)) db.ref('banco_armas/' + id).remove(); };
-
-        // === RESPAWNS ===
-        const listaRespawnsDiv = document.getElementById('lista-respawns');
-        db.ref('cenario_respawns').on('child_added', (snapshot) => {
-            let id = snapshot.key; let r = snapshot.val();
-            let card = document.createElement('div'); card.className = 'card respawn-card'; card.id = `card-resp-${id}`;
-            card.innerHTML = `
-                <h3>🔮 ${id}</h3>
-                <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
-                    📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
-                    📏 Raio de Ativação: <b>${r.raio || 3}m</b>
-                </div>
-                <div class="action-buttons" style="width: 100%;">
-                    <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
-                    <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
-                </div>
-            `;
-            if(listaRespawnsDiv) listaRespawnsDiv.appendChild(card);
-        });
-        
-        db.ref('cenario_respawns').on('child_changed', (snapshot) => { 
-            let id = snapshot.key; let r = snapshot.val();
-            let card = document.getElementById(`card-resp-${id}`); 
-            if(card) {
-                card.innerHTML = `
-                    <h3>🔮 ${id}</h3>
-                    <div style="width: 100%; font-size: 0.9rem; margin-bottom: 10px; color: #bdc3c7;">
-                        📍 X: <b>${r.pos.x}</b> | Y: <b>${r.pos.y}</b> | Z: <b>${r.pos.z}</b><br>
-                        📏 Raio de Ativação: <b>${r.raio || 3}m</b>
-                    </div>
-                    <div class="action-buttons" style="width: 100%;">
-                        <button class="btn btn-edit" onclick="carregarEdicaoRespawn('${id}')">✏️ Editar</button>
-                        <button class="btn btn-dark" onclick="db.ref('cenario_respawns/${id}').remove()">🗑️ Excluir</button>
-                    </div>
-                `;
-            }
-        });
-
-        db.ref('cenario_respawns').on('child_removed', (snapshot) => { let card = document.getElementById(`card-resp-${snapshot.key}`); if(card) card.remove(); });
-
-        window.carregarEdicaoRespawn = function(id) {
-            db.ref('cenario_respawns/' + id).once('value').then(snap => {
-                let r = snap.val(); if(!r) return;
-                document.getElementById('resp-id').value = id;
-                document.getElementById('resp-x').value = r.pos.x || 0;
-                document.getElementById('resp-y').value = r.pos.y || 0;
-                document.getElementById('resp-z').value = r.pos.z || 0;
-                document.getElementById('resp-raio').value = r.raio || 3;
-                let formResp = document.querySelector('.resp-spawn'); if(formResp) formResp.scrollIntoView({ behavior: 'smooth' });
-            });
-        };
-
-        window.spawnarRespawn = function() {
-            let id = document.getElementById('resp-id').value; if(!id) return;
-            db.ref('cenario_respawns/' + id).set({ pos: { x: parseFloat(document.getElementById('resp-x').value)||0, y: parseFloat(document.getElementById('resp-y').value)||0, z: parseFloat(document.getElementById('resp-z').value)||0 }, raio: parseFloat(document.getElementById('resp-raio').value) || 3 });
-        };
-
-        // === NPCS ===
-        const listaNpcsDiv = document.getElementById('lista-npcs');
-        db.ref('cenario_npcs').on('child_added', (snapshot) => {
-            let id = snapshot.key; let npc = snapshot.val();
-            let card = document.createElement('div'); card.className = 'card npc-card'; card.id = `card-npc-${id}`;
-            card.innerHTML = `<h3>🧑‍🌾 ${npc.nome || id}</h3><div class="action-buttons"><button class="btn btn-edit" onclick="carregarEdicaoNpc('${id}')">✏️ Editar</button><button class="btn btn-dark" onclick="db.ref('cenario_npcs/${id}').remove()">🗑️ Excluir</button></div>`;
-            if(listaNpcsDiv) listaNpcsDiv.appendChild(card);
-        });
-        db.ref('cenario_npcs').on('child_removed', (snapshot) => { let card = document.getElementById(`card-npc-${snapshot.key}`); if(card) card.remove(); });
-
-        window.carregarEdicaoNpc = function(id) {
-            db.ref('cenario_npcs/' + id).once('value').then(snap => {
-                let data = snap.val(); if(!data) return; window.abrirAba('tab-npcs', null);
-                document.getElementById('npc-id').value = id; document.getElementById('npc-nome').value = data.nome || '';
-                document.getElementById('npc-tipo').value = data.tipo || 'dialogo'; document.getElementById('npc-glb').value = data.modeloGlb || '';
-                document.getElementById('npc-escala').value = data.escala ? `${data.escala.x} ${data.escala.y} ${data.escala.z}` : '1 1 1';
-                document.getElementById('npc-anim-parado').value = data.animParado || ''; document.getElementById('npc-anim-falando').value = data.animFalando || '';
-                document.getElementById('npc-x').value = data.pos ? data.pos.x : 0; document.getElementById('npc-y').value = data.pos ? data.pos.y : 0; document.getElementById('npc-z').value = data.pos ? data.pos.z : 0;
-                document.getElementById('npc-dialogo').value = data.dialogoPadrao || ''; document.getElementById('npc-dialogo-missao').value = data.dialogoMissao || ''; 
-                document.getElementById('npc-missao-id').value = data.idMissao || ''; document.getElementById('npc-chave-conclusao').value = data.chaveConclusao || ''; 
-                document.getElementById('npc-requisito').value = data.requisito || ''; document.getElementById('npc-rec-xp').value = data.recXP || 0;
-                document.getElementById('npc-rec-ouro').value = data.recOuro || 0; document.getElementById('npc-rec-item').value = data.recItem || '';
-                let formNpc = document.getElementById('form-npc'); if(formNpc) formNpc.scrollIntoView({ behavior: 'smooth' });
-            });
-        };
-
-        window.spawnarNovoNpc = function() {
-            let id = document.getElementById('npc-id').value; if(!id) return;
-            let escNpcArr = document.getElementById('npc-escala').value.split(' ');
-            let escNpcObj = { x: parseFloat(escNpcArr[0])||1, y: parseFloat(escNpcArr[1])||1, z: parseFloat(escNpcArr[2])||1 };
-            db.ref('cenario_npcs/' + id).update({
-                nome: document.getElementById('npc-nome').value, tipo: document.getElementById('npc-tipo').value,
-                pos: { x: parseFloat(document.getElementById('npc-x').value)||0, y: parseFloat(document.getElementById('npc-y').value)||0, z: parseFloat(document.getElementById('npc-z').value)||0 },
-                escala: escNpcObj, modeloGlb: document.getElementById('npc-glb').value, animParado: document.getElementById('npc-anim-parado').value, animFalando: document.getElementById('npc-anim-falando').value,
-                dialogoPadrao: document.getElementById('npc-dialogo').value, dialogoMissao: document.getElementById('npc-dialogo-missao').value,
-                idMissao: document.getElementById('npc-missao-id').value, chaveConclusao: document.getElementById('npc-chave-conclusao').value,
-                requisito: document.getElementById('npc-requisito').value, recXP: parseFloat(document.getElementById('npc-rec-xp').value) || 0,
-                recOuro: parseFloat(document.getElementById('npc-rec-ouro').value) || 0, recItem: document.getElementById('npc-rec-item').value
-            }).then(() => alert(`NPC atualizado!`));
-        };
-
-        // === INIMIGOS (COM MÚLTIPLOS ATAQUES) ===
+        // === INIMIGOS DB ===
         const listaInimigosDiv = document.getElementById('lista-inimigos');
         db.ref('cenario_inimigos').on('child_added', (snapshot) => {
             let id = snapshot.key; let ini = snapshot.val();
@@ -1025,23 +816,22 @@
                 document.getElementById('novo-spawn-x').value = data.spawnPos ? data.spawnPos.x : 0; document.getElementById('novo-spawn-y').value = data.spawnPos ? data.spawnPos.y : 0; 
                 document.getElementById('novo-spawn-z').value = data.spawnPos ? data.spawnPos.z : 0; document.getElementById('novo-aggro-range').value = data.aggroRange || 15; 
                 document.getElementById('novo-speed').value = data.speed || 0.08; 
-                document.getElementById('novo-cooldown').value = data.cooldown || 2000; document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
+                document.getElementById('novo-respawn-time').value = (data.respawnTime / 1000) || 60;
                 
-                // Limpa lista anterior e carrega os múltiplos ataques
                 document.getElementById('container-lista-ataques').innerHTML = '';
                 let ataques = data.ataques || [];
                 
-                // Tratamento retrocompatível para inimigos antigos sem array de ataques
+                // Retrocompatibilidade
                 if(ataques.length === 0 && data.animAtaque) {
                     ataques.push({
                         animacao: data.animAtaque, tipo: data.tipo || 'meelee', alcance: data.attackRange || 1.8,
-                        dano: data.dano || 10, tempoHit: 400, duracao: 1000, osso: data.ossoAtaque || '',
+                        dano: data.dano || 10, freqAtaque: data.cooldown || 2000, hitStart: 400, hitEnd: 800, duracao: 1000, osso: data.ossoAtaque || 'hand_r',
                         glbTiro: data.modeloTiroGlb || '', escalaTiro: data.escalaTiro || '0.5 0.5 0.5', rotTiro: data.rotacaoTiro || '0 0 0', velTiro: data.velocidadeTiro || 6.0
                     });
                 }
 
                 ataques.forEach(atk => adicionarFormAtaque(atk));
-                if(ataques.length === 0) adicionarFormAtaque(); // Inicia com 1 pelo menos
+                if(ataques.length === 0) adicionarFormAtaque(); 
 
                 let formInimigo = document.getElementById('form-inimigo'); if(formInimigo) formInimigo.scrollIntoView({ behavior: 'smooth' });
             });
@@ -1052,7 +842,6 @@
             let escIniArr = document.getElementById('novo-escala').value.split(' ');
             let escIniObj = { x: parseFloat(escIniArr[0])||1, y: parseFloat(escIniArr[1])||1, z: parseFloat(escIniArr[2])||1 };
             
-            // Extraindo todos os ataques do HTML
             let listaAtksExtraidos = [];
             let blocosAtaque = document.querySelectorAll('.bloco-ataque');
             blocosAtaque.forEach(bloco => {
@@ -1061,7 +850,9 @@
                     tipo: bloco.querySelector('.atk-tipo').value,
                     alcance: parseFloat(bloco.querySelector('.atk-alcance').value) || 1.8,
                     dano: parseFloat(bloco.querySelector('.atk-dano').value) || 10,
-                    tempoHit: parseFloat(bloco.querySelector('.atk-tempohit').value) || 400,
+                    freqAtaque: parseFloat(bloco.querySelector('.atk-freq').value) || 2000,
+                    hitStart: parseFloat(bloco.querySelector('.atk-hitstart').value) || 400,
+                    hitEnd: parseFloat(bloco.querySelector('.atk-hitend').value) || 800,
                     duracao: parseFloat(bloco.querySelector('.atk-duracao').value) || 1000,
                     osso: bloco.querySelector('.atk-osso').value.trim(),
                     glbTiro: bloco.querySelector('.atk-glb').value,
@@ -1078,34 +869,15 @@
                 spawnPos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 },
                 pos: { x: parseFloat(document.getElementById('novo-spawn-x').value)||0, y: parseFloat(document.getElementById('novo-spawn-y').value)||0, z: parseFloat(document.getElementById('novo-spawn-z').value)||0 }, 
                 comportamento: document.getElementById('novo-comportamento').value, movimento: document.getElementById('novo-movimento').value, escala: escIniObj,
-                aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15, 
-                speed: parseFloat(document.getElementById('novo-speed').value) || 0.08, cooldown: parseFloat(document.getElementById('novo-cooldown').value) || 2000,
+                aggroRange: parseFloat(document.getElementById('novo-aggro-range').value) || 15, speed: parseFloat(document.getElementById('novo-speed').value) || 0.08, 
                 respawnTime: (parseFloat(document.getElementById('novo-respawn-time').value) || 60) * 1000, 
                 modeloGlb: document.getElementById('novo-glb-caminho').value, animParado: document.getElementById('novo-anim-parado').value, animAndando: document.getElementById('novo-anim-andando').value,
                 animMorte: document.getElementById('novo-anim-morte').value,
-                ataques: listaAtksExtraidos // ARRAY SALVO NO BANCO
+                ataques: listaAtksExtraidos
             }).then(() => alert(`Monstro ${id} atualizado com ${listaAtksExtraidos.length} ataque(s)!`));
         };
-
-        // Inicialização do Upload de Inimigo padrão
-        let fIni = document.getElementById('file-ini-glb');
-        if(fIni) fIni.addEventListener('change', function(e) {
-            const file = e.target.files[0]; if (!file) return;
-            document.getElementById('novo-glb-caminho').value = `Inimigos/${file.name}`;
-            const loader = new THREE.GLTFLoader(); 
-            loader.load(URL.createObjectURL(file), function(gltf) {
-                const animations = gltf.animations; const datalist = document.getElementById('lista-animacoes'); 
-                if (animations && animations.length > 0) {
-                    if(datalist) datalist.innerHTML = ''; 
-                    animations.forEach(anim => { let option = document.createElement('option'); option.value = anim.name; datalist.appendChild(option); });
-                }
-            });
-        });
         
         atualizarCamposArma();
-        
-        // Se a tela for recarregada em branco, criamos 1 formulário vazio pra não ficar sem ataques visíveis
-        if (document.getElementById('container-lista-ataques').innerHTML === '') adicionarFormAtaque();
     }); 
 </script>
 </body>
