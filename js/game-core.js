@@ -2,7 +2,7 @@
 // FUNÇÕES PRINCIPAIS E LÓGICA DE INTERFACE
 // ==========================================
 
-window.comboAtaque = 0; // Controle de alternância de golpes
+window.comboAtaque = 0; 
 
 window.salvarJogoNuvem = function() { 
     if (!window.currentUser) return; 
@@ -334,14 +334,15 @@ window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
     scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
 };
 
-window.gerarHitVFX = function(pos, armaStats) {
+// ADICIONADO: 'direcaoImpacto' para calcular o angulo do corte 3D
+window.gerarHitVFX = function(pos, armaStats, direcaoImpacto = null) {
     let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
     let offsetX = (Math.random() - 0.5) * 0.4; let offsetY = (Math.random() - 0.5) * 0.4; let offsetZ = (Math.random() - 0.5) * 0.4;
     vfx.setAttribute('position', `${pos.x + offsetX} ${pos.y + offsetY} ${pos.z + offsetZ}`);
     
     let cam = document.querySelector('[camera]'); 
+    let camQuat = new THREE.Quaternion(); 
     if(cam) { 
-        let camQuat = new THREE.Quaternion(); 
         cam.object3D.getWorldQuaternion(camQuat); 
         vfx.object3D.quaternion.copy(camQuat); 
     }
@@ -361,15 +362,35 @@ window.gerarHitVFX = function(pos, armaStats) {
         return;
     }
 
-    if (armaStats && armaStats.categoria === 'Espada') {
+    if (armaStats && armaStats.categoria === 'Shuriken') {
+        vfx.innerHTML = `
+            <a-entity rotation="0 0 0" animation__rot="property: rotation; to: 0 0 180; dur: 150; easing: linear">
+                <a-box color="#ffffff" width="0.03" height="1.2" depth="0.03" material="shader: flat; emissive: #ffffff; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 0 1.5 0; dur: 150" animation__fade="property: material.opacity; to: 0; dur: 150"></a-box>
+                <a-box color="#ffffff" width="0.03" height="1.2" depth="0.03" rotation="0 0 90" material="shader: flat; emissive: #ffffff; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 0 1.5 0; dur: 150" animation__fade="property: material.opacity; to: 0; dur: 150"></a-box>
+            </a-entity>
+            <a-sphere radius="0.3" color="#ffaa00" material="shader: flat; emissive: #ffaa00; emissiveIntensity: 2; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2 2 2; dur: 150" animation__fade="property: material.opacity; to: 0; dur: 150"></a-sphere>
+        `;
+        scene.appendChild(vfx);
+        setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 200);
+    }
+    else if (armaStats && armaStats.categoria === 'Espada') {
         let corCorte = '#00FFFF';
         if(armaStats.danoBonus > 10) corCorte = '#ff0055'; 
         else if(armaStats.danoBonus > 6) corCorte = '#f1c40f';
 
+        let rotZ = (Math.random() - 0.5) * 90; // Default de angulo se nao houver direção informada
+        if (direcaoImpacto) {
+            let localDir = direcaoImpacto.clone();
+            if(cam) {
+                let camInv = camQuat.clone().invert();
+                localDir.applyQuaternion(camInv);
+                rotZ = THREE.MathUtils.radToDeg(Math.atan2(localDir.y, localDir.x)) + 90; // Ajusta para a linha acompanhar a direçao do corte
+            }
+        }
+
         vfx.innerHTML = `
-            <a-sphere radius="0.3" color="#ffffff" material="shader: flat; emissive: #ffffff; emissiveIntensity: 5; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 3 3 3; dur: 150; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 150; easing: easeOutQuad"></a-sphere>
-            <a-box color="${corCorte}" width="0.05" height="1.5" depth="0.05" rotation="0 0 45" material="shader: flat; emissive: ${corCorte}; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1 2.5 1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-box>
-            <a-box color="${corCorte}" width="0.05" height="1.5" depth="0.05" rotation="0 0 -45" material="shader: flat; emissive: ${corCorte}; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1 2.5 1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-box>
+            <a-sphere radius="0.25" color="#ffffff" material="shader: flat; emissive: #ffffff; emissiveIntensity: 5; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 3 3 3; dur: 150; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 150; easing: easeOutQuad"></a-sphere>
+            <a-box color="${corCorte}" width="0.04" height="2.2" depth="0.04" rotation="0 0 ${rotZ}" material="shader: flat; emissive: ${corCorte}; emissiveIntensity: 4; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 0.1 3 0.1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-box>
         `;
         scene.appendChild(vfx);
         setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 250);
@@ -411,6 +432,9 @@ window.realizarAtaque = function() {
     let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
+
+    // Simulador de Direção Vetorial do Golpe para VFX
+    let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
 
     if (armaStats.categoria === 'Luva') {
         if (window.comboAtaque === 0 && pcWeapon) {
@@ -507,7 +531,7 @@ window.realizarAtaque = function() {
                 if(syncComp) { 
                     syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
                     let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0; 
-                    window.gerarHitVFX(posHit, armaStats);
+                    window.gerarHitVFX(posHit, armaStats, dirImpacto);
                 }
             }
         } 
