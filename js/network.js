@@ -79,113 +79,103 @@ AFRAME.registerComponent('gerenciador-respawns', {
 });
 
 AFRAME.registerComponent('sistema-inimigo-sync', { 
-    schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 }, tipo: { type: 'string', default: 'atirador'} }, 
+    schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 } }, 
     tocarAnimacao: function(nomePadrao, loopState, clamp = false) { 
         if (!nomePadrao) return; let visual = this.el.querySelector('.modelo-visual');
         if (visual && visual.hasAttribute('gltf-model')) { 
             let nomeAnimacaoFinal = nomePadrao;
-            if (this.dadosBD) { if (nomePadrao === window.ANIM_PARADO && this.dadosBD.animParado) nomeAnimacaoFinal = this.dadosBD.animParado; if (nomePadrao === window.ANIM_ANDANDO && this.dadosBD.animAndando) nomeAnimacaoFinal = this.dadosBD.animAndando; if (nomePadrao === window.ANIM_ATIRANDO && this.dadosBD.animAtaque) nomeAnimacaoFinal = this.dadosBD.animAtaque; if (nomePadrao === window.ANIM_MORTE && this.dadosBD.animMorte) nomeAnimacaoFinal = this.dadosBD.animMorte; }
-            if (this.animacaoAtual !== nomeAnimacaoFinal) { this.animacaoAtual = nomeAnimacaoFinal; visual.removeAttribute('animation-mixer'); setTimeout(() => { if(visual && visual.parentNode) { visual.setAttribute('animation-mixer', `clip: ${nomeAnimacaoFinal}; loop: ${loopState}; crossFadeDuration: 0.2; clampWhenFinished: ${clamp}`); } }, 20); }
+            if (this.dadosBD) { if (nomePadrao === window.ANIM_PARADO && this.dadosBD.animParado) nomeAnimacaoFinal = this.dadosBD.animParado; if (nomePadrao === window.ANIM_ANDANDO && this.dadosBD.animAndando) nomeAnimacaoFinal = this.dadosBD.animAndando; if (nomePadrao === window.ANIM_MORTE && this.dadosBD.animMorte) nomeAnimacaoFinal = this.dadosBD.animMorte; }
+            if (this.animacaoAtual !== nomeAnimacaoFinal) { 
+                this.animacaoAtual = nomeAnimacaoFinal; 
+                visual.removeAttribute('animation-mixer'); 
+                setTimeout(() => { 
+                    if(visual && visual.parentNode) { 
+                        visual.setAttribute('animation-mixer', `clip: ${nomeAnimacaoFinal}; loop: ${loopState}; crossFadeDuration: 0.2; clampWhenFinished: ${clamp}`); 
+                    } 
+                }, 20); 
+            }
         }
     },
     init: function () { 
         this.hpAtual = this.data.hpMax; this.el.classList.add('interativo'); this.targetPos = new THREE.Vector3(); this.targetRotY = 0; this.isMoving = false; this.isAttacking = false; this.animacaoAtual = ""; this.isDead = false;
         this.el.addEventListener('model-loaded', () => { if (!this.isDead) this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); });
-        this.dbRef = realtimeDB.ref('cenario_inimigos/' + this.data.idBd); this.ultimoTempoTiro = 0; this.ultimoTempoMelee = 0; this.dadosBD = null;
+        this.dbRef = realtimeDB.ref('cenario_inimigos/' + this.data.idBd); this.ultimoTempoAtaque = 0; this.dadosBD = null;
 
         this.dbRef.on('value', snap => {
             if (!this.el || !this.el.parentNode) return; let data = snap.val(); if (!data) return; this.dadosBD = data; let textoHp = this.el.querySelector('.hp-texto');
             if (data.pos) { let pX = isNaN(data.pos.x) ? 0 : data.pos.x; let pY = isNaN(data.pos.y) ? 0 : data.pos.y; let pZ = isNaN(data.pos.z) ? 0 : data.pos.z; this.targetPos.set(pX, pY, pZ); this.targetRotY = isNaN(data.rotY) ? 0 : data.rotY; }
 
-            if (data.hp > 0 && data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
-                this.ultimoTempoMelee = data.meleeAttack.time; this.isAttacking = true; this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+            // === NOVO SISTEMA DE ATAQUE MULTIPLO ===
+            if (data.hp > 0 && data.ataqueAtivo && data.ataqueAtivo.time !== this.ultimoTempoAtaque) {
+                this.ultimoTempoAtaque = data.ataqueAtivo.time; this.isAttacking = true; 
                 
-                // ATRASO DE 400ms PARA SINCRONIZAR COM O CORTE DA ESPADA DO INIMIGO
+                let ataques = data.ataques || [];
+                let atk = ataques[data.ataqueAtivo.index] || ataques[0]; // Pega o ataque escolhido pelo servidor
+                if (!atk) return;
+
+                // Toca a animação específica e espera finalizar!
+                this.tocarAnimacao(atk.animacao, 'once', true); 
+                
+                let delayHit = parseFloat(atk.tempoHit) || 400; // Ms antes do dano/tiro
+                let duracaoCompleta = parseFloat(atk.duracao) || 1000; // Tempo em que o inimigo fica travado na animação
+
                 setTimeout(() => {
                     if (this.hpAtual <= 0) return; 
 
-                    if (window.playerState.vivo && !window.playerState.invulneravel) {
-                        let camEl = document.querySelector('[camera]'); 
-                        if(camEl) { 
-                            camEl.object3D.updateMatrixWorld(true); 
-                            let posPlayer = new THREE.Vector3(); 
-                            camEl.object3D.getWorldPosition(posPlayer); 
-                            
-                            let posAtaque = new THREE.Vector3();
-                            let achouOsso = false;
-                            
-                            // BUSCA O OSSO DA ARMA DENTRO DO GLB
-                            let visual = this.el.querySelector('.modelo-visual');
-                            if (visual) {
-                                let mesh = visual.getObject3D('mesh');
-                                if (mesh) {
-                                    mesh.traverse((node) => {
-                                        if (!achouOsso && node.isBone) {
-                                            let nName = node.name.toLowerCase();
-                                            let ossoDesejado = (data.ossoAtaque || '').toLowerCase();
-                                            let matchBone = false;
-                                            
-                                            if (ossoDesejado !== '') {
-                                                // Se o mestre definiu um osso no admin, procura SÓ por ele
-                                                matchBone = nName.includes(ossoDesejado);
-                                            } else {
-                                                // Fallback padrão se estiver em branco
-                                                matchBone = nName.includes('hand_r') || nName.includes('righthand') || nName.includes('weapon') || nName.includes('espada') || nName.includes('sword') || nName.includes('arma');
+                    if (atk.tipo === 'meelee') {
+                        if (window.playerState.vivo && !window.playerState.invulneravel) {
+                            let camEl = document.querySelector('[camera]'); 
+                            if(camEl) { 
+                                camEl.object3D.updateMatrixWorld(true); let posPlayer = new THREE.Vector3(); camEl.object3D.getWorldPosition(posPlayer); 
+                                let posAtaque = new THREE.Vector3(); let achouOsso = false;
+                                
+                                let visual = this.el.querySelector('.modelo-visual');
+                                if (visual) {
+                                    let mesh = visual.getObject3D('mesh');
+                                    if (mesh) {
+                                        mesh.traverse((node) => {
+                                            if (!achouOsso && node.isBone) {
+                                                let nName = node.name.toLowerCase();
+                                                let ossoDesejado = (atk.osso || '').toLowerCase();
+                                                
+                                                if (ossoDesejado !== '' && nName.includes(ossoDesejado)) { node.getWorldPosition(posAtaque); achouOsso = true; } 
+                                                else if (ossoDesejado === '' && (nName.includes('hand_r') || nName.includes('righthand') || nName.includes('weapon') || nName.includes('sword'))) { node.getWorldPosition(posAtaque); achouOsso = true; }
                                             }
-
-                                            if (matchBone) {
-                                                node.getWorldPosition(posAtaque);
-                                                achouOsso = true;
-                                            }
-                                        }
-                                    });
+                                        });
+                                    }
                                 }
+                                
+                                if (!achouOsso) { this.el.object3D.getWorldPosition(posAtaque); let dirFrente = new THREE.Vector3(0, 0, 1).applyQuaternion(this.el.object3D.quaternion); posAtaque.add(dirFrente.multiplyScalar(1.0)); }
+                                
+                                let alcanceHit = parseFloat(atk.alcance) || 2.0; 
+                                let dist2D = Math.hypot(posPlayer.x - posAtaque.x, posPlayer.z - posAtaque.z); 
+                                
+                                if (dist2D <= alcanceHit) { window.receberDanoJogador(parseFloat(atk.dano) || 10); } 
                             }
-                            
-                            // SE NÃO ACHOU O OSSO, PROJETA O ATAQUE 1 METRO PARA FRENTE
-                            if (!achouOsso) {
-                                this.el.object3D.getWorldPosition(posAtaque);
-                                let dirFrente = new THREE.Vector3(0, 0, 1).applyQuaternion(this.el.object3D.quaternion);
-                                posAtaque.add(dirFrente.multiplyScalar(1.0));
-                            }
-
-                            let alcanceHit = data.attackRange !== undefined ? data.attackRange : 2.0; 
-                            
-                            // IGNORA A ALTURA NO CÁLCULO PARA EVITAR QUE O JOGADOR DE VR DESVIE SÓ ABAIXANDO A CABEÇA UM POUCO
-                            let dist2D = Math.hypot(posPlayer.x - posAtaque.x, posPlayer.z - posAtaque.z); 
-                            
-                            if (dist2D <= alcanceHit) { 
-                                let forcaMonstro = data.dano !== undefined ? data.dano : 10; 
-                                window.receberDanoJogador(forcaMonstro); 
-                            } 
                         }
+                    } else if (atk.tipo === 'atirador') {
+                        let proj = document.createElement('a-entity'); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo); proj.setAttribute('position', `${posInimigo.x} ${posInimigo.y + 1.2} ${posInimigo.z}`);
+                        let tX = isNaN(data.ataqueAtivo.tx) ? 0 : data.ataqueAtivo.tx; let tY = isNaN(data.ataqueAtivo.ty) ? 0 : data.ataqueAtivo.ty; let tZ = isNaN(data.ataqueAtivo.tz) ? 0 : data.ataqueAtivo.tz; let targetVec = new THREE.Vector3(tX, tY, tZ);
+                        let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize(); 
+                        let forcaTiro = parseFloat(atk.dano) || 15; let velTiro = parseFloat(atk.velTiro) || 6.0;
+                        proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * velTiro} ${dir.y * velTiro} ${dir.z * velTiro}; dano: ${forcaTiro}`); 
+                        
+                        let escalaTiro = atk.escalaTiro || '0.5 0.5 0.5'; let rotTiro = atk.rotTiro || '0 0 0';
+                        if (atk.glbTiro && atk.glbTiro.trim() !== '') {
+                            let glbPath = atk.glbTiro.startsWith('#') ? atk.glbTiro : `url(${atk.glbTiro})`;
+                            proj.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${escalaTiro}" rotation="${rotTiro}" anti-piscar></a-entity>`;
+                        } else {
+                            proj.innerHTML = `<a-entity scale="${escalaTiro}" rotation="${rotTiro}"><a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere></a-entity>`;
+                        }
+                        let scene = document.querySelector('a-scene'); if(scene) scene.appendChild(proj);
                     }
-                }, 400);
+                }, delayHit);
 
-                setTimeout(() => { this.isAttacking = false; if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 1000);
-            }
-
-            if (data.hp > 0 && data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
-                this.ultimoTempoTiro = data.shoot.time; this.isAttacking = true; this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
-                setTimeout(() => { this.isAttacking = false; if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 1000);
-                let proj = document.createElement('a-entity'); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo); proj.setAttribute('position', `${posInimigo.x} ${posInimigo.y + 1.2} ${posInimigo.z}`);
-                let tX = isNaN(data.shoot.tx) ? 0 : data.shoot.tx; let tY = isNaN(data.shoot.ty) ? 0 : data.shoot.ty; let tZ = isNaN(data.shoot.tz) ? 0 : data.shoot.tz; let targetVec = new THREE.Vector3(tX, tY, tZ);
-                let dir = targetVec.sub(new THREE.Vector3(posInimigo.x, posInimigo.y + 1.2, posInimigo.z)).normalize(); let forcaTiro = data.dano !== undefined ? data.dano : 15;
-                
-                let velTiro = data.velocidadeTiro !== undefined ? data.velocidadeTiro : 6.0;
-                proj.setAttribute('projetil-inimigo-fisico', `velocidade: ${dir.x * velTiro} ${dir.y * velTiro} ${dir.z * velTiro}; dano: ${forcaTiro}`); 
-                
-                let escalaTiro = data.escalaTiro || '0.5 0.5 0.5';
-                let rotTiro = data.rotacaoTiro || '0 0 0';
-
-                if (data.modeloTiroGlb && data.modeloTiroGlb.trim() !== '') {
-                    let glbPath = data.modeloTiroGlb.startsWith('#') ? data.modeloTiroGlb : `url(${data.modeloTiroGlb})`;
-                    proj.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${escalaTiro}" rotation="${rotTiro}" anti-piscar></a-entity>`;
-                } else {
-                    proj.innerHTML = `<a-entity scale="${escalaTiro}" rotation="${rotTiro}"><a-sphere radius="0.15" color="#e74c3c" material="emissive: #e74c3c; emissiveIntensity: 1"></a-sphere></a-entity>`;
-                }
-
-                let scene = document.querySelector('a-scene'); if(scene) scene.appendChild(proj);
+                // Espera a duração inteira da animação para voltar a andar
+                setTimeout(() => { 
+                    this.isAttacking = false; 
+                    if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); 
+                }, duracaoCompleta);
             }
 
             let estavaMorto = (this.hpAtual <= 0); let morreuAgora = (this.hpAtual > 0 && data.hp <= 0); let tomouDano = (this.hpAtual > 0 && data.hp > 0 && data.hp < this.hpAtual); let reviveu = (estavaMorto && data.hp > 0);
@@ -240,6 +230,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
         let posAnterior = this.el.object3D.position.clone(); let distParaAlvo = this.el.object3D.position.distanceTo(this.targetPos);
         if (distParaAlvo > 0.01) { this.el.object3D.position.lerp(this.targetPos, 0.2); }
         let velocidadeAtual = this.el.object3D.position.distanceTo(posAnterior);
+        // Só anda se não estiver travado na animação de ataque!
         if (velocidadeAtual > 0.002) { this.lastMoveTime = time; if (!this.isMoving && !this.isAttacking) { this.isMoving = true; this.tocarAnimacao(window.ANIM_ANDANDO, 'repeat'); } } 
         else { if (this.isMoving && !this.isAttacking && (time - this.lastMoveTime > 200)) { this.isMoving = false; this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); } }
         let qTarget = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), this.targetRotY); this.el.object3D.quaternion.slerp(qTarget, 0.2);
@@ -258,14 +249,14 @@ AFRAME.registerComponent('gerenciador-inimigos', {
             let pX = data.pos && !isNaN(data.pos.x) ? data.pos.x : 0; let pY = data.pos && !isNaN(data.pos.y) ? data.pos.y : 0; let pZ = data.pos && !isNaN(data.pos.z) ? data.pos.z : 0;
             el.setAttribute('position', `${pX} ${pY} ${pZ}`);
             
-            let xpDrop = data.tipo === 'atirador' ? 50 : 20; let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
-            el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; tipo: ${data.tipo || 'meelee'}; xpDrop: ${xpDrop}`); el.setAttribute('shadow', '');
+            let xpDrop = 30; let escX = data.escala ? data.escala.x : 1; let escY = data.escala ? data.escala.y : 1; let escZ = data.escala ? data.escala.z : 1;
+            el.setAttribute('sistema-inimigo-sync', `idBd: ${id}; hpMax: ${data.hpMax || 50}; xpDrop: ${xpDrop}`); el.setAttribute('shadow', '');
 
             let holograma = document.createElement('a-box'); el.appendChild(holograma); holograma.setAttribute('color', '#f1c40f'); holograma.setAttribute('opacity', '0.5'); holograma.setAttribute('scale', '0.6 1.8 0.6'); holograma.setAttribute('position', '0 0.9 0'); 
-            let fallbackColor = data.tipo === 'atirador' ? '#e74c3c' : '#8e44ad'; let fallback = document.createElement('a-entity'); el.appendChild(fallback); fallback.innerHTML = `<a-box class="inimigo-fallback" color="${fallbackColor}" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; fallback.setAttribute('visible', 'false'); 
+            let fallback = document.createElement('a-entity'); el.appendChild(fallback); fallback.innerHTML = `<a-box class="inimigo-fallback" color="#e74c3c" scale="0.5 1.5 0.5" position="0 0.75 0"></a-box>`; fallback.setAttribute('visible', 'false'); 
 
             let visual = document.createElement('a-entity'); el.appendChild(visual); visual.classList.add('modelo-visual'); visual.setAttribute('scale', `${escX} ${escY} ${escZ}`);
-            let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2'); visual.dataset.currentModel = modelSrc;
+            let modelSrc = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '#modelo-inimigo'; visual.dataset.currentModel = modelSrc;
 
             let infos = document.createElement('a-entity'); el.appendChild(infos); 
             infos.innerHTML = `<a-text class="hp-texto" value="HP: ${data.hp}" position="-0.4 2.2 0" color="#FFF" scale="0.8 0.8 0.8"></a-text>
@@ -307,7 +298,7 @@ AFRAME.registerComponent('gerenciador-inimigos', {
                     let colisor = el.querySelector('.colisao-inimigo');
                     if(colisor) colisor.setAttribute('scale', `${escX} ${escY} ${escZ}`);
                     
-                    let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : (data.tipo === 'atirador' ? '#modelo-inimigo' : '#modelo-inimigo2');
+                    let newModel = data.modeloGlb && data.modeloGlb.trim() !== '' ? data.modeloGlb : '#modelo-inimigo';
                     if (visual.dataset.currentModel !== newModel) { 
                         visual.dataset.currentModel = newModel; 
                         let glbPath = newModel.startsWith('#') ? newModel : `url(${newModel})`;
