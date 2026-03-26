@@ -116,7 +116,6 @@ AFRAME.registerComponent('colisor-arma-vr', {
                 document.querySelector('a-scene').appendChild(this.rastroEntidade);
                 this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
             } else if (armaStats.categoria === 'Luva') {
-                // Rastro de vento do soco VR
                 let vfxVento = document.createElement('a-entity');
                 vfxVento.setAttribute('position', `${currentWorldPos.x} ${currentWorldPos.y} ${currentWorldPos.z}`);
                 
@@ -125,7 +124,7 @@ AFRAME.registerComponent('colisor-arma-vr', {
                 }
 
                 vfxVento.innerHTML = `
-                    <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0.3" height="1.5" position="0 0 -0.75" rotation="90 0 0" material="shader: flat; transparent: true; opacity: 0.5; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
+                    <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0.3" height="1.5" position="0 0 -0.75" rotation="-90 0 0" material="shader: flat; transparent: true; opacity: 0.5; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
                     <a-torus color="#ffffff" radius="0.2" radius-tubular="0.01" position="0 0 -0.5" material="shader: flat; transparent: true; opacity: 0.8; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-torus>
                 `;
                 document.querySelector('a-scene').appendChild(vfxVento);
@@ -341,13 +340,38 @@ AFRAME.registerComponent('vr-magia-lancar', {
 
 AFRAME.registerComponent('projetil-fisico', {
     schema: { velocidade: {type: 'vec3'}, dano: {type: 'number', default: 10}, armaOriginal: {type: 'string', default: 'Shuriken'} },
-    init: function () { this.gravidade = new THREE.Vector3(0, -2.0, 0); this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); this.ativo = true; },
+    init: function () { 
+        this.gravidade = new THREE.Vector3(0, -2.0, 0); 
+        this.vel = new THREE.Vector3(this.data.velocidade.x, this.data.velocidade.y, this.data.velocidade.z); 
+        this.ativo = true; 
+        
+        setTimeout(() => {
+            this.rastro = document.createElement('a-entity');
+            this.rastro.setAttribute('position', '0 0 0');
+            this.el.sceneEl.appendChild(this.rastro);
+            this.rastro.setAttribute('rastro-espada-sao', 'color: #ffffff; duracao: 250');
+        }, 10);
+    },
     tick: function (time, timeDelta) {
         if (!this.ativo) return; let dt = timeDelta / 1000; if (dt === 0) return;
         this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.rotation.y += 15 * dt;
 
+        if (this.rastro && this.rastro.components['rastro-espada-sao']) {
+            let posCenter = this.el.object3D.position.clone();
+            let dir = this.vel.clone().normalize();
+            if(dir.lengthSq() === 0) dir.set(0,0,-1);
+            let right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+            if(right.lengthSq() === 0) right.set(1,0,0);
+            right.multiplyScalar(0.15); 
+            
+            let pBase = posCenter.clone().add(right);
+            let pPonta = posCenter.clone().sub(right);
+            this.rastro.components['rastro-espada-sao'].addPonto(pBase, pPonta);
+        }
+
         if (this.el.object3D.position.y < 0.05) { 
             this.el.object3D.position.y = 0.05; this.ativo = false; this.el.classList.add('shuriken-chao'); 
+            if (this.rastro && this.rastro.components['rastro-espada-sao']) this.rastro.components['rastro-espada-sao'].finalizar();
             setTimeout(() => { if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el); }, 8000); return; 
         }
         
@@ -362,6 +386,7 @@ AFRAME.registerComponent('projetil-fisico', {
                 syncComp.receberDano(this.data.dano, 'Arco'); 
                 let posInimigoHit = new THREE.Vector3(); inimigo.object3D.getWorldPosition(posInimigoHit); posInimigoHit.y += 1.0;
                 window.gerarHitVFX(posInimigoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Shuriken']);
+                if (this.rastro && this.rastro.components['rastro-espada-sao']) this.rastro.components['rastro-espada-sao'].finalizar();
                 if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; 
             }
         }
