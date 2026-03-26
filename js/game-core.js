@@ -421,6 +421,7 @@ window.gerarFeixesBoss = function(pos, escala) {
     window.tocarSom('snd-magic'); 
     
     let beams = document.createElement('a-entity');
+    // A luz nasce exatamente no ponto central calibrado pelo Offset
     beams.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     
     for(let i=0; i<6; i++) {
@@ -445,18 +446,16 @@ window.gerarParticulasSAO = function(pos, isBoss, escala) {
 
     let count = isBoss ? 80 : 30; 
     let color = isBoss ? '#ff0055' : '#00ffff'; 
-    
-    let spreadX = (escala.x || 1) * 1.5;
-    let spreadY = (escala.y || 1) * 1.5;
-    let spreadZ = (escala.z || 1) * 1.5;
 
     for (let i = 0; i < count; i++) {
         let p = document.createElement('a-entity');
         
-        let px = pos.x + (Math.random() - 0.5) * spreadX;
-        let py = pos.y + (Math.random() - 0.5) * spreadY;
-        let pz = pos.z + (Math.random() - 0.5) * spreadZ;
+        // As partículas nascem aglomeradas na origem milimétrica da luz (pos) e do Offset
+        let px = pos.x + (Math.random() - 0.5) * 0.2;
+        let py = pos.y + (Math.random() - 0.5) * 0.2;
+        let pz = pos.z + (Math.random() - 0.5) * 0.2;
         
+        // O alvo delas é voar para longe (espalhando pela sala)
         let tx = px + (Math.random() - 0.5) * 6;
         let ty = py + (Math.random() - 0.5) * 6; 
         let tz = pz + (Math.random() - 0.5) * 6;
@@ -587,11 +586,7 @@ window.realizarAtaque = function() {
         });
 
         let targetPoint = new THREE.Vector3();
-        if (bestTarget) { 
-            targetPoint.copy(bestTarget); 
-        } else { 
-            targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); 
-        }
+        if (bestTarget) { targetPoint.copy(bestTarget); } else { targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); }
 
         let proj = document.createElement('a-entity');
         let spawnPos = posCamera.clone().add(dirCam.clone().multiplyScalar(0.5));
