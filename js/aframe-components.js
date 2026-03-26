@@ -165,7 +165,7 @@ AFRAME.registerComponent('colisor-arma-vr', {
                     if (this.speed > 1.5 && (agora - lastHit > 400)) { 
                         syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
                         let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0;
-                        window.gerarHitVFX(posHit, armaStats); this.lastHits.set(inimigoEl, agora);
+                        window.gerarHitVFX(posHit, armaStats, this.vel.clone()); this.lastHits.set(inimigoEl, agora);
                     }
                 }
             }
@@ -262,79 +262,11 @@ AFRAME.registerComponent('projetil-magia', {
             if (boxProj.intersectsBox(boxInimigo)) { 
                 syncComp.receberDano(this.data.dano, 'Varinha'); 
                 let posInimigoHit = new THREE.Vector3(); inimigo.object3D.getWorldPosition(posInimigoHit); posInimigoHit.y += 1.0;
-                window.gerarHitVFX(posInimigoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Varinha']);
+                window.gerarHitVFX(posInimigoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Varinha'], this.vel.clone());
                 if(this.el.parentNode) this.el.parentNode.removeChild(this.el); 
                 break; 
             }
         }
-    }
-});
-
-AFRAME.registerComponent('vr-magia-lancar', {
-    init: function() {
-        this.gravando = false; this.tempoInicio = 0; this.scene = document.querySelector('a-scene');
-
-        this.el.addEventListener('triggerdown', () => {
-            if (window.GAME_MODE !== 'VR' || !window.playerState.vivo) return;
-            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-            if (!armaStats || armaStats.categoria !== 'Varinha') return;
-
-            if (window.playerState.mpAtual < 10) { window.tocarSom('snd-hit'); return; }
-
-            this.gravando = true; this.posInicio = new THREE.Vector3(0, 0, -0.45); this.posInicio.applyMatrix4(this.el.object3D.matrixWorld); this.tempoInicio = Date.now();
-            const tipVisEl = this.el.querySelector('#wand-tip-vis'); if (tipVisEl) { tipVisEl.setAttribute('material', 'emissive: #fff; emissiveIntensity: 1.5'); }
-        });
-
-        this.el.addEventListener('triggerup', () => {
-            if (!this.gravando) return; this.gravando = false;
-            const tipVisEl = this.el.querySelector('#wand-tip-vis'); if (tipVisEl) { tipVisEl.setAttribute('material', 'emissive: #00FFFF; emissiveIntensity: 0.8'); }
-            
-            let posFim = new THREE.Vector3(0, 0, -0.45); posFim.applyMatrix4(this.el.object3D.matrixWorld);
-            let tempoGasto = Date.now() - this.tempoInicio; let deltaWorld = new THREE.Vector3().subVectors(posFim, this.posInicio);
-            
-            if (tempoGasto > 50 && deltaWorld.length() > 0.15) {
-                let cam = document.querySelector('[camera]'); let deltaMatrix = new THREE.Matrix4().copy(cam.object3D.matrixWorld).invert();
-                let localInicio = this.posInicio.clone().applyMatrix4(deltaMatrix); let localFim = posFim.clone().applyMatrix4(deltaMatrix);
-                let localDelta = new THREE.Vector3().subVectors(localFim, localInicio);
-                let isHorizontal = Math.abs(localDelta.x) > Math.abs(localDelta.y);
-                
-                let corMagia, custoMP, multDano, scaleMagia;
-                if (isHorizontal) { corMagia = '#9b59b6'; custoMP = 10; multDano = 1.0; scaleMagia = '1 1 1'; } else { corMagia = '#00FFFF'; custoMP = 15; multDano = 1.5; scaleMagia = '1.5 1.5 1.5'; }
-
-                if (window.playerState.mpAtual < custoMP) { window.tocarSom('snd-hit'); return; }
-                window.playerState.mpAtual -= custoMP; window.atualizarUI();
-
-                let quatMao = new THREE.Quaternion(); this.el.object3D.getWorldQuaternion(quatMao);
-                let castDir = new THREE.Vector3(0, 0, -1); castDir.applyQuaternion(quatMao).normalize();
-
-                let bestTarget = null; let smallestAngle = 0.35; let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
-                inimigosAtuais.forEach(ini => {
-                    let syncComp = ini.components['sistema-inimigo-sync'];
-                    if(syncComp && syncComp.hpAtual > 0) {
-                        let iniPos = new THREE.Vector3(); ini.object3D.getWorldPosition(iniPos); iniPos.y += 1.0; 
-                        let dirToIni = new THREE.Vector3().subVectors(iniPos, posFim).normalize();
-                        let angle = castDir.angleTo(dirToIni);
-                        if (angle < smallestAngle) { smallestAngle = angle; bestTarget = dirToIni; }
-                    }
-                });
-                if (bestTarget) { castDir.lerp(bestTarget, 0.85).normalize(); } 
-
-                let armaStats = window.bancoDeArmas[window.playerState.armaEquipada]; let speed = armaStats.projetilVel || 20; let finalVel = castDir.multiplyScalar(speed);
-                let proj = document.createElement('a-entity'); proj.setAttribute('position', `${posFim.x} ${posFim.y} ${posFim.z}`); proj.setAttribute('scale', armaStats.projetilEscala || scaleMagia);
-                
-                if (armaStats.projetilGlb && armaStats.projetilGlb.trim() !== '') {
-                    let glbPath = armaStats.projetilGlb.startsWith('#') ? armaStats.projetilGlb : `url(${armaStats.projetilGlb})`;
-                    proj.innerHTML = `<a-entity gltf-model="${glbPath}" rotation="0 0 0" anti-piscar></a-entity>`;
-                    proj.object3D.lookAt(posFim.clone().add(castDir));
-                } else {
-                    proj.innerHTML = `<a-sphere radius="0.1" color="${corMagia}" material="emissive: ${corMagia}; emissiveIntensity: 1"></a-sphere><a-light type="point" color="${corMagia}" intensity="0.5" distance="3"></a-light>`;
-                }
-
-                let danoFinal = Math.floor((window.playerState.forca + (armaStats.danoBonus || 10)) * multDano);
-                proj.setAttribute('projetil-magia', `velocidade: ${finalVel.x} ${finalVel.y} ${finalVel.z}; dano: ${danoFinal}; armaOriginal: ${window.playerState.armaEquipada}`);
-                if(this.scene) this.scene.appendChild(proj); window.tocarSom('snd-magic');
-            }
-        });
     }
 });
 
@@ -385,7 +317,7 @@ AFRAME.registerComponent('projetil-fisico', {
             if (boxProj.intersectsBox(boxInimigo)) { 
                 syncComp.receberDano(this.data.dano, 'Arco'); 
                 let posInimigoHit = new THREE.Vector3(); inimigo.object3D.getWorldPosition(posInimigoHit); posInimigoHit.y += 1.0;
-                window.gerarHitVFX(posInimigoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Shuriken']);
+                window.gerarHitVFX(posInimigoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Shuriken'], this.vel.clone());
                 if (this.rastro && this.rastro.components['rastro-espada-sao']) this.rastro.components['rastro-espada-sao'].finalizar();
                 if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; 
             }
