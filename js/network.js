@@ -99,11 +99,59 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
 
             if (data.hp > 0 && data.meleeAttack && data.meleeAttack.time !== this.ultimoTempoMelee) {
                 this.ultimoTempoMelee = data.meleeAttack.time; this.isAttacking = true; this.tocarAnimacao(window.ANIM_ATIRANDO, 'once');
+                
+                // ATRASO DE 400ms PARA SINCRONIZAR COM O CORTE DA ESPADA DO INIMIGO
+                setTimeout(() => {
+                    if (this.hpAtual <= 0) return; 
+
+                    if (window.playerState.vivo && !window.playerState.invulneravel) {
+                        let camEl = document.querySelector('[camera]'); 
+                        if(camEl) { 
+                            camEl.object3D.updateMatrixWorld(true); 
+                            let posPlayer = new THREE.Vector3(); 
+                            camEl.object3D.getWorldPosition(posPlayer); 
+                            
+                            let posAtaque = new THREE.Vector3();
+                            let achouOsso = false;
+                            
+                            // BUSCA O OSSO DA ARMA DENTRO DO GLB
+                            let visual = this.el.querySelector('.modelo-visual');
+                            if (visual) {
+                                let mesh = visual.getObject3D('mesh');
+                                if (mesh) {
+                                    mesh.traverse((node) => {
+                                        if (!achouOsso && node.isBone) {
+                                            let nName = node.name.toLowerCase();
+                                            if (nName.includes('hand_r') || nName.includes('righthand') || nName.includes('weapon') || nName.includes('espada') || nName.includes('sword') || nName.includes('arma')) {
+                                                node.getWorldPosition(posAtaque);
+                                                achouOsso = true;
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                            
+                            // SE NÃO ACHOU O OSSO, PROJETA O ATAQUE 1 METRO PARA FRENTE
+                            if (!achouOsso) {
+                                this.el.object3D.getWorldPosition(posAtaque);
+                                let dirFrente = new THREE.Vector3(0, 0, 1).applyQuaternion(this.el.object3D.quaternion);
+                                posAtaque.add(dirFrente.multiplyScalar(1.0));
+                            }
+
+                            let alcanceHit = data.attackRange !== undefined ? data.attackRange : 2.0; 
+                            
+                            // IGNORA A ALTURA NO CÁLCULO PARA EVITAR QUE O JOGADOR DE VR DESVIE SÓ ABAIXANDO A CABEÇA UM POUCO
+                            let dist2D = Math.hypot(posPlayer.x - posAtaque.x, posPlayer.z - posAtaque.z); 
+                            
+                            if (dist2D <= alcanceHit) { 
+                                let forcaMonstro = data.dano !== undefined ? data.dano : 10; 
+                                window.receberDanoJogador(forcaMonstro); 
+                            } 
+                        }
+                    }
+                }, 400);
+
                 setTimeout(() => { this.isAttacking = false; if (this.hpAtual > 0) this.tocarAnimacao(this.isMoving ? window.ANIM_ANDANDO : window.ANIM_PARADO, 'repeat'); }, 1000);
-                if (window.playerState.vivo && !window.playerState.invulneravel) {
-                    let camEl = document.querySelector('[camera]'); 
-                    if(camEl) { camEl.object3D.updateMatrixWorld(true); let posPlayer = new THREE.Vector3(); camEl.object3D.getWorldPosition(posPlayer); this.el.object3D.updateMatrixWorld(true); let posInimigo = new THREE.Vector3(); this.el.object3D.getWorldPosition(posInimigo); let alcanceHit = data.attackRange !== undefined ? data.attackRange : 2.0; let dist2D = Math.hypot(posPlayer.x - posInimigo.x, posPlayer.z - posInimigo.z); if (dist2D <= (alcanceHit + 1.0)) { let forcaMonstro = data.dano !== undefined ? data.dano : 10; window.receberDanoJogador(forcaMonstro); } }
-                }
             }
 
             if (data.hp > 0 && data.shoot && data.shoot.time !== this.ultimoTempoTiro) {
