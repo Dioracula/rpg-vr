@@ -2,6 +2,8 @@
 // FUNÇÕES PRINCIPAIS E LÓGICA DE INTERFACE
 // ==========================================
 
+window.comboAtaque = 0; // Controle de alternância de golpes
+
 window.salvarJogoNuvem = function() { 
     if (!window.currentUser) return; 
     if (window.currentUser.uid && window.currentUser.uid.startsWith('teste_')) return;
@@ -56,6 +58,7 @@ window.atualizarArmaVisual = function() {
         containerEsq.innerHTML = htmlArco; escudoPC.innerHTML = htmlArco;
     } else if (armaStats && armaStats.visualEsq && window.playerState.armaEquipada !== 'Shuriken') {
         containerEsq.innerHTML = armaStats.visualEsq;
+        escudoPC.innerHTML = armaStats.visualEsq; // Permite visualizar a Luva esquerda no PC/Mobile
     }
 };
 
@@ -309,6 +312,28 @@ window.gerarParticulaRastro = function(pos, vel, corHex = '#00FFFF') {
     scene.appendChild(p); setTimeout(() => { if(p && p.parentNode) p.parentNode.removeChild(p); }, 400);
 };
 
+window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
+    if (!armaStats.swingAnim || armaStats.swingAnim.trim() === '') return;
+    let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
+    let cam = document.querySelector('[camera]'); let camQuat = new THREE.Quaternion(); if(cam) cam.object3D.getWorldQuaternion(camQuat);
+    let velLocal = vetorVelocidade.clone().applyQuaternion(camQuat.clone().invert()); let angleZ = Math.atan2(velLocal.y, velLocal.x); 
+    let rotBaseArr = (armaStats.swingRotacao || '0 0 0').split(' '); let rX = parseFloat(rotBaseArr[0]) || 0; let rY = parseFloat(rotBaseArr[1]) || 0; let rZ = parseFloat(rotBaseArr[2]) || 0;
+    let finalAngleZ = angleZ + THREE.MathUtils.degToRad(rZ);
+    let escBase = (armaStats.swingEscala || '1 1 1').split(' '); let sX = parseFloat(escBase[0]) || 1; let sY = parseFloat(escBase[1]) || 1; let sZ = parseFloat(escBase[2]) || 1;
+    let additive = armaStats.swingAdditive ? '; blending: additive' : ''; let offsetFrente = alvoSelector === '[camera]' ? -1.5 : -0.6; 
+    vfx.setAttribute('efeito-rastro', `alvoId: ${alvoSelector}; offsetZ: ${offsetFrente}; angleZ: ${finalAngleZ}; rotX: ${rX}; rotY: ${rY}`);
+
+    if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.jpg') || armaStats.swingAnim.endsWith('.gif')) {
+        let shader = armaStats.swingAnim.endsWith('.gif') ? 'gif' : 'flat';
+        let imgMaterial = `shader: ${shader}; src: url(${armaStats.swingAnim}); transparent: true; alphaTest: 0.5; side: double; depthWrite: false${additive}`;
+        vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
+    } else {
+        let glbPath = armaStats.swingAnim.startsWith('#') ? armaStats.swingAnim : `url(${armaStats.swingAnim})`;
+        vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
+    }
+    scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
+};
+
 window.gerarHitVFX = function(pos, armaStats) {
     let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
     let offsetX = (Math.random() - 0.5) * 0.4; let offsetY = (Math.random() - 0.5) * 0.4; let offsetZ = (Math.random() - 0.5) * 0.4;
@@ -376,57 +401,32 @@ window.realizarAtaque = function() {
 
     if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Luva') { return; }
 
+    window.comboAtaque = window.comboAtaque === 0 ? 1 : 0; // Alterna combo
     window.tocarSom('snd-sword');
+    
     let pcWeapon = document.querySelector('#arma-visual-pc'); 
-    if(pcWeapon) { pcWeapon.removeAttribute('animation'); pcWeapon.setAttribute('animation', 'property: rotation; to: -60 45 -45; dur: 150; dir: alternate; loop: 1'); setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300); }
+    let pcShield = document.querySelector('#escudo-visual-pc');
     
     let cameraObj = document.querySelector('[camera]'); if(!cameraObj) return;
     let posCamera = new THREE.Vector3(); let direcao = new THREE.Vector3(0, 0, -1); 
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    if (armaStats.categoria === 'Espada') {
-        let corRastro = '#00FFFF';
-        if (armaStats && armaStats.danoBonus) {
-            if(armaStats.danoBonus >= 15) corRastro = '#ff0055'; 
-            else if(armaStats.danoBonus >= 7) corRastro = '#f1c40f'; 
+    if (armaStats.categoria === 'Luva') {
+        if (window.comboAtaque === 0 && pcWeapon) {
+            pcWeapon.removeAttribute('animation'); 
+            pcWeapon.setAttribute('animation', 'property: position; to: 0.3 -0.3 -1.2; dur: 150; dir: alternate; loop: 1'); 
+            setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('position', '0.3 -0.3 -0.6'); }, 300);
+        } else if (window.comboAtaque === 1 && pcShield) {
+            pcShield.removeAttribute('animation'); 
+            pcShield.setAttribute('animation', 'property: position; to: -0.4 -0.2 -1.2; dur: 150; dir: alternate; loop: 1'); 
+            setTimeout(() => { if(pcShield) pcShield.setAttribute('position', '-0.4 -0.2 -0.5'); }, 300);
         }
-        let rastroEntidade = document.createElement('a-entity');
-        rastroEntidade.setAttribute('position', '0 0 0');
-        document.querySelector('a-scene').appendChild(rastroEntidade);
-        rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
-
-        let count = 0;
-        let maxCount = 12; 
-        let arcInt = setInterval(() => {
-            if(count > maxCount) { 
-                clearInterval(arcInt); 
-                if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
-                return; 
-            }
-            
-            let progresso = count / maxCount;
-            let angulo = (progresso * Math.PI) - (Math.PI / 2); 
-            
-            let offX = 1.5 * Math.sin(angulo); 
-            let offY = 0.2 - (progresso * 0.4);  
-            let offZ = -1.2 + (Math.cos(angulo) * 0.8);
-            
-            let offVectorBase = new THREE.Vector3(offX * 0.2, offY, offZ * 0.4).applyQuaternion(camQuat);
-            let offVectorPonta = new THREE.Vector3(offX, offY + 0.3, offZ).applyQuaternion(camQuat);
-            
-            let pBase = posCamera.clone().add(offVectorBase);
-            let pPonta = posCamera.clone().add(offVectorPonta);
-            
-            if(rastroEntidade.components['rastro-espada-sao']) {
-                rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta);
-            }
-            
-            count++;
-        }, 20);
-    } else if (armaStats.categoria === 'Luva') {
+        
         let vfxVento = document.createElement('a-entity');
-        vfxVento.setAttribute('position', `${posCamera.x} ${posCamera.y} ${posCamera.z}`);
+        let offXVento = window.comboAtaque === 0 ? 0.3 : -0.4;
+        let posSoco = posCamera.clone().add(new THREE.Vector3(offXVento, -0.2, 0).applyQuaternion(camQuat));
+        vfxVento.setAttribute('position', `${posSoco.x} ${posSoco.y} ${posSoco.z}`);
         vfxVento.object3D.quaternion.copy(camQuat);
         vfxVento.innerHTML = `
             <a-cone color="#ffffff" radius-bottom="0.2" radius-top="0.5" height="2" position="0 0 -1" rotation="90 0 0" material="shader: flat; transparent: true; opacity: 0.4; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -2.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
@@ -434,6 +434,57 @@ window.realizarAtaque = function() {
         `;
         document.querySelector('a-scene').appendChild(vfxVento);
         setTimeout(() => { if(vfxVento.parentNode) vfxVento.parentNode.removeChild(vfxVento); }, 250);
+
+    } else {
+        if(pcWeapon) {
+            pcWeapon.removeAttribute('animation'); 
+            let rotTo = window.comboAtaque === 0 ? '-60 45 -45' : '-60 -45 45';
+            pcWeapon.setAttribute('animation', `property: rotation; to: ${rotTo}; dur: 150; dir: alternate; loop: 1`); 
+            setTimeout(() => { if(pcWeapon) pcWeapon.setAttribute('rotation', '-90 0 0'); }, 300);
+        }
+
+        if (armaStats.categoria === 'Espada') {
+            let corRastro = '#00FFFF';
+            if (armaStats && armaStats.danoBonus) {
+                if(armaStats.danoBonus >= 15) corRastro = '#ff0055'; 
+                else if(armaStats.danoBonus >= 7) corRastro = '#f1c40f'; 
+            }
+            let rastroEntidade = document.createElement('a-entity');
+            rastroEntidade.setAttribute('position', '0 0 0');
+            document.querySelector('a-scene').appendChild(rastroEntidade);
+            rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
+
+            let count = 0;
+            let maxCount = 12; 
+            let arcInt = setInterval(() => {
+                if(count > maxCount) { 
+                    clearInterval(arcInt); 
+                    if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
+                    return; 
+                }
+                
+                let progresso = count / maxCount;
+                let angulo = (progresso * Math.PI) - (Math.PI / 2); 
+                
+                let offX = 1.5 * Math.sin(angulo); 
+                if (window.comboAtaque === 1) offX = -offX; // Inverte a direção do arco visual
+
+                let offY = 0.2 - (progresso * 0.4);  
+                let offZ = -1.2 + (Math.cos(angulo) * 0.8);
+                
+                let offVectorBase = new THREE.Vector3(offX * 0.2, offY, offZ * 0.4).applyQuaternion(camQuat);
+                let offVectorPonta = new THREE.Vector3(offX, offY + 0.3, offZ).applyQuaternion(camQuat);
+                
+                let pBase = posCamera.clone().add(offVectorBase);
+                let pPonta = posCamera.clone().add(offVectorPonta);
+                
+                if(rastroEntidade.components['rastro-espada-sao']) {
+                    rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta);
+                }
+                
+                count++;
+            }, 20);
+        }
     }
 
     let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); 
@@ -569,7 +620,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if(aviso) { aviso.setAttribute('value', msg); aviso.setAttribute('color', window.playerState.escudoEquipado ? '#4169E1' : '#FF4500'); aviso.setAttribute('visible', 'true'); setTimeout(() => { if(aviso) aviso.setAttribute('visible', 'false'); }, 1500); } 
     }, {passive: false});
     
-    document.getElementById('btn-atacar').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); if (!podeAtacarMobile) return; podeAtacarMobile = false; setTimeout(() => podeAtacarMobile = true, 800); window.realizarAtaque(); }, {passive: false});
+    document.getElementById('btn-atacar').addEventListener('touchstart', (e) => { 
+        e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); 
+        if (!podeAtacarMobile) return; 
+        podeAtacarMobile = false; 
+        setTimeout(() => podeAtacarMobile = true, 400); 
+        window.realizarAtaque(); 
+    }, {passive: false});
+
+    let podeAtacarPC = true;
+    window.addEventListener('mousedown', (e) => {
+        if (window.GAME_MODE === 'PC' && window.GAME_STARTED && !window.sysMenuAberto && !window.invAberto && !window.atribAberto) {
+            if (e.button === 0 && e.target.tagName === 'CANVAS') { 
+                e.preventDefault();
+                if (!podeAtacarPC) return; 
+                podeAtacarPC = false; 
+                setTimeout(() => podeAtacarPC = true, 400); 
+                window.realizarAtaque();
+            }
+        }
+    });
 
     const zone = document.getElementById('joystick-zone'); const stick = document.getElementById('joystick-stick');
     let isDraggingJoy = false; let joyTouchId = null; let centerX, centerY, maxRadius = 40;
