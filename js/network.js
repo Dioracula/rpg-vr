@@ -78,6 +78,37 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
+// === PROJÉTIL DO JOGADOR COM HITBOX E MOVIMENTO ===
+AFRAME.registerComponent('projetil-jogador', {
+    schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
+    init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
+    tick: function(time, timeDelta) {
+        let dt = timeDelta / 1000; this.tempoVida += dt;
+        if (this.tempoVida > 3) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+        
+        this.el.object3D.position.x += this.data.velocidade.x * dt;
+        this.el.object3D.position.y += this.data.velocidade.y * dt;
+        this.el.object3D.position.z += this.data.velocidade.z * dt;
+        this.el.object3D.getWorldPosition(this.posAtual);
+
+        let hit = false;
+        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+        for (let i = 0; i < inimigosEls.length; i++) {
+            let inimigoEl = inimigosEls[i]; let syncComp = inimigoEl.components['sistema-inimigo-sync'];
+            if (syncComp && syncComp.hpAtual > 0) {
+                let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
+                let distX = Math.abs(this.posAtual.x - posInimigo.x); let distZ = Math.abs(this.posAtual.z - posInimigo.z); let distY = this.posAtual.y - posInimigo.y;
+                if (distX < 0.8 && distZ < 0.8 && distY > 0 && distY < 2.5) {
+                    syncComp.receberDano(this.data.dano, this.data.arma);
+                    window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada]);
+                    hit = true; break;
+                }
+            }
+        }
+        if (hit) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); }
+    }
+});
+
 AFRAME.registerComponent('sistema-inimigo-sync', { 
     schema: { idBd: { type: 'string' }, hpMax: { type: 'number', default: 50 }, xpDrop: { type: 'number', default: 50 } }, 
     tocarAnimacao: function(nomePadrao, loopState, clamp = false) { 
@@ -108,7 +139,6 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                 if (atk) {
                     this.tocarAnimacao(atk.animacao, 'once', true); 
                     
-                    // Inicializa a Janela Contínua de Acerto usando o Tempo Local
                     let tempoLocalAtual = Date.now();
                     this.ataqueCorrente = {
                         tipo: atk.tipo,
@@ -129,7 +159,20 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
             this.hpAtual = data.hp;
 
             if (morreuAgora) {
-                this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); this.tocarAnimacao(window.ANIM_MORTE, 'once', true); setTimeout(() => { if(this.hpAtual <= 0 && this.el) this.el.setAttribute('visible', 'false'); }, 3000);
+                this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); 
+                
+                this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
+                
+                setTimeout(() => { 
+                    if(this.hpAtual <= 0 && this.el) {
+                        this.el.setAttribute('visible', 'false'); 
+                        let pos = new THREE.Vector3(); this.el.object3D.getWorldPosition(pos);
+                        let isBoss = (this.dadosBD && this.dadosBD.rank === 'boss');
+                        let escala = this.dadosBD.escala || {x:1, y:1, z:1};
+                        if (window.gerarMorteSAO) window.gerarMorteSAO(pos, isBoss, escala);
+                    }
+                }, 1500); 
+
             } else if (reviveu) {
                 this.isDead = false; if(textoHp) { textoHp.setAttribute('value', `HP: ${this.hpAtual}`); textoHp.setAttribute('color', '#FFF'); } this.el.classList.add('interativo'); this.el.setAttribute('visible', 'true'); this.tocarAnimacao(window.ANIM_PARADO, 'repeat');
             } else if (tomouDano) {
@@ -169,7 +212,6 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
         else { if (this.isMoving && !this.isAttacking && (time - this.lastMoveTime > 200)) { this.isMoving = false; this.tocarAnimacao(window.ANIM_PARADO, 'repeat'); } }
         let qTarget = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), this.targetRotY); this.el.object3D.quaternion.slerp(qTarget, 0.2);
 
-        // Processa as Janelas Dinâmicas de Ataque Continuamente
         if (this.ataqueCorrente) {
             let agora = Date.now();
             let ac = this.ataqueCorrente;
@@ -203,7 +245,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                             let dist2D = Math.hypot(posPlayer.x - posAtaque.x, posPlayer.z - posAtaque.z); 
                             if (dist2D <= ac.alcance) { 
                                 window.receberDanoJogador(ac.dano); 
-                                ac.acertou = true; // Garante que tira dano apenas uma vez no swing
+                                ac.acertou = true; 
                             } 
                         }
                     }
