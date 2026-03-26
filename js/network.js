@@ -122,7 +122,18 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                                     mesh.traverse((node) => {
                                         if (!achouOsso && node.isBone) {
                                             let nName = node.name.toLowerCase();
-                                            if (nName.includes('hand_r') || nName.includes('righthand') || nName.includes('weapon') || nName.includes('espada') || nName.includes('sword') || nName.includes('arma')) {
+                                            let ossoDesejado = (data.ossoAtaque || '').toLowerCase();
+                                            let matchBone = false;
+                                            
+                                            if (ossoDesejado !== '') {
+                                                // Se o mestre definiu um osso no admin, procura SÓ por ele
+                                                matchBone = nName.includes(ossoDesejado);
+                                            } else {
+                                                // Fallback padrão se estiver em branco
+                                                matchBone = nName.includes('hand_r') || nName.includes('righthand') || nName.includes('weapon') || nName.includes('espada') || nName.includes('sword') || nName.includes('arma');
+                                            }
+
+                                            if (matchBone) {
                                                 node.getWorldPosition(posAtaque);
                                                 achouOsso = true;
                                             }
