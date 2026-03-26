@@ -415,60 +415,64 @@ window.gerarHitVFX = function(pos, armaStats, direcaoImpacto = null) {
     }
 };
 
-// === EFEITO DE MORTE SWORD ART ONLINE ===
-window.gerarMorteSAO = function(pos, isBoss, escala) {
+// === FASE 1 DO SAO: FEIXES DE LUZ ===
+window.gerarFeixesBoss = function(pos, escala) {
+    let scene = document.querySelector('a-scene');
+    let height = 1.5 * (escala.y || 1);
+    window.tocarSom('snd-magic'); 
+    
+    let beams = document.createElement('a-entity');
+    beams.setAttribute('position', `${pos.x} ${pos.y + height/2} ${pos.z}`);
+    
+    for(let i=0; i<6; i++) {
+        let beam = document.createElement('a-cylinder');
+        beam.setAttribute('color', '#00ffff');
+        beam.setAttribute('radius', '0.3'); 
+        beam.setAttribute('height', '15');
+        beam.setAttribute('material', 'shader: flat; transparent: true; blending: additive; opacity: 0.8');
+        beam.setAttribute('rotation', `${(Math.random()-0.5)*90} ${(Math.random()-0.5)*90} ${(Math.random()-0.5)*90}`);
+        beam.setAttribute('animation__scale', `property: scale; from: 0.1 0.1 0.1; to: 1 3 1; dur: 1500; easing: easeOutQuad`);
+        beam.setAttribute('animation__fade', `property: material.opacity; to: 0.2; dur: 1500; easing: easeInQuad`);
+        beams.appendChild(beam);
+    }
+    scene.appendChild(beams);
+    return beams; 
+};
+
+// === FASE 2 DO SAO: EXPLOSÃO EM PARTÍCULAS ===
+window.gerarParticulasSAO = function(pos, isBoss, escala) {
     let scene = document.querySelector('a-scene');
     let height = 1.5 * (escala.y || 1);
     
     window.tocarSom('snd-magic');
 
-    if (isBoss) {
-        let beams = document.createElement('a-entity');
-        beams.setAttribute('position', `${pos.x} ${pos.y + height/2} ${pos.z}`);
-        for(let i=0; i<6; i++) {
-            let beam = document.createElement('a-cylinder');
-            beam.setAttribute('color', '#00ffff');
-            beam.setAttribute('radius', '0.3'); 
-            beam.setAttribute('height', '15');
-            beam.setAttribute('material', 'shader: flat; transparent: true; blending: additive; opacity: 0.8');
-            beam.setAttribute('rotation', `${(Math.random()-0.5)*90} ${(Math.random()-0.5)*90} ${(Math.random()-0.5)*90}`);
-            beam.setAttribute('animation__scale', `property: scale; from: 0.1 0.1 0.1; to: 1 3 1; dur: 2000; easing: easeOutQuad`);
-            beam.setAttribute('animation__fade', `property: material.opacity; to: 0; dur: 2000; easing: easeInQuad`);
-            beams.appendChild(beam);
-        }
-        scene.appendChild(beams);
+    let count = isBoss ? 80 : 30; 
+    let color = isBoss ? '#ff0055' : '#00ffff'; 
+
+    for (let i = 0; i < count; i++) {
+        let p = document.createElement('a-entity');
+        let px = pos.x + (Math.random() - 0.5) * (escala.x || 1) * 2;
+        let py = pos.y + Math.random() * height;
+        let pz = pos.z + (Math.random() - 0.5) * (escala.z || 1) * 2;
         
-        setTimeout(() => {
-            if(beams.parentNode) beams.parentNode.removeChild(beams);
-            spawnParticles(80, '#ff0055'); // Partículas de Boss
-        }, 1500);
-    } else {
-        spawnParticles(30, '#00ffff'); // Partículas Comuns
-    }
+        let tx = px + (Math.random() - 0.5) * 6;
+        let ty = py + (Math.random() * 6);
+        let tz = pz + (Math.random() - 0.5) * 6;
 
-    function spawnParticles(count, color) {
-        for (let i = 0; i < count; i++) {
-            let p = document.createElement('a-entity');
-            let px = pos.x + (Math.random() - 0.5) * (escala.x || 1);
-            let py = pos.y + Math.random() * height;
-            let pz = pos.z + (Math.random() - 0.5) * (escala.z || 1);
-            
-            let tx = px + (Math.random() - 0.5) * 4;
-            let ty = py + (Math.random() * 4);
-            let tz = pz + (Math.random() - 0.5) * 4;
-
-            p.setAttribute('position', `${px} ${py} ${pz}`);
-            p.setAttribute('geometry', 'primitive: box; width: 0.15; height: 0.15; depth: 0.15');
-            p.setAttribute('material', `color: ${color}; shader: flat; transparent: true; blending: additive`);
-            p.setAttribute('animation__pos', `property: position; to: ${tx} ${ty} ${tz}; dur: ${800 + Math.random()*700}; easing: easeOutCubic`);
-            p.setAttribute('animation__rot', `property: rotation; to: ${Math.random()*720} ${Math.random()*720} ${Math.random()*720}; dur: 1000; loop: true`);
-            p.setAttribute('animation__scale', `property: scale; to: 0 0 0; dur: ${800 + Math.random()*700}; easing: easeInQuad`);
-            scene.appendChild(p);
-            setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 1600);
-        }
+        p.setAttribute('position', `${px} ${py} ${pz}`);
+        p.setAttribute('geometry', 'primitive: box; width: 0.15; height: 0.15; depth: 0.15');
+        p.setAttribute('material', `color: ${color}; shader: flat; transparent: true; blending: additive`);
+        
+        p.setAttribute('animation__pos', `property: position; to: ${tx} ${ty} ${tz}; dur: ${800 + Math.random()*700}; easing: easeOutCubic`);
+        p.setAttribute('animation__rot', `property: rotation; to: ${Math.random()*720} ${Math.random()*720} ${Math.random()*720}; dur: 1000; loop: true`);
+        p.setAttribute('animation__scale', `property: scale; to: 0 0 0; dur: ${800 + Math.random()*700}; easing: easeInQuad`);
+        
+        scene.appendChild(p);
+        setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 1600);
     }
 };
 
+// === SISTEMA DE ATAQUE (COM AIM ASSIST) ===
 window.realizarAtaque = function() {
     if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
@@ -575,6 +579,7 @@ window.realizarAtaque = function() {
                 if (dist <= maxDist) {
                     let dirToEnemy = posInimigo.clone().sub(posCamera).normalize();
                     let angleDot = dirCam.dot(dirToEnemy);
+                    // Se o inimigo estiver mais no centro da tela que o anterior, ele se torna o alvo!
                     if (angleDot > minAngle) {
                         minAngle = angleDot;
                         bestTarget = posInimigo;
@@ -584,7 +589,11 @@ window.realizarAtaque = function() {
         });
 
         let targetPoint = new THREE.Vector3();
-        if (bestTarget) { targetPoint.copy(bestTarget); } else { targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); }
+        if (bestTarget) { 
+            targetPoint.copy(bestTarget); 
+        } else { 
+            targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); 
+        }
 
         let proj = document.createElement('a-entity');
         let spawnPos = posCamera.clone().add(dirCam.clone().multiplyScalar(0.5));
