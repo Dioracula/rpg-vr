@@ -106,14 +106,31 @@ AFRAME.registerComponent('colisor-arma-vr', {
         if (this.speed > 2.0 && !this.cortando) {
             this.cortando = true; this.tempoCorte = time; window.tocarSom('snd-sword');
             
-            let corRastro = '#00FFFF';
-            if(armaStats.danoBonus > 10) corRastro = '#ff0055'; 
-            else if(armaStats.danoBonus > 6) corRastro = '#f1c40f';
-            
-            this.rastroEntidade = document.createElement('a-entity');
-            this.rastroEntidade.setAttribute('position', '0 0 0');
-            document.querySelector('a-scene').appendChild(this.rastroEntidade);
-            this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
+            if (armaStats.categoria === 'Espada') {
+                let corRastro = '#00FFFF';
+                if(armaStats.danoBonus > 10) corRastro = '#ff0055'; 
+                else if(armaStats.danoBonus > 6) corRastro = '#f1c40f';
+                
+                this.rastroEntidade = document.createElement('a-entity');
+                this.rastroEntidade.setAttribute('position', '0 0 0');
+                document.querySelector('a-scene').appendChild(this.rastroEntidade);
+                this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
+            } else if (armaStats.categoria === 'Luva') {
+                // Rastro de vento do soco VR
+                let vfxVento = document.createElement('a-entity');
+                vfxVento.setAttribute('position', `${currentWorldPos.x} ${currentWorldPos.y} ${currentWorldPos.z}`);
+                
+                if (this.vel.lengthSq() > 0.01) {
+                    vfxVento.object3D.lookAt(currentWorldPos.clone().add(this.vel));
+                }
+
+                vfxVento.innerHTML = `
+                    <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0.3" height="1.5" position="0 0 -0.75" rotation="90 0 0" material="shader: flat; transparent: true; opacity: 0.5; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
+                    <a-torus color="#ffffff" radius="0.2" radius-tubular="0.01" position="0 0 -0.5" material="shader: flat; transparent: true; opacity: 0.8; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-torus>
+                `;
+                document.querySelector('a-scene').appendChild(vfxVento);
+                setTimeout(() => { if(vfxVento.parentNode) vfxVento.parentNode.removeChild(vfxVento); }, 250);
+            }
         }
 
         if (this.cortando) {
@@ -123,12 +140,10 @@ AFRAME.registerComponent('colisor-arma-vr', {
                     this.rastroEntidade.components['rastro-espada-sao'].finalizar();
                 }
                 this.rastroEntidade = null;
-            } else {
+            } else if (armaStats.categoria === 'Espada') {
                 let basePos = currentWorldPos.clone(); let tipPos = currentWorldPos.clone();
-                if (armaStats.categoria === 'Espada') { 
-                    let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
-                    tipPos.add(dirPonta.clone().multiplyScalar(0.9)); basePos.add(dirPonta.clone().multiplyScalar(0.1)); 
-                } else { tipPos.y += 0.3; }
+                let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
+                tipPos.add(dirPonta.clone().multiplyScalar(0.9)); basePos.add(dirPonta.clone().multiplyScalar(0.1)); 
                 
                 if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
                     this.rastroEntidade.components['rastro-espada-sao'].addPonto(basePos, tipPos);
