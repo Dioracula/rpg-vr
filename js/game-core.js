@@ -309,23 +309,90 @@ window.gerarParticulaRastro = function(pos, vel, corHex = '#00FFFF') {
     scene.appendChild(p); setTimeout(() => { if(p && p.parentNode) p.parentNode.removeChild(p); }, 400);
 };
 
+window.gerarSwingVFX = function(vetorVelocidade, armaStats, alvoSelector) {
+    if (!armaStats.swingAnim || armaStats.swingAnim.trim() === '') return;
+    let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
+    let cam = document.querySelector('[camera]'); let camQuat = new THREE.Quaternion(); if(cam) cam.object3D.getWorldQuaternion(camQuat);
+    let velLocal = vetorVelocidade.clone().applyQuaternion(camQuat.clone().invert()); let angleZ = Math.atan2(velLocal.y, velLocal.x); 
+    let rotBaseArr = (armaStats.swingRotacao || '0 0 0').split(' '); let rX = parseFloat(rotBaseArr[0]) || 0; let rY = parseFloat(rotBaseArr[1]) || 0; let rZ = parseFloat(rotBaseArr[2]) || 0;
+    let finalAngleZ = angleZ + THREE.MathUtils.degToRad(rZ);
+    let escBase = (armaStats.swingEscala || '1 1 1').split(' '); let sX = parseFloat(escBase[0]) || 1; let sY = parseFloat(escBase[1]) || 1; let sZ = parseFloat(escBase[2]) || 1;
+    let additive = armaStats.swingAdditive ? '; blending: additive' : ''; let offsetFrente = alvoSelector === '[camera]' ? -1.5 : -0.6; 
+    vfx.setAttribute('efeito-rastro', `alvoId: ${alvoSelector}; offsetZ: ${offsetFrente}; angleZ: ${finalAngleZ}; rotX: ${rX}; rotY: ${rY}`);
+
+    if (armaStats.swingAnim.endsWith('.png') || armaStats.swingAnim.endsWith('.jpg') || armaStats.swingAnim.endsWith('.gif')) {
+        let shader = armaStats.swingAnim.endsWith('.gif') ? 'gif' : 'flat';
+        let imgMaterial = `shader: ${shader}; src: url(${armaStats.swingAnim}); transparent: true; alphaTest: 0.5; side: double; depthWrite: false${additive}`;
+        vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
+    } else {
+        let glbPath = armaStats.swingAnim.startsWith('#') ? armaStats.swingAnim : `url(${armaStats.swingAnim})`;
+        vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
+    }
+    scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600); 
+};
+
 window.gerarHitVFX = function(pos, armaStats) {
-    if (!armaStats.hitAnim || armaStats.hitAnim.trim() === '') return;
     let scene = document.querySelector('a-scene'); let vfx = document.createElement('a-entity');
     let offsetX = (Math.random() - 0.5) * 0.4; let offsetY = (Math.random() - 0.5) * 0.4; let offsetZ = (Math.random() - 0.5) * 0.4;
     vfx.setAttribute('position', `${pos.x + offsetX} ${pos.y + offsetY} ${pos.z + offsetZ}`);
-    let cam = document.querySelector('[camera]'); if(cam) { let camQuat = new THREE.Quaternion(); cam.object3D.getWorldQuaternion(camQuat); vfx.object3D.quaternion.copy(camQuat); }
-    let escBase = (armaStats.hitEscala || '1 1 1').split(' '); let sX = parseFloat(escBase[0]) || 1; let sY = parseFloat(escBase[1]) || 1; let sZ = parseFloat(escBase[2]) || 1;
-    let additive = armaStats.hitAdditive ? '; blending: additive' : ''; let shaderTipo = armaStats.hitAnim.toLowerCase().endsWith('.gif') ? 'gif' : 'flat';
-
-    if (armaStats.hitAnim.endsWith('.png') || armaStats.hitAnim.endsWith('.jpg') || armaStats.hitAnim.endsWith('.gif')) {
-        let imgMaterial = `shader: ${shaderTipo}; src: url(${armaStats.hitAnim}); transparent: true; alphaTest: 0.5; side: double; depthWrite: false${additive}`;
-        vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
-    } else {
-        let glbPath = armaStats.hitAnim.startsWith('#') ? armaStats.hitAnim : `url(${armaStats.hitAnim})`;
-        vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
+    
+    let cam = document.querySelector('[camera]'); 
+    if(cam) { 
+        let camQuat = new THREE.Quaternion(); 
+        cam.object3D.getWorldQuaternion(camQuat); 
+        vfx.object3D.quaternion.copy(camQuat); 
     }
-    scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600);
+
+    // Prioriza se tiver uma animação configurada no painel admin
+    if (armaStats && armaStats.hitAnim && armaStats.hitAnim.trim() !== '') {
+        let escBase = (armaStats.hitEscala || '1 1 1').split(' '); let sX = parseFloat(escBase[0]) || 1; let sY = parseFloat(escBase[1]) || 1; let sZ = parseFloat(escBase[2]) || 1;
+        let additive = armaStats.hitAdditive ? '; blending: additive' : ''; let shaderTipo = armaStats.hitAnim.toLowerCase().endsWith('.gif') ? 'gif' : 'flat';
+
+        if (armaStats.hitAnim.endsWith('.png') || armaStats.hitAnim.endsWith('.jpg') || armaStats.hitAnim.endsWith('.gif')) {
+            let imgMaterial = `shader: ${shaderTipo}; src: url(${armaStats.hitAnim}); transparent: true; alphaTest: 0.5; side: double; depthWrite: false${additive}`;
+            vfx.innerHTML = `<a-entity geometry="primitive: plane; width: ${sX}; height: ${sY}" material="${imgMaterial}"></a-entity>`;
+        } else {
+            let glbPath = armaStats.hitAnim.startsWith('#') ? armaStats.hitAnim : `url(${armaStats.hitAnim})`;
+            vfx.innerHTML = `<a-entity gltf-model="${glbPath}" scale="${sX} ${sY} ${sZ}" animation-mixer="loop: once; clampWhenFinished: true;"></a-entity>`;
+        }
+        scene.appendChild(vfx); setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 600);
+        return;
+    }
+
+    // VFX PROCEDURAL: SWORD ART ONLINE E IMPACTO POW
+    if (armaStats && armaStats.categoria === 'Espada') {
+        let corCorte = '#00FFFF';
+        if(armaStats.danoBonus > 10) corCorte = '#ff0055'; 
+        else if(armaStats.danoBonus > 6) corCorte = '#f1c40f';
+
+        vfx.innerHTML = `
+            <a-sphere radius="0.3" color="#ffffff" material="shader: flat; emissive: #ffffff; emissiveIntensity: 5; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 3 3 3; dur: 150; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 150; easing: easeOutQuad"></a-sphere>
+            <a-box color="${corCorte}" width="0.05" height="1.5" depth="0.05" rotation="0 0 45" material="shader: flat; emissive: ${corCorte}; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1 2.5 1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-box>
+            <a-box color="${corCorte}" width="0.05" height="1.5" depth="0.05" rotation="0 0 -45" material="shader: flat; emissive: ${corCorte}; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1 2.5 1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-box>
+        `;
+        scene.appendChild(vfx);
+        setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 250);
+    } 
+    else if (armaStats && armaStats.categoria === 'Luva') {
+        vfx.innerHTML = `
+            <a-torus radius="0.2" radius-tubular="0.05" color="#ff4500" material="shader: flat; emissive: #ff4500; emissiveIntensity: 3; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 4 4 4; dur: 250; easing: easeOutCubic" animation__fade="property: material.opacity; to: 0; dur: 250; easing: easeOutCubic"></a-torus>
+            <a-sphere radius="0.4" color="#ffdd00" material="shader: flat; emissive: #ffdd00; emissiveIntensity: 2; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2.5 2.5 2.5; dur: 150; easing: easeOutCubic" animation__fade="property: material.opacity; to: 0; dur: 150; easing: easeOutCubic"></a-sphere>
+            <a-entity rotation="0 0 0" animation__rot="property: rotation; to: 0 0 90; dur: 200">
+                <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0" height="0.8" position="0 0.4 0" material="shader: flat; emissive: #ffffff; emissiveIntensity: 2; transparent: true; blending: additive" animation__pos="property: position; to: 0 1.2 0; dur: 200; easing: easeOutQuad" animation__scale="property: scale; to: 0.1 2 0.1; dur: 200" animation__fade="property: material.opacity; to: 0; dur: 200"></a-cone>
+                <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0" height="0.8" position="0 -0.4 0" rotation="180 0 0" material="shader: flat; emissive: #ffffff; emissiveIntensity: 2; transparent: true; blending: additive" animation__pos="property: position; to: 0 -1.2 0; dur: 200; easing: easeOutQuad" animation__scale="property: scale; to: 0.1 2 0.1; dur: 200" animation__fade="property: material.opacity; to: 0; dur: 200"></a-cone>
+                <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0" height="0.8" position="0.4 0 0" rotation="0 0 -90" material="shader: flat; emissive: #ffffff; emissiveIntensity: 2; transparent: true; blending: additive" animation__pos="property: position; to: 1.2 0 0; dur: 200; easing: easeOutQuad" animation__scale="property: scale; to: 0.1 2 0.1; dur: 200" animation__fade="property: material.opacity; to: 0; dur: 200"></a-cone>
+                <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0" height="0.8" position="-0.4 0 0" rotation="0 0 90" material="shader: flat; emissive: #ffffff; emissiveIntensity: 2; transparent: true; blending: additive" animation__pos="property: position; to: -1.2 0 0; dur: 200; easing: easeOutQuad" animation__scale="property: scale; to: 0.1 2 0.1; dur: 200" animation__fade="property: material.opacity; to: 0; dur: 200"></a-cone>
+            </a-entity>
+        `;
+        scene.appendChild(vfx);
+        setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 300);
+    }
+    else {
+        // Efeito Genérico (Flechas, Magia ou Inimigos Atacando o Jogador)
+        vfx.innerHTML = `<a-sphere radius="0.3" color="#ff0000" material="shader: flat; emissive: #ff0000; emissiveIntensity: 2; transparent: true; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2 2 2; dur: 200" animation__fade="property: material.opacity; to: 0; dur: 200"></a-sphere>`;
+        scene.appendChild(vfx);
+        setTimeout(() => { if (vfx && vfx.parentNode) vfx.parentNode.removeChild(vfx); }, 250);
+    }
 };
 
 window.realizarAtaque = function() {
