@@ -58,7 +58,7 @@ window.atualizarArmaVisual = function() {
         containerEsq.innerHTML = htmlArco; escudoPC.innerHTML = htmlArco;
     } else if (armaStats && armaStats.visualEsq && window.playerState.armaEquipada !== 'Shuriken') {
         containerEsq.innerHTML = armaStats.visualEsq;
-        escudoPC.innerHTML = armaStats.visualEsq; // Permite visualizar a Luva esquerda no PC/Mobile
+        escudoPC.innerHTML = armaStats.visualEsq;
     }
 };
 
@@ -401,7 +401,7 @@ window.realizarAtaque = function() {
 
     if (window.GAME_MODE === 'VR' && armaStats.categoria !== 'Arco' && armaStats.categoria !== 'Luva') { return; }
 
-    window.comboAtaque = window.comboAtaque === 0 ? 1 : 0; // Alterna combo
+    window.comboAtaque = window.comboAtaque === 0 ? 1 : 0; 
     window.tocarSom('snd-sword');
     
     let pcWeapon = document.querySelector('#arma-visual-pc'); 
@@ -429,7 +429,7 @@ window.realizarAtaque = function() {
         vfxVento.setAttribute('position', `${posSoco.x} ${posSoco.y} ${posSoco.z}`);
         vfxVento.object3D.quaternion.copy(camQuat);
         vfxVento.innerHTML = `
-            <a-cone color="#ffffff" radius-bottom="0.2" radius-top="0.5" height="2" position="0 0 -1" rotation="90 0 0" material="shader: flat; transparent: true; opacity: 0.4; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -2.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
+            <a-cone color="#ffffff" radius-bottom="0.2" radius-top="0.5" height="2" position="0 0 -1" rotation="-90 0 0" material="shader: flat; transparent: true; opacity: 0.4; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -2.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
             <a-torus color="#ffffff" radius="0.3" radius-tubular="0.02" position="0 0 -0.8" material="shader: flat; transparent: true; opacity: 0.6; blending: additive; depthWrite: false" animation__scale="property: scale; to: 4 4 4; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -2; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-torus>
         `;
         document.querySelector('a-scene').appendChild(vfxVento);
@@ -467,7 +467,7 @@ window.realizarAtaque = function() {
                 let angulo = (progresso * Math.PI) - (Math.PI / 2); 
                 
                 let offX = 1.5 * Math.sin(angulo); 
-                if (window.comboAtaque === 1) offX = -offX; // Inverte a direção do arco visual
+                if (window.comboAtaque === 1) offX = -offX; 
 
                 let offY = 0.2 - (progresso * 0.4);  
                 let offZ = -1.2 + (Math.cos(angulo) * 0.8);
