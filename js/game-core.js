@@ -418,11 +418,10 @@ window.gerarHitVFX = function(pos, armaStats, direcaoImpacto = null) {
 // === FASE 1 DO SAO: FEIXES DE LUZ ===
 window.gerarFeixesBoss = function(pos, escala) {
     let scene = document.querySelector('a-scene');
-    let height = 1.5 * (escala.y || 1);
     window.tocarSom('snd-magic'); 
     
     let beams = document.createElement('a-entity');
-    beams.setAttribute('position', `${pos.x} ${pos.y + height/2} ${pos.z}`);
+    beams.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     
     for(let i=0; i<6; i++) {
         let beam = document.createElement('a-cylinder');
@@ -442,21 +441,24 @@ window.gerarFeixesBoss = function(pos, escala) {
 // === FASE 2 DO SAO: EXPLOSÃO EM PARTÍCULAS ===
 window.gerarParticulasSAO = function(pos, isBoss, escala) {
     let scene = document.querySelector('a-scene');
-    let height = 1.5 * (escala.y || 1);
-    
     window.tocarSom('snd-magic');
 
     let count = isBoss ? 80 : 30; 
     let color = isBoss ? '#ff0055' : '#00ffff'; 
+    
+    let spreadX = (escala.x || 1) * 1.5;
+    let spreadY = (escala.y || 1) * 1.5;
+    let spreadZ = (escala.z || 1) * 1.5;
 
     for (let i = 0; i < count; i++) {
         let p = document.createElement('a-entity');
-        let px = pos.x + (Math.random() - 0.5) * (escala.x || 1) * 2;
-        let py = pos.y + Math.random() * height;
-        let pz = pos.z + (Math.random() - 0.5) * (escala.z || 1) * 2;
+        
+        let px = pos.x + (Math.random() - 0.5) * spreadX;
+        let py = pos.y + (Math.random() - 0.5) * spreadY;
+        let pz = pos.z + (Math.random() - 0.5) * spreadZ;
         
         let tx = px + (Math.random() - 0.5) * 6;
-        let ty = py + (Math.random() * 6);
+        let ty = py + (Math.random() - 0.5) * 6; 
         let tz = pz + (Math.random() - 0.5) * 6;
 
         p.setAttribute('position', `${px} ${py} ${pz}`);
@@ -472,7 +474,6 @@ window.gerarParticulasSAO = function(pos, isBoss, escala) {
     }
 };
 
-// === SISTEMA DE ATAQUE (COM AIM ASSIST) ===
 window.realizarAtaque = function() {
     if(!window.GAME_STARTED || !window.playerState.vivo || window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
     let armaStats = window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Desarmado']; 
@@ -489,7 +490,6 @@ window.realizarAtaque = function() {
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    // === ATAQUES CORPO-A-CORPO (Meelee) ===
     if (armaStats.categoria === 'Luva' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Escudo') {
         window.tocarSom('snd-sword');
         let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
@@ -560,26 +560,24 @@ window.realizarAtaque = function() {
         });
 
     } else {
-        // === ATAQUES DE LONGO ALCANCE COM ASSISTENTE DE MIRA ===
         window.tocarSom('snd-magic');
         let maxDist = armaStats.distancia || 20;
         let dirCam = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuat).normalize();
         
         let bestTarget = null;
-        let minAngle = 0.90; // Campo de visão de mira (cone frontal)
+        let minAngle = 0.90; 
         
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => {
             let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if(syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
-                posInimigo.y += 1.0; // Mira no peito do monstro
+                posInimigo.y += 1.0; 
                 let dist = posCamera.distanceTo(posInimigo);
                 
                 if (dist <= maxDist) {
                     let dirToEnemy = posInimigo.clone().sub(posCamera).normalize();
                     let angleDot = dirCam.dot(dirToEnemy);
-                    // Se o inimigo estiver mais no centro da tela que o anterior, ele se torna o alvo!
                     if (angleDot > minAngle) {
                         minAngle = angleDot;
                         bestTarget = posInimigo;
