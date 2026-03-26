@@ -421,7 +421,6 @@ window.gerarFeixesBoss = function(pos, escala) {
     window.tocarSom('snd-magic'); 
     
     let beams = document.createElement('a-entity');
-    // A luz nasce exatamente no ponto central calibrado pelo Offset do admin
     beams.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     
     for(let i=0; i<6; i++) {
@@ -454,7 +453,6 @@ window.gerarParticulasSAO = function(pos, isBoss, escala) {
     for (let i = 0; i < count; i++) {
         let p = document.createElement('a-entity');
         
-        // As partículas nascem aglomeradas na origem milimétrica da luz (pos) e do Offset
         let px = pos.x + (Math.random() - 0.5) * spreadX;
         let py = pos.y + (Math.random() - 0.5) * spreadY;
         let pz = pos.z + (Math.random() - 0.5) * spreadZ;
@@ -492,7 +490,7 @@ window.realizarAtaque = function() {
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    // === ATAQUES CORPO-A-CORPO (Meelee) com HITBOX UNIVERSAL E ESFERA DE DANO ===
+    // === ATAQUES CORPO-A-CORPO (Meelee) ===
     if (armaStats.categoria === 'Luva' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Escudo') {
         window.tocarSom('snd-sword');
         let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
@@ -548,46 +546,33 @@ window.realizarAtaque = function() {
         }
 
         let alcanceArma = armaStats.distancia || 3.0; 
-        
-        // === SOLUÇÃO UNIVERSAL: ESFERA DE DANO (Para não ter de "entrar" no monstro) ===
-        // O jogo cria uma esfera mágica invisível à sua frente. Se tocar na caixa de colisão do monstro, é Dano!
-        let raioAtaque = alcanceArma / 2;
-        let direcaoFrontal = direcao.clone().normalize();
-        let centroAtaque = posCamera.clone().add(direcaoFrontal.multiplyScalar(raioAtaque));
-        let hitSphere = new THREE.Sphere(centroAtaque, raioAtaque + 0.5); // +0.5 dá uma folga para o golpe não falhar
-        
         let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
 
+        // NOVO SISTEMA HÍBRIDO DE COLISÃO MEELEE
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => { 
             let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp && syncComp.hpAtual <= 0) return;
             
             let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
-            let visual = inimigoEl.querySelector('.modelo-visual');
+            let scale = inimigoEl.object3D.scale;
+            let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
             let hit = false;
 
-            if (visual && visual.getObject3D('mesh')) {
-                // Pega a malha exata do dragão/monstro e cria uma caixa
-                let box = new THREE.Box3().setFromObject(visual.getObject3D('mesh'));
-                box.expandByScalar(0.2); // Deixa a caixa 20cm maior para cobrir melhor asas e chifres
+            let dx = posInimigo.x - posCamera.x; 
+            let dz = posInimigo.z - posCamera.z; 
+            let dist2D = Math.hypot(dx, dz);
 
-                // Em vez de olhar para o "centro" da caixa, testa se a caixa bate na sua Esfera de Dano frontal!
-                if (box.intersectsSphere(hitSphere) || box.containsPoint(posCamera)) {
-                    hit = true; 
-                }
-            } else {
-                // Fallback (caso a malha ainda não exista)
-                let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z; let dist2D = Math.hypot(dx, dz);
-                if (dist2D <= alcanceArma) { 
-                    let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
-                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                    if (anguloAcerto > 0.0) { hit = true; }
-                } 
-            }
+            if (dist2D <= (alcanceArma + raioInimigo)) { 
+                let dirInimigo2D = new THREE.Vector2(dx, dz); 
+                if (dist2D > 0.001) dirInimigo2D.normalize();
+                
+                let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
+                if (anguloAcerto > -0.5) { hit = true; } // Aceita golpes periféricos (asas/cauda)
+            } 
 
             if (hit) { 
                 syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
-                let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0; 
+                let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += (1.0 * scale.y); 
                 window.gerarHitVFX(posHit, armaStats, dirImpacto); 
             }
         });
@@ -599,16 +584,17 @@ window.realizarAtaque = function() {
         let dirCam = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuat).normalize();
         
         let bestTarget = null;
-        let minAngle = 0.90; // Campo de visão (cone de assistência de mira)
+        let minAngle = 0.90; 
         
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => {
             let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if(syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
-                posInimigo.y += 1.0; // Mira no peito do monstro
-                let dist = posCamera.distanceTo(posInimigo);
+                let scale = inimigoEl.object3D.scale;
+                posInimigo.y += (1.0 * scale.y); 
                 
+                let dist = posCamera.distanceTo(posInimigo);
                 if (dist <= maxDist) {
                     let dirToEnemy = posInimigo.clone().sub(posCamera).normalize();
                     let angleDot = dirCam.dot(dirToEnemy);
@@ -621,11 +607,7 @@ window.realizarAtaque = function() {
         });
 
         let targetPoint = new THREE.Vector3();
-        if (bestTarget) { 
-            targetPoint.copy(bestTarget); 
-        } else { 
-            targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); 
-        }
+        if (bestTarget) { targetPoint.copy(bestTarget); } else { targetPoint = posCamera.clone().add(dirCam.multiplyScalar(maxDist)); }
 
         let proj = document.createElement('a-entity');
         let spawnPos = posCamera.clone().add(dirCam.clone().multiplyScalar(0.5));
@@ -633,7 +615,6 @@ window.realizarAtaque = function() {
         proj.setAttribute('position', `${spawnPos.x} ${spawnPos.y} ${spawnPos.z}`);
         
         let shootDir = targetPoint.clone().sub(spawnPos).normalize();
-        
         let projVel = armaStats.categoria === 'Shuriken' ? (armaStats.shurikenVel * 8 || 15) : (armaStats.projetilVel || 20);
         let danoFinal = Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5);
         
