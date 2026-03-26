@@ -78,7 +78,7 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
-// NOVA COLISÃO PERFEITA PROJÉTEIS
+// NOVA COLISÃO PERFEITA E LEVE PARA PROJÉTEIS
 AFRAME.registerComponent('projetil-jogador', {
     schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
     init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
@@ -99,20 +99,21 @@ AFRAME.registerComponent('projetil-jogador', {
             if (syncComp && syncComp.hpAtual > 0) {
                 let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo);
                 
-                // Pré-checagem: O tiro está perto do monstro? (Raio de 15m)
-                if (this.posAtual.distanceTo(posInimigo) < 15.0) {
+                // Pré-checagem rápida: Só processa colisão se a shuriken estiver num raio de 20m
+                if (this.posAtual.distanceTo(posInimigo) < 20.0) {
                     
+                    // Cria uma hit-box cilíndrica matemática baseada 100% na escala que você colocou no admin.html
                     let scale = inimigoEl.object3D.scale;
-                    // Cria um raio flexível baseado no tamanho do monstro (Scale)
                     let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
                     let alturaInimigo = 2.5 * scale.y;
                     
-                    let distX = Math.abs(this.posAtual.x - posInimigo.x); 
-                    let distZ = Math.abs(this.posAtual.z - posInimigo.z); 
+                    let dx = this.posAtual.x - posInimigo.x; 
+                    let dz = this.posAtual.z - posInimigo.z; 
+                    let dist2D = Math.hypot(dx, dz);
                     let distY = this.posAtual.y - posInimigo.y;
 
-                    // Caixa de colisão invisível que abraça o monstro perfeitamente (Asas, Cabeça, etc)
-                    if (distX <= raioInimigo && distZ <= raioInimigo && distY > -0.5 && distY < alturaInimigo) {
+                    // Acerta se passar dentro do raio do bicho (+0.5 de "gordura" pra hitbox da shuriken)
+                    if (dist2D <= (raioInimigo + 0.5) && distY > -0.5 && distY < alturaInimigo) {
                         syncComp.receberDano(this.data.dano, this.data.arma);
                         window.gerarHitVFX(this.posAtual, window.bancoDeArmas[window.playerState.armaEquipada] || window.bancoDeArmas['Shuriken']);
                         hit = true; break;
@@ -176,8 +177,10 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
             if (morreuAgora) {
                 this.isDead = true; this.ataqueCorrente = null; if(textoHp) textoHp.setAttribute('value', 'MORTO'); this.el.classList.remove('interativo'); 
                 
+                // === INICIA ANIMAÇÃO DE MORTE ===
                 this.tocarAnimacao(window.ANIM_MORTE, 'once', true); 
                 
+                // === CÁLCULO DE POSIÇÃO CORRIGIDA (OFFSET) ===
                 let posVFX = new THREE.Vector3(); this.el.object3D.getWorldPosition(posVFX);
                 let offsetBD = (this.dadosBD && this.dadosBD.vfxOffset) ? this.dadosBD.vfxOffset : {x:0, y:0, z:0};
                 let isBoss = (this.dadosBD && this.dadosBD.rank === 'boss');
@@ -212,6 +215,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
         this.receberDano = (dano, tipoCategoria = '') => { 
             if (!window.playerState.vivo || this.hpAtual <= 0) return; window.tocarSom('snd-hit'); 
             
+            // Preditivo do Cliente (Evita múltiplos Hits simultâneos das armas)
             let preHitHp = this.hpAtual;
             this.hpAtual -= dano;
             if(this.hpAtual <= 0) this.hpAtual = 0;
