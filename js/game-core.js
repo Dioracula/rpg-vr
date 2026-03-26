@@ -490,7 +490,7 @@ window.realizarAtaque = function() {
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    // === ATAQUES CORPO-A-CORPO (Meelee) ===
+    // === ATAQUES CORPO-A-CORPO (Meelee) COM FÍSICA MATEMÁTICA PERFEITA ===
     if (armaStats.categoria === 'Luva' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Escudo') {
         window.tocarSom('snd-sword');
         let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
@@ -520,55 +520,59 @@ window.realizarAtaque = function() {
                         if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
                         return; 
                     }
-                    
                     let progresso = count / maxCount;
                     let angulo = (progresso * Math.PI) - (Math.PI / 2); 
-                    
                     let offX = 1.5 * Math.sin(angulo); 
                     if (window.comboAtaque === 1) offX = -offX; 
-
                     let offY = 0.2 - (progresso * 0.4);  
                     let offZ = -1.2 + (Math.cos(angulo) * 0.8);
                     
                     let offVectorBase = new THREE.Vector3(offX * 0.2, offY, offZ * 0.4).applyQuaternion(camQuat);
                     let offVectorPonta = new THREE.Vector3(offX, offY + 0.3, offZ).applyQuaternion(camQuat);
-                    
                     let pBase = posCamera.clone().add(offVectorBase);
                     let pPonta = posCamera.clone().add(offVectorPonta);
                     
-                    if(rastroEntidade.components['rastro-espada-sao']) {
-                        rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta);
-                    }
-                    
+                    if(rastroEntidade.components['rastro-espada-sao']) { rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta); }
                     count++;
                 }, 20);
             }
         }
 
-        let alcanceArma = armaStats.distancia || 3.0; 
         let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
+        let alcanceArma = armaStats.distancia || 3.0; 
 
-        // NOVO SISTEMA HÍBRIDO DE COLISÃO MEELEE
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => { 
             let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp && syncComp.hpAtual <= 0) return;
             
             let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
             let scale = inimigoEl.object3D.scale;
-            let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
             let hit = false;
 
+            // Hitbox Matemática Baseada no Tamanho do Monstro!
+            let raioInimigo = 0.8 * Math.max(scale.x, scale.z);
             let dx = posInimigo.x - posCamera.x; 
             let dz = posInimigo.z - posCamera.z; 
             let dist2D = Math.hypot(dx, dz);
 
-            if (dist2D <= (alcanceArma + raioInimigo)) { 
+            // Calcula a distância até a borda do monstro (não precisa entrar nele)
+            let distanciaAteBorda = dist2D - raioInimigo;
+
+            if (distanciaAteBorda <= alcanceArma) { 
                 let dirInimigo2D = new THREE.Vector2(dx, dz); 
                 if (dist2D > 0.001) dirInimigo2D.normalize();
                 
                 let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                if (anguloAcerto > -0.5) { hit = true; } // Aceita golpes periféricos (asas/cauda)
-            } 
+                
+                let anguloMinimo = 0.0;
+                if (raioInimigo >= 1.5) anguloMinimo = -0.5; // Dragões aceitam golpes bem na lateral da tela
+                if (raioInimigo >= 3.0) anguloMinimo = -0.8; 
+
+                // Se tiver de frente pra ele OU estiver literalmente no meio das asas/corpo (dist2D <= raioInimigo)
+                if (anguloAcerto > anguloMinimo || dist2D <= raioInimigo) { 
+                    hit = true; 
+                }
+            }
 
             if (hit) { 
                 syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); 
@@ -584,7 +588,7 @@ window.realizarAtaque = function() {
         let dirCam = new THREE.Vector3(0, 0, -1).applyQuaternion(camQuat).normalize();
         
         let bestTarget = null;
-        let minAngle = 0.90; 
+        let minAngle = 0.90; // Campo de visão (cone de assistência de mira)
         
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => {
