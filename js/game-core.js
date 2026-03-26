@@ -299,6 +299,7 @@ window.aceitarMissaoNPC = function() {
 };
 
 window.gerarParticulaRastro = function(pos, vel, corHex = '#00FFFF') {
+    // Mantido por retrocompatibilidade caso alguma outra função use
     let scene = document.querySelector('a-scene'); let p = document.createElement('a-entity');
     let rX = pos.x + (Math.random() - 0.5) * 0.2; let rY = pos.y + (Math.random() - 0.5) * 0.2; let rZ = pos.z + (Math.random() - 0.5) * 0.2;
     p.setAttribute('position', `${rX} ${rY} ${rZ}`);
@@ -369,11 +370,38 @@ window.realizarAtaque = function() {
     simVel.applyQuaternion(camQuat).normalize().multiplyScalar(5); 
     window.gerarSwingVFX(simVel, armaStats, '[camera]');
 
+    // --- NOVO: INTEGRAÇÃO DO RASTRO SAO PARA O PC/MOBILE ---
+    let corRastro = '#00FFFF';
+    if (armaStats && armaStats.danoBonus) {
+        if(armaStats.danoBonus >= 15) corRastro = '#ff0055'; 
+        else if(armaStats.danoBonus >= 7) corRastro = '#f1c40f'; 
+    }
+    let rastroEntidade = document.createElement('a-entity');
+    rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 250`);
+    document.querySelector('a-scene').appendChild(rastroEntidade);
+
     let count = 0;
     let arcInt = setInterval(() => {
-        if(count > 6) { clearInterval(arcInt); return; }
-        let offX = 0.5 - (count * 0.15); let offY = 0.2 - (count * 0.1);  let offVector = new THREE.Vector3(offX, offY, -1.2).applyQuaternion(camQuat);
-        let pPos = posCamera.clone().add(offVector); window.gerarParticulaRastro(pPos, simVel, '#00FFFF'); window.gerarParticulaRastro(pPos, simVel, '#FFFFFF'); 
+        if(count > 6) { 
+            clearInterval(arcInt); 
+            if(rastroEntidade.components['rastro-espada-sao']) rastroEntidade.components['rastro-espada-sao'].finalizar();
+            return; 
+        }
+        
+        // Simula uma curva de corte no ar
+        let offX = 0.5 - (count * 0.15); 
+        let offY = 0.2 - (count * 0.1);  
+        
+        let offVectorBase = new THREE.Vector3(offX, offY, -0.5).applyQuaternion(camQuat);
+        let offVectorPonta = new THREE.Vector3(offX + 0.3, offY + 0.2, -1.8).applyQuaternion(camQuat);
+        
+        let pBase = posCamera.clone().add(offVectorBase);
+        let pPonta = posCamera.clone().add(offVectorPonta);
+        
+        if(rastroEntidade.components['rastro-espada-sao']) {
+            rastroEntidade.components['rastro-espada-sao'].addPonto(pBase, pPonta);
+        }
+        
         count++;
     }, 30);
 
