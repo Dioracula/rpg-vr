@@ -492,7 +492,7 @@ window.realizarAtaque = function() {
     cameraObj.object3D.getWorldPosition(posCamera); let camQuat = new THREE.Quaternion(); cameraObj.object3D.getWorldQuaternion(camQuat);
     direcao.applyQuaternion(camQuat);
 
-    // === ATAQUES CORPO-A-CORPO (Meelee) com HITBOX PRECISA NA MALHA GLB ===
+    // === ATAQUES CORPO-A-CORPO (Meelee) com HITBOX UNIVERSAL E ESFERA DE DANO ===
     if (armaStats.categoria === 'Luva' || armaStats.categoria === 'Espada' || armaStats.categoria === 'Escudo') {
         window.tocarSom('snd-sword');
         let dirImpacto = new THREE.Vector3(window.comboAtaque === 0 ? 1 : -1, -0.5, 0).applyQuaternion(camQuat);
@@ -547,8 +547,16 @@ window.realizarAtaque = function() {
             }
         }
 
-        let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
         let alcanceArma = armaStats.distancia || 3.0; 
+        
+        // === SOLUÇÃO UNIVERSAL: ESFERA DE DANO (Para não ter de "entrar" no monstro) ===
+        // O jogo cria uma esfera mágica invisível à sua frente. Se tocar na caixa de colisão do monstro, é Dano!
+        let raioAtaque = alcanceArma / 2;
+        let direcaoFrontal = direcao.clone().normalize();
+        let centroAtaque = posCamera.clone().add(direcaoFrontal.multiplyScalar(raioAtaque));
+        let hitSphere = new THREE.Sphere(centroAtaque, raioAtaque + 0.5); // +0.5 dá uma folga para o golpe não falhar
+        
+        let dirCam2D = new THREE.Vector2(direcao.x, direcao.z); if (dirCam2D.lengthSq() > 0.001) dirCam2D.normalize();
 
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
         inimigosEls.forEach(inimigoEl => { 
@@ -558,20 +566,17 @@ window.realizarAtaque = function() {
             let visual = inimigoEl.querySelector('.modelo-visual');
             let hit = false;
 
-            // Nova Colisão Perfeita: Cria uma Bounding Box 3D baseada no modelo (Asas, Cauda, etc)
             if (visual && visual.getObject3D('mesh')) {
+                // Pega a malha exata do dragão/monstro e cria uma caixa
                 let box = new THREE.Box3().setFromObject(visual.getObject3D('mesh'));
-                box.expandByScalar(0.2); // Expande a caixa de colisão em 20cm pra não falhar cortes justos
+                box.expandByScalar(0.2); // Deixa a caixa 20cm maior para cobrir melhor asas e chifres
 
-                if (box.distanceToPoint(posCamera) <= alcanceArma) {
-                    let center = new THREE.Vector3(); box.getCenter(center);
-                    let dirInimigo2D = new THREE.Vector2(center.x - posCamera.x, center.z - posCamera.z).normalize();
-                    let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
-                    // Tolerância bem maior de ângulo para permitir acertar asas de dragões grandes sem olhar pro centro
-                    if (anguloAcerto > -0.3) { hit = true; } 
+                // Em vez de olhar para o "centro" da caixa, testa se a caixa bate na sua Esfera de Dano frontal!
+                if (box.intersectsSphere(hitSphere) || box.containsPoint(posCamera)) {
+                    hit = true; 
                 }
             } else {
-                // Fallback de colisão caso a malha não exista
+                // Fallback (caso a malha ainda não exista)
                 let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z; let dist2D = Math.hypot(dx, dz);
                 if (dist2D <= alcanceArma) { 
                     let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
