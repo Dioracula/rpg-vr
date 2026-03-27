@@ -79,7 +79,7 @@ AFRAME.registerComponent('btn-sistema-acao', {
     }
 });
 
-// === COLISÃO VR COM PROTEÇÃO ANTI-CRASH E MULTIPLOS HITS ===
+// === COLISÃO VR COM MÚLTIPLOS CORTES RÁPIDOS (COMBO 150ms) ===
 AFRAME.registerComponent('colisor-arma-vr', {
     schema: { mao: { type: 'string' } },
     init: function() {
@@ -212,7 +212,7 @@ AFRAME.registerComponent('colisor-arma-vr', {
                                 }
 
                                 let escalaGlobal = visual.object3D.scale.y || 1;
-                                let raioOssoFixo = 0.35 * escalaGlobal; 
+                                let raioOssoFixo = 0.25 * escalaGlobal; 
 
                                 if (visual.colisores.ossos.length > 0) {
                                     let posOsso = new THREE.Vector3();
@@ -283,8 +283,8 @@ AFRAME.registerComponent('colisor-arma-vr', {
 
                         if (hitDetectado) {
                             let lastHit = this.lastHits.get(inimigoEl) || 0;
-                            // COOLDOWN DE DANO REDUZIDO PARA 100ms (Mais ataques por movimento rápido)
-                            if (this.speed > 1.5 && (agora - lastHit > 100)) { 
+                            // --- ALTERAÇÃO AQUI: De 400ms para 150ms. Permite múltiplos golpes rápidos com o movimento da espada! ---
+                            if (this.speed > 1.5 && (agora - lastHit > 150)) { 
                                 syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
                                 window.gerarHitVFX(posAcertoVFX, armaStats, this.vel.clone()); 
                                 this.lastHits.set(inimigoEl, agora);
