@@ -78,18 +78,28 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
-// LÓGICA DE COLISÃO DO PROJETIL (PC / Mobile) ATUALIZADA - SAO BONE STYLE
+// LÓGICA DE TIRO PRECISO NOS OSSOS (PC/MOBILE)
 AFRAME.registerComponent('projetil-jogador', {
     schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
-    init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
+    init: function() { 
+        this.tempoVida = 0; 
+        this.posAtual = new THREE.Vector3(); 
+        this.lastPos = new THREE.Vector3();
+        this.raycaster = new THREE.Raycaster();
+    },
     tick: function(time, timeDelta) {
         let dt = timeDelta / 1000; this.tempoVida += dt;
         if (this.tempoVida > 3) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
         
+        this.el.object3D.getWorldPosition(this.lastPos);
+
         this.el.object3D.position.x += this.data.velocidade.x * dt;
         this.el.object3D.position.y += this.data.velocidade.y * dt;
         this.el.object3D.position.z += this.data.velocidade.z * dt;
         this.el.object3D.getWorldPosition(this.posAtual);
+
+        let moveDir = new THREE.Vector3().subVectors(this.posAtual, this.lastPos);
+        let moveDist = moveDir.length();
 
         let hit = false;
         let posAcertoVFX = new THREE.Vector3();
@@ -98,25 +108,37 @@ AFRAME.registerComponent('projetil-jogador', {
         for (let i = 0; i < inimigosEls.length; i++) {
             let inimigoEl = inimigosEls[i]; let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if (syncComp && syncComp.hpAtual > 0) {
-                let visual = inimigoEl.querySelector('.modelo-visual');
                 let achouColisao = false;
+                let visual = inimigoEl.querySelector('.modelo-visual');
 
-                // --- COLISÃO PRECISA NOS OSSOS ---
+                // --- COLISÃO PRECISA NOS OSSOS/MESH ---
                 if (visual) {
-                    if (!visual.ossosInimigo) {
-                        let mesh = visual.getObject3D('mesh');
-                        if (mesh) {
-                            visual.ossosInimigo = [];
-                            mesh.traverse(node => { if (node.isBone) visual.ossosInimigo.push(node); });
+                    let mesh = visual.getObject3D('mesh');
+                    if (mesh) {
+                        if (!visual.colisores) {
+                            visual.colisores = { ossos: [], meshes: [] };
+                            mesh.traverse(node => {
+                                if (node.isBone) visual.colisores.ossos.push(node);
+                                else if (node.isMesh) visual.colisores.meshes.push(node);
+                            });
                         }
-                    }
 
-                    if (visual.ossosInimigo && visual.ossosInimigo.length > 0) {
-                        let posOsso = new THREE.Vector3();
-                        for (let j = 0; j < visual.ossosInimigo.length; j++) {
-                            visual.ossosInimigo[j].getWorldPosition(posOsso);
-                            if (this.posAtual.distanceTo(posOsso) < 0.45) { // Magia / Arco tem volume maior de acerto
-                                achouColisao = true; posAcertoVFX.copy(posOsso); break;
+                        let escalaGlobal = visual.object3D.scale.y || 1;
+                        let raioBase = 0.25 * escalaGlobal;
+
+                        if (visual.colisores.ossos.length > 0) {
+                            let posOsso = new THREE.Vector3();
+                            for (let j = 0; j < visual.colisores.ossos.length; j++) {
+                                visual.colisores.ossos[j].getWorldPosition(posOsso);
+                                if (this.posAtual.distanceTo(posOsso) <= raioBase + 0.15) {
+                                    achouColisao = true; posAcertoVFX.copy(posOsso); break;
+                                }
+                            }
+                        } else if (visual.colisores.meshes.length > 0 && moveDist > 0) {
+                            this.raycaster.set(this.lastPos, moveDir.clone().normalize());
+                            let hits = this.raycaster.intersectObject(mesh, true);
+                            if (hits.length > 0 && hits[0].distance <= moveDist + 0.3) {
+                                achouColisao = true; posAcertoVFX.copy(hits[0].point); break;
                             }
                         }
                     }
@@ -128,6 +150,7 @@ AFRAME.registerComponent('projetil-jogador', {
                     let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
                     let boxInimigo = new THREE.Box3();
                     let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
+                    
                     if (colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
                     else { boxInimigo.setFromObject(inimigoEl.object3D); }
                     
