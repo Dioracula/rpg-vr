@@ -2,6 +2,33 @@
 // COMPONENTES A-FRAME (FÍSICA, VR, MOBILE E UI)
 // ==========================================
 
+// NOVO SISTEMA: Checagem de Colisão Precisa Baseada em Ossos Animados
+window.checarColisaoOssos = function(boxAtaque, posAtaque, inimigoEl, raioColisao = 0.35) {
+    let visual = inimigoEl.querySelector('.modelo-visual');
+    if (!visual) return posAtaque; // Fallback se não houver modelo
+    let mesh = visual.getObject3D('mesh');
+    if (!mesh) return posAtaque;
+
+    let hit = false;
+    let ossoAcertadoPos = new THREE.Vector3();
+
+    // Varre todos os ossos do modelo 3D em tempo real
+    mesh.traverse((node) => {
+        if (node.isBone && !hit) {
+            let bonePos = new THREE.Vector3();
+            node.getWorldPosition(bonePos);
+            
+            // Se a arma tocar no osso animado
+            if (posAtaque.distanceTo(bonePos) < raioColisao || boxAtaque.containsPoint(bonePos)) {
+                hit = true;
+                ossoAcertadoPos.copy(bonePos); // Guarda a posição exata para o VFX
+            }
+        }
+    });
+    
+    return hit ? ossoAcertadoPos : false;
+};
+
 AFRAME.registerComponent('rastro-espada-sao', {
     schema: { color: { type: 'color', default: '#00FFFF' }, duracao: { type: 'number', default: 300 } },
     init: function() {
@@ -79,247 +106,106 @@ AFRAME.registerComponent('btn-sistema-acao', {
     }
 });
 
-// === COLISÃO VR COM PROTEÇÃO ANTI-CRASH E ESCALA CORRETA DE OSSOS ===
 AFRAME.registerComponent('colisor-arma-vr', {
     schema: { mao: { type: 'string' } },
     init: function() {
         this.lastWorldPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(this.lastWorldPos);
         this.lastLocalPos = this.el.object3D.position.clone(); this.cortando = false; this.tempoCorte = 0;
         this.camera = document.querySelector('[camera]'); this.lastHits = new Map(); this.vel = new THREE.Vector3(); this.speed = 0;
-        
-        this.raycaster = new THREE.Raycaster();
-        this.lastBasePos = new THREE.Vector3();
-        this.lastTipPos = new THREE.Vector3();
-        this.lastMidPos = new THREE.Vector3();
     },
     tick: function(time, timeDelta) {
         if (window.GAME_MODE !== 'VR' || !window.playerState.vivo) return;
         let dt = timeDelta / 1000; if (dt === 0) return;
 
-        try {
-            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
-            let currentWorldPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currentWorldPos);
-            let currentLocalPos = this.el.object3D.position.clone();
+        let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+        let currentWorldPos = new THREE.Vector3(); this.el.object3D.getWorldPosition(currentWorldPos);
+        let currentLocalPos = this.el.object3D.position.clone();
 
-            let deltaWorld = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
-            this.vel.copy(deltaWorld).divideScalar(dt); 
+        let deltaWorld = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
+        this.vel.copy(deltaWorld).divideScalar(dt); this.lastWorldPos.copy(currentWorldPos);
 
-            let deltaLocal = new THREE.Vector3().subVectors(currentLocalPos, this.lastLocalPos);
-            this.speed = deltaLocal.length() / dt; this.lastLocalPos.copy(currentLocalPos);
+        let deltaLocal = new THREE.Vector3().subVectors(currentLocalPos, this.lastLocalPos);
+        this.speed = deltaLocal.length() / dt; this.lastLocalPos.copy(currentLocalPos);
 
-            if (this.data.mao === 'esquerda' && armaStats && armaStats.categoria !== 'Luva') return; 
-            if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
+        if (this.data.mao === 'esquerda' && armaStats && armaStats.categoria !== 'Luva') return; 
+        if (!armaStats || (armaStats.categoria !== 'Espada' && armaStats.categoria !== 'Luva')) return;
 
-            if (this.speed > 2.0 && !this.cortando) {
-                this.cortando = true; this.tempoCorte = time; window.tocarSom('snd-sword');
+        if (this.speed > 2.0 && !this.cortando) {
+            this.cortando = true; this.tempoCorte = time; window.tocarSom('snd-sword');
+            
+            if (armaStats.categoria === 'Espada') {
+                let corRastro = '#00FFFF';
+                if(armaStats.danoBonus > 10) corRastro = '#ff0055'; 
+                else if(armaStats.danoBonus > 6) corRastro = '#f1c40f';
                 
-                if (armaStats.categoria === 'Espada') {
-                    let corRastro = '#00FFFF';
-                    if(armaStats.danoBonus > 10) corRastro = '#ff0055'; 
-                    else if(armaStats.danoBonus > 6) corRastro = '#f1c40f';
-                    
-                    this.rastroEntidade = document.createElement('a-entity');
-                    this.rastroEntidade.setAttribute('position', '0 0 0');
-                    document.querySelector('a-scene').appendChild(this.rastroEntidade);
-                    this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
-                } else if (armaStats.categoria === 'Luva') {
-                    let vfxVento = document.createElement('a-entity');
-                    vfxVento.setAttribute('position', `${currentWorldPos.x} ${currentWorldPos.y} ${currentWorldPos.z}`);
-                    if (this.vel.lengthSq() > 0.01) vfxVento.object3D.lookAt(currentWorldPos.clone().add(this.vel));
-                    vfxVento.innerHTML = `<a-cone color="#ffffff" radius-bottom="0.1" radius-top="0.3" height="1.5" position="0 0 -0.75" rotation="-90 0 0" material="shader: flat; transparent: true; opacity: 0.5; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone><a-torus color="#ffffff" radius="0.2" radius-tubular="0.01" position="0 0 -0.5" material="shader: flat; transparent: true; opacity: 0.8; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-torus>`;
-                    document.querySelector('a-scene').appendChild(vfxVento);
-                    setTimeout(() => { if(vfxVento.parentNode) vfxVento.parentNode.removeChild(vfxVento); }, 250);
+                this.rastroEntidade = document.createElement('a-entity');
+                this.rastroEntidade.setAttribute('position', '0 0 0');
+                document.querySelector('a-scene').appendChild(this.rastroEntidade);
+                this.rastroEntidade.setAttribute('rastro-espada-sao', `color: ${corRastro}; duracao: 400`);
+            } else if (armaStats.categoria === 'Luva') {
+                let vfxVento = document.createElement('a-entity');
+                vfxVento.setAttribute('position', `${currentWorldPos.x} ${currentWorldPos.y} ${currentWorldPos.z}`);
+                
+                if (this.vel.lengthSq() > 0.01) {
+                    vfxVento.object3D.lookAt(currentWorldPos.clone().add(this.vel));
                 }
+
+                vfxVento.innerHTML = `
+                    <a-cone color="#ffffff" radius-bottom="0.1" radius-top="0.3" height="1.5" position="0 0 -0.75" rotation="-90 0 0" material="shader: flat; transparent: true; opacity: 0.5; blending: additive; depthWrite: false" animation__scale="property: scale; to: 1.5 2 1.5; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-cone>
+                    <a-torus color="#ffffff" radius="0.2" radius-tubular="0.01" position="0 0 -0.5" material="shader: flat; transparent: true; opacity: 0.8; blending: additive; depthWrite: false" animation__scale="property: scale; to: 2.5 2.5 2.5; dur: 200; easing: easeOutQuad" animation__pos="property: position; to: 0 0 -1; dur: 200; easing: easeOutQuad" animation__fade="property: material.opacity; to: 0; dur: 200; easing: easeOutQuad"></a-torus>
+                `;
+                document.querySelector('a-scene').appendChild(vfxVento);
+                setTimeout(() => { if(vfxVento.parentNode) vfxVento.parentNode.removeChild(vfxVento); }, 250);
             }
-
-            let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
-            
-            let alcanceLâmina = 0.8; 
-            if (visualEl && armaStats.categoria === 'Espada') {
-                let swordBox = new THREE.Box3().setFromObject(visualEl.object3D);
-                let size = new THREE.Vector3(); swordBox.getSize(size);
-                alcanceLâmina = Math.max(size.x, size.y, size.z); 
-                alcanceLâmina = Math.max(0.4, Math.min(alcanceLâmina, 1.5)); 
-            }
-
-            let basePos = currentWorldPos.clone(); 
-            let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
-            let tipPos = basePos.clone().add(dirPonta.clone().multiplyScalar(alcanceLâmina));
-            let midPos = new THREE.Vector3().addVectors(basePos, tipPos).multiplyScalar(0.5);
-
-            if (this.lastTipPos.lengthSq() === 0) { 
-                this.lastBasePos.copy(basePos); this.lastTipPos.copy(tipPos); this.lastMidPos.copy(midPos); 
-            }
-
-            if (this.cortando) {
-                if (time - this.tempoCorte > 400) { 
-                    this.cortando = false; 
-                    if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) this.rastroEntidade.components['rastro-espada-sao'].finalizar();
-                    this.rastroEntidade = null;
-                } else if (armaStats.categoria === 'Espada') {
-                    if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
-                        let rastroBase = basePos.clone().add(dirPonta.clone().multiplyScalar(0.1));
-                        let rastroPonta = basePos.clone().add(dirPonta.clone().multiplyScalar(alcanceLâmina * 0.9));
-                        this.rastroEntidade.components['rastro-espada-sao'].addPonto(rastroBase, rastroPonta);
-                    }
-                }
-            }
-
-            let bladeLine = new THREE.Line3(basePos, tipPos);
-            let sweepMidLine = new THREE.Line3(this.lastMidPos, midPos);
-            let sweepTipLine = new THREE.Line3(this.lastTipPos, tipPos);
-
-            let boxArma = new THREE.Box3();
-            boxArma.expandByPoint(basePos); boxArma.expandByPoint(tipPos);
-            boxArma.expandByPoint(this.lastBasePos); boxArma.expandByPoint(this.lastTipPos);
-            boxArma.expandByScalar(0.3);
-
-            const getValidHit = (hits) => {
-                for (let i = 0; i < hits.length; i++) {
-                    let obj = hits[i].object;
-                    if (obj.visible && obj.type !== 'Bone') {
-                        if (!obj.material || (obj.material.visible !== false && obj.material.opacity > 0.1)) {
-                            return hits[i];
-                        }
-                    }
-                }
-                return null;
-            };
-
-            let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]'); let agora = Date.now();
-            
-            inimigosEls.forEach(inimigoEl => {
-                let syncComp = inimigoEl.components['sistema-inimigo-sync'];
-                if(syncComp && syncComp.hpAtual > 0) {
-                    
-                    inimigoEl.object3D.updateMatrixWorld(true);
-                    let boxInimigo = new THREE.Box3().setFromObject(inimigoEl.object3D);
-                    
-                    if (boxArma.intersectsBox(boxInimigo)) { 
-                        let hitDetectado = false;
-                        let posAcertoVFX = new THREE.Vector3();
-                        let visual = inimigoEl.querySelector('.modelo-visual');
-
-                        if (visual) {
-                            let mesh = visual.getObject3D('mesh');
-                            if (mesh) {
-                                if (!visual.colisores) {
-                                    visual.colisores = { ossos: [], meshes: [] };
-                                    mesh.traverse(node => {
-                                        if (node.isBone) visual.colisores.ossos.push(node);
-                                        else if (node.isMesh) visual.colisores.meshes.push(node);
-                                    });
-                                }
-
-                                // O SEGREDO AQUI: O raio do osso agora é multiplicado pela escala global do inimigo!
-                                // Num Dragão x10, o osso fica 10 vezes maior para preencher a cabeça/asa.
-                                let escalaGlobal = visual.object3D.scale.y || 1;
-                                let raioOsso = 0.35 * escalaGlobal; 
-
-                                if (visual.colisores.ossos.length > 0) {
-                                    let posOsso = new THREE.Vector3();
-                                    let ptProj = new THREE.Vector3();
-
-                                    for (let j = 0; j < visual.colisores.ossos.length; j++) {
-                                        visual.colisores.ossos[j].getWorldPosition(posOsso);
-                                        
-                                        if (armaStats.categoria === 'Espada') {
-                                            // Linha estática da espada no frame atual
-                                            bladeLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
-                                                hitDetectado = true; posAcertoVFX.copy(ptProj); break;
-                                            }
-
-                                            // Linha de movimento do meio da lâmina
-                                            sweepMidLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
-                                                hitDetectado = true; posAcertoVFX.copy(ptProj); break;
-                                            }
-
-                                            // Linha de movimento da ponta da lâmina
-                                            sweepTipLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
-                                                hitDetectado = true; posAcertoVFX.copy(ptProj); break;
-                                            }
-                                        } else { 
-                                            // Luva: Considera o movimento e um pequeno bônus
-                                            let punchDir = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
-                                            let punchDist = punchDir.length();
-                                            
-                                            if (currentWorldPos.distanceTo(posOsso) <= raioOsso + 0.1) {
-                                                hitDetectado = true; posAcertoVFX.copy(posOsso); break;
-                                            } else if (punchDist > 0.001) {
-                                                let socoLine = new THREE.Line3(this.lastWorldPos, currentWorldPos);
-                                                socoLine.closestPointToPoint(posOsso, true, ptProj);
-                                                if (ptProj.distanceTo(posOsso) <= raioOsso + 0.1) { 
-                                                    hitDetectado = true; posAcertoVFX.copy(ptProj); break; 
-                                                }
-                                            }
-                                        }
-                                    }
-                                } 
-                                // Para slimes ou caixas mágicas sem esqueleto (Raycaster puro no Mesh 3D)
-                                else if (visual.colisores.meshes.length > 0) {
-                                    let numPoints = 6;
-                                    for (let i = 0; i <= numPoints; i++) {
-                                        let t = i / numPoints;
-                                        let currentPt = new THREE.Vector3().lerpVectors(basePos, tipPos, t);
-                                        let lastPt = new THREE.Vector3().lerpVectors(this.lastBasePos, this.lastTipPos, t);
-
-                                        let sweepDir = new THREE.Vector3().subVectors(currentPt, lastPt);
-                                        let sweepLen = sweepDir.length();
-
-                                        if (sweepLen > 0.001) {
-                                            this.raycaster.set(lastPt, sweepDir.normalize());
-                                            let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
-                                            
-                                            if (validHit && validHit.distance <= sweepLen + 0.1) {
-                                                hitDetectado = true;
-                                                posAcertoVFX.copy(validHit.point);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // FALLBACK CAIXA: Desligado se houver modelo para evitar bater na asa invisível
-                        if (!hitDetectado && !visual) {
-                            let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
-                            let boxInimigoFall = new THREE.Box3();
-                            if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigoFall.setFromObject(colisorNode.object3D); } 
-                            else { boxInimigoFall.setFromObject(inimigoEl.object3D); }
-                            
-                            let boxEspadaExata = new THREE.Box3(); let visEsp = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
-                            if (visEsp) { visEsp.object3D.updateMatrixWorld(true); boxEspadaExata.setFromObject(visEsp.object3D); }
-                            else { boxEspadaExata.setFromCenterAndSize(currentWorldPos, new THREE.Vector3(0.2, 0.2, 0.2)); }
-                            
-                            if (boxEspadaExata.intersectsBox(boxInimigoFall)) {
-                                hitDetectado = true; inimigoEl.object3D.getWorldPosition(posAcertoVFX); posAcertoVFX.y += 1.0;
-                            }
-                        }
-
-                        if (hitDetectado) {
-                            let lastHit = this.lastHits.get(inimigoEl) || 0;
-                            if (this.speed > 1.5 && (agora - lastHit > 400)) { 
-                                syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
-                                window.gerarHitVFX(posAcertoVFX, armaStats, this.vel.clone()); 
-                                this.lastHits.set(inimigoEl, agora);
-                            }
-                        }
-                    }
-                }
-            });
-
-            this.lastWorldPos.copy(currentWorldPos);
-            this.lastBasePos.copy(basePos);
-            this.lastMidPos.copy(midPos);
-            this.lastTipPos.copy(tipPos);
-
-        } catch (erro) {
-            console.error("Erro na colisao da espada evitado:", erro);
         }
+
+        if (this.cortando) {
+            if (time - this.tempoCorte > 400) { 
+                this.cortando = false; 
+                if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
+                    this.rastroEntidade.components['rastro-espada-sao'].finalizar();
+                }
+                this.rastroEntidade = null;
+            } else if (armaStats.categoria === 'Espada') {
+                let basePos = currentWorldPos.clone(); let tipPos = currentWorldPos.clone();
+                let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
+                tipPos.add(dirPonta.clone().multiplyScalar(0.9)); basePos.add(dirPonta.clone().multiplyScalar(0.1)); 
+                
+                if (this.rastroEntidade && this.rastroEntidade.components['rastro-espada-sao']) {
+                    this.rastroEntidade.components['rastro-espada-sao'].addPonto(basePos, tipPos);
+                }
+            }
+        }
+
+        let boxArma = new THREE.Box3(); let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
+        if (visualEl) { visualEl.object3D.updateMatrixWorld(true); boxArma.setFromObject(visualEl.object3D); }
+        if (boxArma.isEmpty()) { boxArma.setFromCenterAndSize(currentWorldPos, new THREE.Vector3(0.2, 0.2, 0.2)); }
+
+        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]'); let agora = Date.now();
+        inimigosEls.forEach(inimigoEl => {
+            let syncComp = inimigoEl.components['sistema-inimigo-sync'];
+            if(syncComp && syncComp.hpAtual > 0) {
+                let colisorNode = inimigoEl.querySelector('.colisao-inimigo'); let boxInimigo = new THREE.Box3();
+                if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { inimigoEl.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(inimigoEl.object3D); }
+                
+                // Broad Phase: Checa se a espada está perto da caixa geral do inimigo
+                if (boxArma.intersectsBox(boxInimigo)) {
+                    
+                    // NARROW PHASE: Checa colisão com os ossos animados (Asa, Cabeça, Cauda, etc)
+                    let precisaoHit = window.checarColisaoOssos(boxArma, currentWorldPos, inimigoEl, 0.4);
+                    
+                    if (precisaoHit) { // Se tocou no osso
+                        let lastHit = this.lastHits.get(inimigoEl) || 0;
+                        if (this.speed > 1.5 && (agora - lastHit > 400)) { 
+                            syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
+                            // O VFX do acerto nasce exatamente no osso animado que a espada cortou!
+                            window.gerarHitVFX(precisaoHit, armaStats, this.vel.clone()); 
+                            this.lastHits.set(inimigoEl, agora);
+                        }
+                    }
+                }
+            }
+        });
     }
 });
 
@@ -380,8 +266,17 @@ AFRAME.registerComponent('projetil-inimigo-fisico', {
             for(let i=0; i<inimigos.length; i++) {
                 let ini = inimigos[i]; let sync = ini.components['sistema-inimigo-sync'];
                 if(sync && sync.hpAtual > 0) {
-                    let posIni = new THREE.Vector3(); ini.object3D.getWorldPosition(posIni);
-                    if (posProj.distanceTo(posIni) < 1.5) { sync.receberDano(this.data.dano * 2, 'Luva'); this.el.remove(); return; }
+                    let boxInimigo = new THREE.Box3(); let colisorNode = ini.querySelector('.colisao-inimigo');
+                    if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { ini.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(ini.object3D); }
+                    
+                    if (boxInimigo.containsPoint(posProj)) {
+                        let precisaoHit = window.checarColisaoOssos(new THREE.Box3().setFromCenterAndSize(posProj, new THREE.Vector3(0.5,0.5,0.5)), posProj, ini, 0.4);
+                        if (precisaoHit) {
+                            sync.receberDano(this.data.dano * 2, 'Luva'); 
+                            window.gerarHitVFX(precisaoHit, null, this.vel.clone());
+                            this.el.remove(); return; 
+                        }
+                    }
                 }
             }
             return; 
@@ -401,48 +296,26 @@ AFRAME.registerComponent('projetil-magia', {
     tick: function (time, timeDelta) {
         if (!this.ativo) return; let dt = timeDelta / 1000; if (dt === 0) return;
         this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); 
-        let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
         
         let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
         for (let i = 0; i < inimigosAtuais.length; i++) {
             let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp || syncComp.hpAtual <= 0) continue;
+            this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
+            let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo');
+            if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); }
             
-            let hitDetectado = false;
-            let posHitVFX = new THREE.Vector3();
-            let visual = inimigo.querySelector('.modelo-visual');
-
-            if (visual) {
-                let mesh = visual.getObject3D('mesh');
-                if (mesh) {
-                    if (!visual.colisores) {
-                        visual.colisores = { ossos: [], meshes: [] };
-                        mesh.traverse(n => { if (n.isBone) visual.colisores.ossos.push(n); else if (n.isMesh) visual.colisores.meshes.push(n); });
-                    }
-                    let escalaGlobal = visual.object3D.scale.y || 1;
-                    let raioBase = 0.3 * escalaGlobal;
-
-                    if (visual.colisores.ossos.length > 0) {
-                        let posOsso = new THREE.Vector3();
-                        for (let j = 0; j < visual.colisores.ossos.length; j++) {
-                            visual.colisores.ossos[j].getWorldPosition(posOsso);
-                            if (posProj.distanceTo(posOsso) <= raioBase + 0.1) {
-                                hitDetectado = true; posHitVFX.copy(posOsso); break;
-                            }
-                        }
-                    } else if (visual.colisores.meshes.length > 0) {
-                        for (let j = 0; j < visual.colisores.meshes.length; j++) {
-                            let m = visual.colisores.meshes[j]; m.updateMatrixWorld(true);
-                            let tempBox = new THREE.Box3().setFromObject(m); tempBox.expandByScalar(0.2);
-                            if (tempBox.containsPoint(posProj)) { hitDetectado = true; posHitVFX.copy(posProj); break; }
-                        }
-                    }
+            // Broad phase
+            if (boxProj.intersectsBox(boxInimigo)) { 
+                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+                // Narrow phase (Ossos Animados)
+                let precisaoHit = window.checarColisaoOssos(boxProj, posProj, inimigo, 0.4);
+                
+                if (precisaoHit) {
+                    syncComp.receberDano(this.data.dano, 'Varinha'); 
+                    window.gerarHitVFX(precisaoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Varinha'], this.vel.clone());
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el); 
+                    break; 
                 }
-            }
-
-            if (hitDetectado) { 
-                syncComp.receberDano(this.data.dano, 'Varinha'); 
-                window.gerarHitVFX(posHitVFX, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Varinha'], this.vel.clone());
-                if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; 
             }
         }
     }
@@ -466,10 +339,8 @@ AFRAME.registerComponent('projetil-fisico', {
         if (!this.ativo) return; let dt = timeDelta / 1000; if (dt === 0) return;
         this.vel.add(this.gravidade.clone().multiplyScalar(dt)); this.el.object3D.position.add(this.vel.clone().multiplyScalar(dt)); this.el.object3D.rotation.y += 15 * dt;
 
-        let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
-
         if (this.rastro && this.rastro.components['rastro-espada-sao']) {
-            let posCenter = posProj.clone();
+            let posCenter = this.el.object3D.position.clone();
             let dir = this.vel.clone().normalize();
             if(dir.lengthSq() === 0) dir.set(0,0,-1);
             let right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
@@ -490,44 +361,21 @@ AFRAME.registerComponent('projetil-fisico', {
         let inimigosAtuais = document.querySelectorAll('[sistema-inimigo-sync]');
         for (let i = 0; i < inimigosAtuais.length; i++) {
             let inimigo = inimigosAtuais[i]; let syncComp = inimigo.components['sistema-inimigo-sync']; if (!syncComp || syncComp.hpAtual <= 0) continue;
+            this.el.object3D.updateMatrixWorld(true); inimigo.object3D.updateMatrixWorld(true);
+            let boxProj = new THREE.Box3().setFromObject(this.el.object3D); let boxInimigo = new THREE.Box3(); let colisorNode = inimigo.querySelector('.colisao-inimigo');
+            if(colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); } else { boxInimigo.setFromObject(inimigo.object3D); }
             
-            let hitDetectado = false;
-            let posHitVFX = new THREE.Vector3();
-            let visual = inimigo.querySelector('.modelo-visual');
+            if (boxProj.intersectsBox(boxInimigo)) { 
+                let posProj = new THREE.Vector3(); this.el.object3D.getWorldPosition(posProj);
+                let precisaoHit = window.checarColisaoOssos(boxProj, posProj, inimigo, 0.4);
 
-            if (visual) {
-                let mesh = visual.getObject3D('mesh');
-                if (mesh) {
-                    if (!visual.colisores) {
-                        visual.colisores = { ossos: [], meshes: [] };
-                        mesh.traverse(n => { if (n.isBone) visual.colisores.ossos.push(n); else if (n.isMesh) visual.colisores.meshes.push(n); });
-                    }
-                    let escalaGlobal = visual.object3D.scale.y || 1;
-                    let raioBase = 0.25 * escalaGlobal;
-
-                    if (visual.colisores.ossos.length > 0) {
-                        let posOsso = new THREE.Vector3();
-                        for (let j = 0; j < visual.colisores.ossos.length; j++) {
-                            visual.colisores.ossos[j].getWorldPosition(posOsso);
-                            if (posProj.distanceTo(posOsso) <= raioBase + 0.1) {
-                                hitDetectado = true; posHitVFX.copy(posOsso); break;
-                            }
-                        }
-                    } else if (visual.colisores.meshes.length > 0) {
-                        for (let j = 0; j < visual.colisores.meshes.length; j++) {
-                            let m = visual.colisores.meshes[j]; m.updateMatrixWorld(true);
-                            let tempBox = new THREE.Box3().setFromObject(m); tempBox.expandByScalar(0.1);
-                            if (tempBox.containsPoint(posProj)) { hitDetectado = true; posHitVFX.copy(posProj); break; }
-                        }
-                    }
+                if (precisaoHit) {
+                    syncComp.receberDano(this.data.dano, 'Arco'); 
+                    window.gerarHitVFX(precisaoHit, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Shuriken'], this.vel.clone());
+                    if (this.rastro && this.rastro.components['rastro-espada-sao']) this.rastro.components['rastro-espada-sao'].finalizar();
+                    if(this.el.parentNode) this.el.parentNode.removeChild(this.el); 
+                    break; 
                 }
-            }
-
-            if (hitDetectado) { 
-                syncComp.receberDano(this.data.dano, 'Arco'); 
-                window.gerarHitVFX(posHitVFX, window.bancoDeArmas[this.data.armaOriginal] || window.bancoDeArmas['Shuriken'], this.vel.clone());
-                if (this.rastro && this.rastro.components['rastro-espada-sao']) this.rastro.components['rastro-espada-sao'].finalizar();
-                if(this.el.parentNode) this.el.parentNode.removeChild(this.el); break; 
             }
         }
     }
@@ -756,5 +604,37 @@ AFRAME.registerComponent('sistema-npc-interacao', {
             if (data.animFalando) { this.tocarAnimacao(data.animFalando); setTimeout(() => { if(data.animParado) this.tocarAnimacao(data.animParado); }, 8000); }
             window.abrirDialogoNPC(data);
         });
+    }
+});
+
+AFRAME.registerComponent('projetil-jogador', {
+    schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
+    init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
+    tick: function(time, timeDelta) {
+        let dt = timeDelta / 1000; this.tempoVida += dt;
+        if (this.tempoVida > 3) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
+        
+        this.el.object3D.position.x += this.data.velocidade.x * dt;
+        this.el.object3D.position.y += this.data.velocidade.y * dt;
+        this.el.object3D.position.z += this.data.velocidade.z * dt;
+        this.el.object3D.getWorldPosition(this.posAtual);
+
+        let hit = false;
+        let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
+        for (let i = 0; i < inimigosEls.length; i++) {
+            let inimigoEl = inimigosEls[i]; let syncComp = inimigoEl.components['sistema-inimigo-sync'];
+            if (syncComp && syncComp.hpAtual > 0) {
+                
+                // Usando o sistema de ossos no tiro básico do PC também
+                let precisaoHit = window.checarColisaoOssos(new THREE.Box3().setFromCenterAndSize(this.posAtual, new THREE.Vector3(0.5,0.5,0.5)), this.posAtual, inimigoEl, 0.5);
+                
+                if (precisaoHit) {
+                    syncComp.receberDano(this.data.dano, this.data.arma);
+                    window.gerarHitVFX(precisaoHit, window.bancoDeArmas[window.playerState.armaEquipada]);
+                    hit = true; break;
+                }
+            }
+        }
+        if (hit) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); }
     }
 });
