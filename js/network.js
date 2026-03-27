@@ -78,7 +78,7 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
-// LÓGICA DE TIRO PRECISO NO MESH (PC/MOBILE)
+// LÓGICA DE TIRO PRECISO NOS OSSOS (PC/MOBILE)
 AFRAME.registerComponent('projetil-jogador', {
     schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
     init: function() { 
@@ -111,20 +111,41 @@ AFRAME.registerComponent('projetil-jogador', {
                 let achouColisao = false;
                 let visual = inimigoEl.querySelector('.modelo-visual');
 
-                // --- COLISÃO PRECISA DIRETAMENTE NO MESH ---
+                // --- COLISÃO PRECISA NOS OSSOS/MESH ---
                 if (visual) {
                     let mesh = visual.getObject3D('mesh');
-                    if (mesh && moveDist > 0.001) {
-                        this.raycaster.set(this.lastPos, moveDir.clone().normalize());
-                        let hits = this.raycaster.intersectObject(mesh, true);
-                        if (hits.length > 0 && hits[0].distance <= moveDist + 0.15) { // Tolerância de hitbox (flecha/magia)
-                            achouColisao = true; posAcertoVFX.copy(hits[0].point);
+                    if (mesh) {
+                        if (!visual.colisores) {
+                            visual.colisores = { ossos: [], meshes: [] };
+                            mesh.traverse(node => {
+                                if (node.isBone) visual.colisores.ossos.push(node);
+                                else if (node.isMesh) visual.colisores.meshes.push(node);
+                            });
+                        }
+
+                        let escalaGlobal = visual.object3D.scale.y || 1;
+                        let raioBase = 0.25 * escalaGlobal;
+
+                        if (visual.colisores.ossos.length > 0) {
+                            let posOsso = new THREE.Vector3();
+                            for (let j = 0; j < visual.colisores.ossos.length; j++) {
+                                visual.colisores.ossos[j].getWorldPosition(posOsso);
+                                if (this.posAtual.distanceTo(posOsso) <= raioBase + 0.15) {
+                                    achouColisao = true; posAcertoVFX.copy(posOsso); break;
+                                }
+                            }
+                        } else if (visual.colisores.meshes.length > 0 && moveDist > 0) {
+                            this.raycaster.set(this.lastPos, moveDir.clone().normalize());
+                            let hits = this.raycaster.intersectObject(mesh, true);
+                            if (hits.length > 0 && hits[0].distance <= moveDist + 0.3) {
+                                achouColisao = true; posAcertoVFX.copy(hits[0].point); break;
+                            }
                         }
                     }
                 }
 
-                // --- FALLBACK CAIXA INVISÍVEL (SÓ ATIVA SE NÃO TIVER MESH CARREGADO) ---
-                if (!achouColisao && !visual) {
+                // --- FALLBACK CAIXA INVISÍVEL ---
+                if (!achouColisao) {
                     this.el.object3D.updateMatrixWorld(true); inimigoEl.object3D.updateMatrixWorld(true);
                     let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
                     let boxInimigo = new THREE.Box3();
@@ -281,6 +302,7 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                             
                             let posAtaque = new THREE.Vector3(); let achouOsso = false;
                             let visual = this.el.querySelector('.modelo-visual');
+                            let escalaGlobal = visual ? (visual.object3D.scale.z || 1) : 1;
                             
                             if (visual) {
                                 let mesh = visual.getObject3D('mesh');
@@ -295,10 +317,10 @@ AFRAME.registerComponent('sistema-inimigo-sync', {
                                 }
                             }
                             
-                            if (!achouOsso) { this.el.object3D.getWorldPosition(posAtaque); let dirFrente = new THREE.Vector3(0, 0, 1).applyQuaternion(this.el.object3D.quaternion); posAtaque.add(dirFrente.multiplyScalar(1.0)); }
+                            if (!achouOsso) { this.el.object3D.getWorldPosition(posAtaque); let dirFrente = new THREE.Vector3(0, 0, 1).applyQuaternion(this.el.object3D.quaternion); posAtaque.add(dirFrente.multiplyScalar(escalaGlobal * 1.0)); }
                             
                             let dist2D = Math.hypot(posPlayer.x - posAtaque.x, posPlayer.z - posAtaque.z); 
-                            if (dist2D <= ac.alcance) { 
+                            if (dist2D <= ac.alcance + (escalaGlobal * 1.5)) { 
                                 window.receberDanoJogador(ac.dano); 
                                 ac.acertou = true; 
                             } 
