@@ -415,13 +415,11 @@ window.gerarHitVFX = function(pos, armaStats, direcaoImpacto = null) {
     }
 };
 
-// === FASE 1 DO SAO: FEIXES DE LUZ ===
 window.gerarFeixesBoss = function(pos, escala) {
     let scene = document.querySelector('a-scene');
     window.tocarSom('snd-magic'); 
     
     let beams = document.createElement('a-entity');
-    // A luz nasce exatamente no ponto central calibrado pelo Offset
     beams.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
     
     for(let i=0; i<6; i++) {
@@ -439,7 +437,6 @@ window.gerarFeixesBoss = function(pos, escala) {
     return beams; 
 };
 
-// === FASE 2 DO SAO: EXPLOSÃO EM PARTÍCULAS ===
 window.gerarParticulasSAO = function(pos, isBoss, escala) {
     let scene = document.querySelector('a-scene');
     window.tocarSom('snd-magic');
@@ -450,12 +447,10 @@ window.gerarParticulasSAO = function(pos, isBoss, escala) {
     for (let i = 0; i < count; i++) {
         let p = document.createElement('a-entity');
         
-        // As partículas nascem aglomeradas na origem milimétrica da luz (pos) e do Offset
         let px = pos.x + (Math.random() - 0.5) * 0.2;
         let py = pos.y + (Math.random() - 0.5) * 0.2;
         let pz = pos.z + (Math.random() - 0.5) * 0.2;
         
-        // O alvo delas é voar para longe (espalhando pela sala)
         let tx = px + (Math.random() - 0.5) * 6;
         let ty = py + (Math.random() - 0.5) * 6; 
         let tz = pz + (Math.random() - 0.5) * 6;
@@ -726,7 +721,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); 
         if (!podeAtacarMobile) return; 
         podeAtacarMobile = false; 
-        setTimeout(() => podeAtacarMobile = true, 400); 
+        setTimeout(() => podeAtacarMobile = true, 150); 
         window.realizarAtaque(); 
     }, {passive: false});
 
@@ -737,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 if (!podeAtacarPC) return; 
                 podeAtacarPC = false; 
-                setTimeout(() => podeAtacarPC = true, 400); 
+                setTimeout(() => podeAtacarPC = true, 150); 
                 window.realizarAtaque();
             }
         }
