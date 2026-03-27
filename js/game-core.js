@@ -546,7 +546,13 @@ window.realizarAtaque = function() {
             let syncComp = inimigoEl.components['sistema-inimigo-sync']; if(syncComp && syncComp.hpAtual <= 0) return;
             let posInimigo = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posInimigo); 
             let dx = posInimigo.x - posCamera.x; let dz = posInimigo.z - posCamera.z; let dist2D = Math.hypot(dx, dz);
-            if (dist2D <= alcanceArma) { 
+            
+            // --- COMPENSA O ALCANCE PELO TAMANHO (ESCALA) DO INIMIGO NO PC ---
+            let visual = inimigoEl.querySelector('.modelo-visual');
+            let escalaIni = visual ? (visual.object3D.scale.z || 1) : 1;
+            let raioIni = escalaIni * 1.5;
+
+            if ((dist2D - raioIni) <= alcanceArma) { 
                 let dirInimigo2D = new THREE.Vector2(dx, dz); if (dist2D > 0.001) dirInimigo2D.normalize();
                 let anguloAcerto = dirCam2D.dot(dirInimigo2D); 
                 if (anguloAcerto > 0.0) { syncComp.receberDano(Math.floor((window.playerState.forca + armaStats.danoBonus) * 1.5), armaStats.categoria); let posHit = new THREE.Vector3(); inimigoEl.object3D.getWorldPosition(posHit); posHit.y += 1.0; window.gerarHitVFX(posHit, armaStats, dirImpacto); }
@@ -569,7 +575,10 @@ window.realizarAtaque = function() {
                 posInimigo.y += 1.0; 
                 let dist = posCamera.distanceTo(posInimigo);
                 
-                if (dist <= maxDist) {
+                let visual = inimigoEl.querySelector('.modelo-visual');
+                let escalaIni = visual ? (visual.object3D.scale.z || 1) : 1;
+
+                if ((dist - (escalaIni * 1.5)) <= maxDist) {
                     let dirToEnemy = posInimigo.clone().sub(posCamera).normalize();
                     let angleDot = dirCam.dot(dirToEnemy);
                     if (angleDot > minAngle) {
@@ -721,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault(); e.stopPropagation(); window.lastActionTime = Date.now(); 
         if (!podeAtacarMobile) return; 
         podeAtacarMobile = false; 
-        setTimeout(() => podeAtacarMobile = true, 150); 
+        setTimeout(() => podeAtacarMobile = true, 400); 
         window.realizarAtaque(); 
     }, {passive: false});
 
@@ -732,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 if (!podeAtacarPC) return; 
                 podeAtacarPC = false; 
-                setTimeout(() => podeAtacarPC = true, 150); 
+                setTimeout(() => podeAtacarPC = true, 400); 
                 window.realizarAtaque();
             }
         }
