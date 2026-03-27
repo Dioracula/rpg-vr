@@ -78,69 +78,29 @@ AFRAME.registerComponent('gerenciador-respawns', {
     }
 });
 
-// LÓGICA DE TIRO PRECISO NO MESH (PC/MOBILE)
 AFRAME.registerComponent('projetil-jogador', {
     schema: { velocidade: {type: 'vec3', default: {x: 0, y: 0, z: 0}}, dano: {type: 'number', default: 10}, arma: {type: 'string', default: 'Shuriken'} },
-    init: function() { 
-        this.tempoVida = 0; 
-        this.posAtual = new THREE.Vector3(); 
-        this.lastPos = new THREE.Vector3();
-        this.raycaster = new THREE.Raycaster();
-    },
+    init: function() { this.tempoVida = 0; this.posAtual = new THREE.Vector3(); },
     tick: function(time, timeDelta) {
         let dt = timeDelta / 1000; this.tempoVida += dt;
         if (this.tempoVida > 3) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); return; }
         
-        this.el.object3D.getWorldPosition(this.lastPos);
-
         this.el.object3D.position.x += this.data.velocidade.x * dt;
         this.el.object3D.position.y += this.data.velocidade.y * dt;
         this.el.object3D.position.z += this.data.velocidade.z * dt;
         this.el.object3D.getWorldPosition(this.posAtual);
 
-        let moveDir = new THREE.Vector3().subVectors(this.posAtual, this.lastPos);
-        let moveDist = moveDir.length();
-
         let hit = false;
-        let posAcertoVFX = new THREE.Vector3();
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]');
-        
         for (let i = 0; i < inimigosEls.length; i++) {
             let inimigoEl = inimigosEls[i]; let syncComp = inimigoEl.components['sistema-inimigo-sync'];
             if (syncComp && syncComp.hpAtual > 0) {
-                let achouColisao = false;
-                let visual = inimigoEl.querySelector('.modelo-visual');
-
-                // --- COLISÃO PRECISA DIRETAMENTE NO MESH ---
-                if (visual) {
-                    let mesh = visual.getObject3D('mesh');
-                    if (mesh && moveDist > 0.001) {
-                        this.raycaster.set(this.lastPos, moveDir.clone().normalize());
-                        let hits = this.raycaster.intersectObject(mesh, true);
-                        if (hits.length > 0 && hits[0].distance <= moveDist + 0.15) { // Tolerância de hitbox (flecha/magia)
-                            achouColisao = true; posAcertoVFX.copy(hits[0].point);
-                        }
-                    }
-                }
-
-                // --- FALLBACK CAIXA INVISÍVEL (SÓ ATIVA SE NÃO TIVER MESH CARREGADO) ---
-                if (!achouColisao && !visual) {
-                    this.el.object3D.updateMatrixWorld(true); inimigoEl.object3D.updateMatrixWorld(true);
-                    let boxProj = new THREE.Box3().setFromObject(this.el.object3D);
-                    let boxInimigo = new THREE.Box3();
-                    let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
-                    
-                    if (colisorNode) { colisorNode.object3D.updateMatrixWorld(true); boxInimigo.setFromObject(colisorNode.object3D); }
-                    else { boxInimigo.setFromObject(inimigoEl.object3D); }
-                    
-                    if (boxProj.intersectsBox(boxInimigo)) {
-                        achouColisao = true; inimigoEl.object3D.getWorldPosition(posAcertoVFX); posAcertoVFX.y += 1.0;
-                    }
-                }
-
-                if (achouColisao) {
+                // CORREÇÃO: Usando o checarColisaoOssos também para os projéteis no network.js
+                let precisaoHit = window.checarColisaoOssos(new THREE.Box3().setFromCenterAndSize(this.posAtual, new THREE.Vector3(0.5,0.5,0.5)), this.posAtual, inimigoEl, 0.5);
+                
+                if (precisaoHit) {
                     syncComp.receberDano(this.data.dano, this.data.arma);
-                    window.gerarHitVFX(posAcertoVFX, window.bancoDeArmas[window.playerState.armaEquipada]);
+                    window.gerarHitVFX(precisaoHit, window.bancoDeArmas[window.playerState.armaEquipada]);
                     hit = true; break;
                 }
             }
