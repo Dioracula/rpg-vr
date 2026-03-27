@@ -79,7 +79,7 @@ AFRAME.registerComponent('btn-sistema-acao', {
     }
 });
 
-// === COLISÃO VR REESCRITA (ZERO MARGENS - MESH PERFECT) ===
+// === COLISÃO VR EXACT-MESH (ZERO MARGENS) ===
 AFRAME.registerComponent('colisor-arma-vr', {
     schema: { mao: { type: 'string' } },
     init: function() {
@@ -130,16 +130,25 @@ AFRAME.registerComponent('colisor-arma-vr', {
             }
         }
 
-        // Geometria EXATA da Lâmina para Colisão
+        let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
+        
+        // 1. MEDIR A ESPADA REALMENTE: Ignora "distância" e usa o tamanho do GLB renderizado
+        let alcanceLâmina = 0.8; 
+        if (visualEl && armaStats.categoria === 'Espada') {
+            let swordBox = new THREE.Box3().setFromObject(visualEl.object3D);
+            let size = new THREE.Vector3(); swordBox.getSize(size);
+            // Pega o maior eixo do modelo (para suportar espadas deitadas no eixo Z ou Y)
+            alcanceLâmina = Math.max(size.x, size.y, size.z); 
+            alcanceLâmina = Math.max(0.4, Math.min(alcanceLâmina, 1.5)); // Limites saudáveis
+        }
+
+        // 2. GEOMETRIA EXATA DA LÂMINA NO ESPAÇO 3D
         let basePos = currentWorldPos.clone(); 
         let dirPonta = new THREE.Vector3(0, 0, -1).applyQuaternion(this.el.object3D.getWorldQuaternion(new THREE.Quaternion())); 
-        let alcanceLâmina = armaStats.distancia ? Math.min(armaStats.distancia / 2.0, 1.5) : 1.0;
         let tipPos = basePos.clone().add(dirPonta.clone().multiplyScalar(alcanceLâmina));
         let midPos = new THREE.Vector3().addVectors(basePos, tipPos).multiplyScalar(0.5);
 
-        // Previne valores vazios no primeiro frame
-        if (this.lastTipPos.lengthSq() === 0) this.lastTipPos.copy(tipPos);
-        if (this.lastMidPos.lengthSq() === 0) this.lastMidPos.copy(midPos);
+        if (this.lastTipPos.lengthSq() === 0) { this.lastTipPos.copy(tipPos); this.lastMidPos.copy(midPos); }
 
         if (this.cortando) {
             if (time - this.tempoCorte > 400) { 
@@ -155,11 +164,24 @@ AFRAME.registerComponent('colisor-arma-vr', {
             }
         }
 
-        // Bounding Box da Arma para Filtro Rápido (Otimização)
-        let boxArma = new THREE.Box3(); let visualEl = this.el.querySelector(this.data.mao === 'direita' ? '#arma-visual-dir' : '#arma-visual-esq');
-        if (visualEl) { visualEl.object3D.updateMatrixWorld(true); boxArma.setFromObject(visualEl.object3D); }
-        if (boxArma.isEmpty()) { boxArma.setFromCenterAndSize(currentWorldPos, new THREE.Vector3(0.2, 0.2, 0.2)); }
-        boxArma.expandByScalar(0.4); // Reduzido para evitar processamento inútil
+        // Broadphase de segurança: Envelopa a área da espada (do cabo até a ponta)
+        let boxArma = new THREE.Box3();
+        boxArma.expandByPoint(basePos); boxArma.expandByPoint(tipPos);
+        boxArma.expandByPoint(this.lastMidPos); boxArma.expandByPoint(this.lastTipPos);
+        boxArma.expandByScalar(0.1); 
+
+        // Filtro contra malhas invisíveis ou ossos (hitboxes transparentes em GLBs)
+        const getValidHit = (hits) => {
+            for (let i = 0; i < hits.length; i++) {
+                let obj = hits[i].object;
+                if (obj.visible && obj.type !== 'Bone') {
+                    if (!obj.material || (obj.material.visible !== false && obj.material.opacity > 0.1)) {
+                        return hits[i];
+                    }
+                }
+            }
+            return null;
+        };
 
         let inimigosEls = document.querySelectorAll('[sistema-inimigo-sync]'); let agora = Date.now();
         
@@ -170,26 +192,25 @@ AFRAME.registerComponent('colisor-arma-vr', {
                 inimigoEl.object3D.updateMatrixWorld(true);
                 let boxInimigo = new THREE.Box3().setFromObject(inimigoEl.object3D);
                 
-                // Filtro Broadphase: Só processa colisão complexa se as Bounding Boxes encostarem
                 if (boxArma.intersectsBox(boxInimigo)) { 
                     let hitDetectado = false;
                     let posAcertoVFX = new THREE.Vector3();
                     let visual = inimigoEl.querySelector('.modelo-visual');
 
-                    // === COLISÃO EXACT-MESH (SAO STYLE 100% PRECISO) ===
+                    // === COLISÃO EXACT-MESH NOS POLÍGONOS (SAO STYLE 100% PRECISO) ===
                     if (visual) {
                         let mesh = visual.getObject3D('mesh');
                         if (mesh) {
                             if (armaStats.categoria === 'Espada') {
-                                // 1. ESTOCADA: Lâmina cruzando polígonos no eixo Z da espada
+                                // 1. ESTOCADA: Lâmina cruzando polígonos no eixo Z
                                 let bladeDir = new THREE.Vector3().subVectors(tipPos, basePos);
                                 let bladeLen = bladeDir.length();
                                 if (bladeLen > 0.001) {
                                     this.raycaster.set(basePos, bladeDir.normalize());
-                                    let hits = this.raycaster.intersectObject(mesh, true);
-                                    // ZERO MARGEM: Se a distância for maior que o tamanho da espada, é ar!
-                                    if (hits.length > 0 && hits[0].distance <= bladeLen) {
-                                        hitDetectado = true; posAcertoVFX.copy(hits[0].point);
+                                    let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
+                                    // ZERO MARGEM: Distância estrita do tamanho da lâmina
+                                    if (validHit && validHit.distance <= bladeLen) {
+                                        hitDetectado = true; posAcertoVFX.copy(validHit.point);
                                     }
                                 }
 
@@ -199,44 +220,42 @@ AFRAME.registerComponent('colisor-arma-vr', {
                                     let sweepMidLen = sweepMidDir.length();
                                     if (sweepMidLen > 0.001) {
                                         this.raycaster.set(this.lastMidPos, sweepMidDir.normalize());
-                                        let hitsSweep = this.raycaster.intersectObject(mesh, true);
-                                        // ZERO MARGEM: Só bate se o Mesh estiver dentro do arco percorrido
-                                        if (hitsSweep.length > 0 && hitsSweep[0].distance <= sweepMidLen) { 
-                                            hitDetectado = true; posAcertoVFX.copy(hitsSweep[0].point);
+                                        let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
+                                        // ZERO MARGEM: Distância do movimento
+                                        if (validHit && validHit.distance <= sweepMidLen) { 
+                                            hitDetectado = true; posAcertoVFX.copy(validHit.point);
                                         }
                                     }
                                 }
 
-                                // 3. CORTE (PONTA): Garantia de hits com a ponta da espada
+                                // 3. CORTE (PONTA)
                                 if (!hitDetectado) {
                                     let sweepTipDir = new THREE.Vector3().subVectors(tipPos, this.lastTipPos);
                                     let sweepTipLen = sweepTipDir.length();
                                     if (sweepTipLen > 0.001) {
                                         this.raycaster.set(this.lastTipPos, sweepTipDir.normalize());
-                                        let hitsSweepTip = this.raycaster.intersectObject(mesh, true);
-                                        if (hitsSweepTip.length > 0 && hitsSweepTip[0].distance <= sweepTipLen) {
-                                            hitDetectado = true; posAcertoVFX.copy(hitsSweepTip[0].point);
+                                        let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
+                                        if (validHit && validHit.distance <= sweepTipLen) {
+                                            hitDetectado = true; posAcertoVFX.copy(validHit.point);
                                         }
                                     }
                                 }
-
                             } else { 
-                                // Luva: Soco - Sem margens falsas
+                                // LUVA
                                 let punchDir = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
                                 let punchDist = punchDir.length();
                                 if (punchDist > 0.001) {
                                     this.raycaster.set(this.lastWorldPos, punchDir.normalize());
-                                    let hitsPunch = this.raycaster.intersectObject(mesh, true);
-                                    // Limite físico de 10cm (tamanho de um punho) + a distância do movimento
-                                    if (hitsPunch.length > 0 && hitsPunch[0].distance <= punchDist + 0.1) {
-                                        hitDetectado = true; posAcertoVFX.copy(hitsPunch[0].point);
+                                    let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
+                                    if (validHit && validHit.distance <= punchDist + 0.1) { // 10cm é o tamanho físico do punho
+                                        hitDetectado = true; posAcertoVFX.copy(validHit.point);
                                     }
                                 }
                             }
                         }
                     }
 
-                    // === FALLBACK (SÓ ACONTECE SE O INIMIGO NÃO TIVER MODELO 3D CARREGADO) ===
+                    // FALLBACK SÓ PARA CAIXAS/INIMIGOS SEM GLB
                     if (!hitDetectado && !visual) {
                         let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
                         let boxInimigoFall = new THREE.Box3();
@@ -264,7 +283,6 @@ AFRAME.registerComponent('colisor-arma-vr', {
             }
         });
 
-        // Grava as posições atuais para calcular o vetor de movimento no próximo quadro
         this.lastWorldPos.copy(currentWorldPos);
         this.lastMidPos.copy(midPos);
         this.lastTipPos.copy(tipPos);
