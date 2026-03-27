@@ -201,14 +201,10 @@ AFRAME.registerComponent('colisor-arma-vr', {
                                 });
                             }
 
-                            // === A MÁGICA DA COLISÃO PRECISA ===
-                            // Ao invés de usar Raycaster na malha T-Pose ou Esferas Baseadas em Escala,
-                            // Nós checamos se as Línhas de Corte da sua espada passaram a meros
-                            // 25 centímetros ou menos do centro exato e real de um Osso animado!
                             if (visual.colisores.ossos.length > 0) {
                                 let posOsso = new THREE.Vector3();
                                 let ptProj = new THREE.Vector3();
-                                let raioOsso Fixo = 0.25; // 25cm. Ignora a escala do Boss! A lâmina tem que acertar o osso físico.
+                                let raioOssoFixo = 0.25; // NOME CORRIGIDO AQUI SEM ESPAÇO
 
                                 for (let j = 0; j < visual.colisores.ossos.length; j++) {
                                     visual.colisores.ossos[j].getWorldPosition(posOsso);
@@ -262,7 +258,7 @@ AFRAME.registerComponent('colisor-arma-vr', {
                         }
                     }
 
-                    // CAIXA INVISÍVEL (Desabilitada se o modelo 3D carregou corretamente)
+                    // CAIXA INVISÍVEL
                     if (!hitDetectado && !visual) {
                         let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
                         let boxInimigoFall = new THREE.Box3();
@@ -393,13 +389,14 @@ AFRAME.registerComponent('projetil-magia', {
                         visual.colisores = { ossos: [], meshes: [] };
                         mesh.traverse(n => { if (n.isBone) visual.colisores.ossos.push(n); else if (n.isMesh) visual.colisores.meshes.push(n); });
                     }
+                    let escalaGlobal = visual.object3D.scale.y || 1;
+                    let raioBase = 0.3 * escalaGlobal;
 
                     if (visual.colisores.ossos.length > 0) {
                         let posOsso = new THREE.Vector3();
-                        let raioFixoMagia = 0.35; // Magia explode ao passar a 35cm do osso
                         for (let j = 0; j < visual.colisores.ossos.length; j++) {
                             visual.colisores.ossos[j].getWorldPosition(posOsso);
-                            if (posProj.distanceTo(posOsso) <= raioFixoMagia) {
+                            if (posProj.distanceTo(posOsso) <= raioBase + 0.1) {
                                 hitDetectado = true; posHitVFX.copy(posOsso); break;
                             }
                         }
@@ -476,13 +473,14 @@ AFRAME.registerComponent('projetil-fisico', {
                         visual.colisores = { ossos: [], meshes: [] };
                         mesh.traverse(n => { if (n.isBone) visual.colisores.ossos.push(n); else if (n.isMesh) visual.colisores.meshes.push(n); });
                     }
+                    let escalaGlobal = visual.object3D.scale.y || 1;
+                    let raioBase = 0.25 * escalaGlobal;
 
                     if (visual.colisores.ossos.length > 0) {
                         let posOsso = new THREE.Vector3();
-                        let raioFixoArco = 0.25; // Flecha explode ao tocar no raio fixo do osso
                         for (let j = 0; j < visual.colisores.ossos.length; j++) {
                             visual.colisores.ossos[j].getWorldPosition(posOsso);
-                            if (posProj.distanceTo(posOsso) <= raioFixoArco) {
+                            if (posProj.distanceTo(posOsso) <= raioBase + 0.1) {
                                 hitDetectado = true; posHitVFX.copy(posOsso); break;
                             }
                         }
