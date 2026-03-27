@@ -79,7 +79,7 @@ AFRAME.registerComponent('btn-sistema-acao', {
     }
 });
 
-// === COLISÃO VR COM MÚLTIPLOS CORTES RÁPIDOS (COMBO 150ms) ===
+// === COLISÃO VR COM PROTEÇÃO ANTI-CRASH E ESCALA CORRETA DE OSSOS ===
 AFRAME.registerComponent('colisor-arma-vr', {
     schema: { mao: { type: 'string' } },
     init: function() {
@@ -211,8 +211,10 @@ AFRAME.registerComponent('colisor-arma-vr', {
                                     });
                                 }
 
+                                // O SEGREDO AQUI: O raio do osso agora é multiplicado pela escala global do inimigo!
+                                // Num Dragão x10, o osso fica 10 vezes maior para preencher a cabeça/asa.
                                 let escalaGlobal = visual.object3D.scale.y || 1;
-                                let raioOssoFixo = 0.25 * escalaGlobal; 
+                                let raioOsso = 0.35 * escalaGlobal; 
 
                                 if (visual.colisores.ossos.length > 0) {
                                     let posOsso = new THREE.Vector3();
@@ -222,50 +224,67 @@ AFRAME.registerComponent('colisor-arma-vr', {
                                         visual.colisores.ossos[j].getWorldPosition(posOsso);
                                         
                                         if (armaStats.categoria === 'Espada') {
+                                            // Linha estática da espada no frame atual
                                             bladeLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOssoFixo) {
+                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
                                                 hitDetectado = true; posAcertoVFX.copy(ptProj); break;
                                             }
 
+                                            // Linha de movimento do meio da lâmina
                                             sweepMidLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOssoFixo) {
+                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
                                                 hitDetectado = true; posAcertoVFX.copy(ptProj); break;
                                             }
 
+                                            // Linha de movimento da ponta da lâmina
                                             sweepTipLine.closestPointToPoint(posOsso, true, ptProj);
-                                            if (ptProj.distanceTo(posOsso) <= raioOssoFixo) {
+                                            if (ptProj.distanceTo(posOsso) <= raioOsso) {
                                                 hitDetectado = true; posAcertoVFX.copy(ptProj); break;
                                             }
                                         } else { 
+                                            // Luva: Considera o movimento e um pequeno bônus
                                             let punchDir = new THREE.Vector3().subVectors(currentWorldPos, this.lastWorldPos);
                                             let punchDist = punchDir.length();
                                             
-                                            if (currentWorldPos.distanceTo(posOsso) <= raioOssoFixo + 0.1) {
+                                            if (currentWorldPos.distanceTo(posOsso) <= raioOsso + 0.1) {
                                                 hitDetectado = true; posAcertoVFX.copy(posOsso); break;
                                             } else if (punchDist > 0.001) {
                                                 let socoLine = new THREE.Line3(this.lastWorldPos, currentWorldPos);
                                                 socoLine.closestPointToPoint(posOsso, true, ptProj);
-                                                if (ptProj.distanceTo(posOsso) <= raioOssoFixo + 0.1) { 
+                                                if (ptProj.distanceTo(posOsso) <= raioOsso + 0.1) { 
                                                     hitDetectado = true; posAcertoVFX.copy(ptProj); break; 
                                                 }
                                             }
                                         }
                                     }
                                 } 
+                                // Para slimes ou caixas mágicas sem esqueleto (Raycaster puro no Mesh 3D)
                                 else if (visual.colisores.meshes.length > 0) {
-                                    let rayDir = new THREE.Vector3().subVectors(tipPos, basePos);
-                                    let rayDist = rayDir.length();
-                                    if (rayDist > 0.001) {
-                                        this.raycaster.set(basePos, rayDir.normalize());
-                                        let hits = this.raycaster.intersectObject(mesh, true);
-                                        if (hits.length > 0 && hits[0].distance <= rayDist) {
-                                            hitDetectado = true; posAcertoVFX.copy(hits[0].point);
+                                    let numPoints = 6;
+                                    for (let i = 0; i <= numPoints; i++) {
+                                        let t = i / numPoints;
+                                        let currentPt = new THREE.Vector3().lerpVectors(basePos, tipPos, t);
+                                        let lastPt = new THREE.Vector3().lerpVectors(this.lastBasePos, this.lastTipPos, t);
+
+                                        let sweepDir = new THREE.Vector3().subVectors(currentPt, lastPt);
+                                        let sweepLen = sweepDir.length();
+
+                                        if (sweepLen > 0.001) {
+                                            this.raycaster.set(lastPt, sweepDir.normalize());
+                                            let validHit = getValidHit(this.raycaster.intersectObject(mesh, true));
+                                            
+                                            if (validHit && validHit.distance <= sweepLen + 0.1) {
+                                                hitDetectado = true;
+                                                posAcertoVFX.copy(validHit.point);
+                                                break;
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
 
+                        // FALLBACK CAIXA: Desligado se houver modelo para evitar bater na asa invisível
                         if (!hitDetectado && !visual) {
                             let colisorNode = inimigoEl.querySelector('.colisao-inimigo');
                             let boxInimigoFall = new THREE.Box3();
@@ -283,8 +302,7 @@ AFRAME.registerComponent('colisor-arma-vr', {
 
                         if (hitDetectado) {
                             let lastHit = this.lastHits.get(inimigoEl) || 0;
-                            // --- ALTERAÇÃO AQUI: De 400ms para 150ms. Permite múltiplos golpes rápidos com o movimento da espada! ---
-                            if (this.speed > 1.5 && (agora - lastHit > 150)) { 
+                            if (this.speed > 1.5 && (agora - lastHit > 400)) { 
                                 syncComp.receberDano(Math.floor(window.playerState.forca + armaStats.danoBonus), armaStats.categoria);
                                 window.gerarHitVFX(posAcertoVFX, armaStats, this.vel.clone()); 
                                 this.lastHits.set(inimigoEl, agora);
