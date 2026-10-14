@@ -62,6 +62,8 @@
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUserUid = user.uid;
+                // Evita sobrescrever um personagem que já existe
+                firestoreDB.collection('jogadores').doc(user.uid).get().then(d => { if (d.exists && d.data().personagemCriado) { window.location.href = 'index.html'; } }).catch(e => console.error(e));
                 setTimeout(() => {
                     let overlay = document.getElementById('loading-overlay');
                     overlay.style.opacity = '0';
