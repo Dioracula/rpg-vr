@@ -638,3 +638,66 @@ AFRAME.registerComponent('projetil-jogador', {
         if (hit) { if (this.el.parentNode) this.el.parentNode.removeChild(this.el); }
     }
 });
+
+
+// ==========================================
+// VR: GATILHO (ARCO / LUVAS) E MAGIA (VARINHA)
+// ==========================================
+AFRAME.registerComponent('vr-controles-gatilho', {
+    init: function () {
+        this.podeAtacar = true;
+        this.el.addEventListener('triggerdown', () => {
+            if (window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
+            if (!this.podeAtacar) return;
+            this.podeAtacar = false; setTimeout(() => { this.podeAtacar = true; }, 400);
+            window.lastActionTime = Date.now();
+            window.realizarAtaque(); // já bloqueia menus e armas que não são Arco/Luva no VR
+        });
+    }
+});
+
+AFRAME.registerComponent('vr-magia-lancar', {
+    init: function () {
+        this.podeLancar = true;
+        this.el.addEventListener('triggerdown', () => {
+            if (window.GAME_MODE !== 'VR' || !window.GAME_STARTED || !window.playerState.vivo) return;
+            if (this.el.id !== 'mao-direita') return;
+            if (window.npcAtivo || window.invAberto || window.atribAberto || window.sysMenuAberto) return;
+            let armaStats = window.bancoDeArmas[window.playerState.armaEquipada];
+            if (!armaStats || armaStats.categoria !== 'Varinha') return;
+            if (!this.podeLancar) return;
+            this.podeLancar = false; setTimeout(() => { this.podeLancar = true; }, 400);
+            window.lastActionTime = Date.now();
+
+            let pos = new THREE.Vector3(); let quat = new THREE.Quaternion();
+            this.el.object3D.getWorldPosition(pos); this.el.object3D.getWorldQuaternion(quat);
+            let dir = new THREE.Vector3(0, 0, -1).applyQuaternion(quat).normalize();
+
+            // Mira assistida leve: escolhe o inimigo mais alinhado com a direção da mão
+            let melhorDot = 0.9; let alvo = null; let maxDist = armaStats.distancia || 20;
+            document.querySelectorAll('[sistema-inimigo-sync]').forEach(ini => {
+                let sync = ini.components['sistema-inimigo-sync'];
+                if (!sync || sync.hpAtual <= 0) return;
+                let p = new THREE.Vector3(); ini.object3D.getWorldPosition(p); p.y += 1.0;
+                if (pos.distanceTo(p) > maxDist) return;
+                let d = dir.dot(p.clone().sub(pos).normalize());
+                if (d > melhorDot) { melhorDot = d; alvo = p; }
+            });
+            if (alvo) dir = alvo.clone().sub(pos).normalize();
+
+            let vel = armaStats.projetilVel || 20;
+            let dano = Math.floor((window.playerState.forca + (armaStats.danoBonus || 0)) * 1.5);
+            let sp = pos.clone().add(dir.clone().multiplyScalar(0.3));
+            let proj = document.createElement('a-entity');
+            proj.setAttribute('position', `${sp.x} ${sp.y} ${sp.z}`);
+            proj.setAttribute('projetil-magia', `velocidade: ${dir.x * vel} ${dir.y * vel} ${dir.z * vel}; dano: ${dano}; armaOriginal: ${window.playerState.armaEquipada}`);
+            if (armaStats.projetilGlb) {
+                proj.innerHTML = `<a-entity gltf-model="url(${armaStats.projetilGlb})" scale="${armaStats.projetilEscala || '1 1 1'}"></a-entity>`;
+            } else {
+                proj.innerHTML = `<a-sphere radius="0.1" color="#00ffff" material="emissive: #00ffff; emissiveIntensity: 2"></a-sphere>`;
+            }
+            window.tocarSom('snd-magic');
+            this.el.sceneEl.appendChild(proj);
+        });
+    }
+});

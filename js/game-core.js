@@ -623,7 +623,10 @@ window.realizarAtaque = function() {
     }
 };
 
+window._selecaoIniciada = false;
 function iniciarTelaSelecaoModo() { 
+    if (window._selecaoIniciada) return; window._selecaoIniciada = true;
+    
     document.getElementById('login-menu').style.display = 'none'; 
     if (window.currentUser && window.currentUser.uid && !window.currentUser.uid.startsWith('teste_')) { 
         firestoreDB.collection("jogadores").doc(window.currentUser.uid).get().then((doc) => { 
@@ -632,7 +635,7 @@ function iniciarTelaSelecaoModo() {
                 if(window.playerState.hpAtual <= 0) { window.playerState.hpAtual = window.playerState.hpMax; window.playerState.vivo = true; }
                 document.getElementById('start-menu').style.display = 'block'; 
             } else { window.location.href = 'create.html'; }
-        }).catch(e => console.error("Erro ao carregar save", e)); 
+        }).catch(e => { window._selecaoIniciada = false; console.error("Erro ao carregar save", e); }); 
     } else { document.getElementById('start-menu').style.display = 'block'; }
 }
 
